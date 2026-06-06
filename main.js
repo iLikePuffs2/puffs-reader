@@ -55,7 +55,6 @@ var DEFAULT_SETTINGS = {
   paddingBottom: 40,
   fontColor: "",
   backgroundColor: "",
-  floatingButtonColor: "",
   chapterMetaFontSize: 12,
   chapterMetaColor: "",
   chapterMetaTop: 10,
@@ -233,6 +232,12 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.tocSidebar = this.bodyEl.createDiv({ cls: "puffs-toc-sidebar puffs-hidden" });
     const header = this.tocSidebar.createDiv({ cls: "puffs-toc-header" });
     this.tocTitleEl = header.createSpan({ cls: "puffs-toc-title", text: "\u76EE\u5F55" });
+    this.settingsBtn = header.createEl("button", {
+      cls: "puffs-icon-btn puffs-toc-search-btn",
+      attr: { "aria-label": "\u4E66\u7C4D\u8BBE\u7F6E" }
+    });
+    (0, import_obsidian.setIcon)(this.settingsBtn, "settings");
+    this.settingsBtn.addEventListener("click", () => this.toggleTypography());
     this.tocModeBtn = header.createEl("button", {
       cls: "puffs-icon-btn puffs-toc-search-btn",
       attr: { "aria-label": "\u5168\u4E66\u641C\u7D22" }
@@ -270,19 +275,6 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.readingArea.tabIndex = 0;
     this.chapterTitleEl = this.readingArea.createDiv({ cls: "puffs-page-chapter" });
     this.progressTitleEl = this.readingArea.createDiv({ cls: "puffs-page-progress" });
-    this.floatingControls = this.readingArea.createDiv({ cls: "puffs-floating-controls" });
-    const tocBtn = this.floatingControls.createEl("button", {
-      cls: "puffs-icon-btn puffs-floating-btn",
-      attr: { "aria-label": "\u76EE\u5F55\u4FA7\u8FB9\u680F" }
-    });
-    (0, import_obsidian.setIcon)(tocBtn, "list");
-    tocBtn.addEventListener("click", () => this.toggleToc());
-    this.settingsBtn = this.floatingControls.createEl("button", {
-      cls: "puffs-icon-btn puffs-floating-btn",
-      attr: { "aria-label": "\u4E66\u7C4D\u8BBE\u7F6E" }
-    });
-    (0, import_obsidian.setIcon)(this.settingsBtn, "settings");
-    this.settingsBtn.addEventListener("click", () => this.toggleTypography());
     this.searchBackBtn = this.readingArea.createEl("button", {
       cls: "puffs-search-back puffs-hidden",
       text: "\u8FD4\u56DE",
@@ -1102,7 +1094,6 @@ var ReaderView = class extends import_obsidian.ItemView {
     const s = this.plugin.settings;
     const rgbBg = s.backgroundColor ? `rgb(${s.backgroundColor})` : "";
     const rgbFont = s.fontColor ? `rgb(${s.fontColor})` : "";
-    const floatingButtonColor = s.floatingButtonColor ? `rgb(${s.floatingButtonColor})` : "";
     const chapterColor = s.chapterMetaColor ? `rgb(${s.chapterMetaColor})` : "";
     const progressColor = s.progressMetaColor ? `rgb(${s.progressMetaColor})` : "";
     this.rootEl.style.setProperty("--puffs-bg-color", rgbBg || "var(--background-primary)");
@@ -1119,8 +1110,6 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.rootEl.style.setProperty("--puffs-sidebar-transition", `${s.sidebarTransitionMs}ms`);
     this.rootEl.style.setProperty("--puffs-toc-font-size", `${s.tocFontSize}px`);
     this.rootEl.style.setProperty("--puffs-sidebar-title-size", `${(_a = s.sidebarTitleFontSize) != null ? _a : 16}px`);
-    if (floatingButtonColor) this.rootEl.style.setProperty("--puffs-floating-button-color", floatingButtonColor);
-    else this.rootEl.style.removeProperty("--puffs-floating-button-color");
     this.rootEl.style.setProperty("--puffs-chapter-meta-size", `${s.chapterMetaFontSize}px`);
     this.rootEl.style.setProperty("--puffs-chapter-meta-top", `${s.chapterMetaTop}px`);
     this.rootEl.style.setProperty("--puffs-progress-meta-size", `${s.progressMetaFontSize}px`);
@@ -1153,7 +1142,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     if (this.isTypographyOpen && !this.typographyPanel.contains(target) && !this.settingsBtn.contains(target)) {
       this.closeTypography();
     }
-    if (this.isTocOpen && !this.tocSidebar.contains(target) && !this.floatingControls.contains(target)) {
+    if (this.isTocOpen && !this.tocSidebar.contains(target)) {
       this.closeSidebar();
     }
   }
@@ -1744,7 +1733,6 @@ var SettingsTab = class extends import_obsidian2.PluginSettingTab {
     this.addNumberSetting("\u4FA7\u680F\u4E66\u540D\u5B57\u53F7", "\u4FA7\u8FB9\u680F\u9876\u90E8\u4E66\u540D\u7684\u5B57\u53F7 (px)", "sidebarTitleFontSize", 11, 28, 1, "px");
     this.addTextSetting("\u5B57\u4F53\u989C\u8272", "RGB \u683C\u5F0F\uFF0C\u5982 51,51,51\u3002\u7559\u7A7A\u8DDF\u968F\u4E3B\u9898\u3002", "fontColor", "\u4F8B\u5982 51,51,51");
     this.addTextSetting("\u4E66\u7C4D\u80CC\u666F\u989C\u8272", "RGB \u683C\u5F0F\uFF0C\u5982 233,216,188\u3002\u7559\u7A7A\u8DDF\u968F\u4E3B\u9898\u3002", "backgroundColor", "\u4F8B\u5982 233,216,188");
-    this.addTextSetting("\u53F3\u4E0A\u89D2\u6309\u94AE\u989C\u8272", "RGB \u683C\u5F0F\uFF1B\u63A7\u5236\u9605\u8BFB\u533A\u53F3\u4E0A\u89D2\u4E24\u4E2A\u6D6E\u52A8\u6309\u94AE\u7684\u56FE\u6807\u989C\u8272\u3002", "floatingButtonColor", "\u4F8B\u5982 120,120,120");
     containerEl.createEl("h3", { text: "\u9876\u90E8\u7AE0\u540D\u4E0E\u5E95\u90E8\u8FDB\u5EA6" });
     this.addNumberSetting("\u7AE0\u540D\u5B57\u53F7", "\u9875\u9762\u9876\u90E8\u7AE0\u540D\u5C0F\u5B57\u5927\u5C0F (px)", "chapterMetaFontSize", 9, 20, 1, "px");
     this.addNumberSetting("\u7AE0\u540D\u9876\u90E8\u4F4D\u7F6E", "\u7AE0\u540D\u8DDD\u79BB\u9875\u9762\u9876\u90E8\u7684\u4F4D\u7F6E (px)", "chapterMetaTop", 0, 80, 1, "px");

@@ -20,8 +20,6 @@ export interface ReaderSettings {
   fontColor: string;
   /** 书籍背景颜色 (RGB, e.g. "233,216,188"，空字符串跟随主题) */
   backgroundColor: string;
-  /** 右上角浮动按钮颜色 (RGB，空字符串跟随主题 muted 色) */
-  floatingButtonColor: string;
   /** 顶部章名字号 (px) */
   chapterMetaFontSize: number;
   /** 顶部章名颜色 (RGB，空字符串跟随主题 muted 色) */
@@ -173,7 +171,6 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   paddingBottom: 40,
   fontColor: '',
   backgroundColor: '',
-  floatingButtonColor: '',
   chapterMetaFontSize: 12,
   chapterMetaColor: '',
   chapterMetaTop: 10,

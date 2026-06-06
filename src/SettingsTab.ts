@@ -34,7 +34,6 @@ export class SettingsTab extends PluginSettingTab {
 
     this.addTextSetting('字体颜色', 'RGB 格式，如 51,51,51。留空跟随主题。', 'fontColor', '例如 51,51,51');
     this.addTextSetting('书籍背景颜色', 'RGB 格式，如 233,216,188。留空跟随主题。', 'backgroundColor', '例如 233,216,188');
-    this.addTextSetting('右上角按钮颜色', 'RGB 格式；控制阅读区右上角两个浮动按钮的图标颜色。', 'floatingButtonColor', '例如 120,120,120');
 
     containerEl.createEl('h3', { text: '顶部章名与底部进度' });
     this.addNumberSetting('章名字号', '页面顶部章名小字大小 (px)', 'chapterMetaFontSize', 9, 20, 1, 'px');
@@ -227,7 +226,7 @@ export class SettingsTab extends PluginSettingTab {
   private addTextSetting(
     name: string,
     desc: string,
-    key: 'fontColor' | 'backgroundColor' | 'floatingButtonColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
+    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
     placeholder: string,
   ): void {
     new Setting(this.containerEl)

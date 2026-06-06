@@ -82,23 +82,6 @@
   border-color: transparent;
 }
 
-.puffs-floating-btn,
-.puffs-floating-btn:hover {
-  background: var(--puffs-bg-color) !important;
-  background-color: var(--puffs-bg-color) !important;
-  color: var(--puffs-floating-button-color, var(--text-muted)) !important;
-  border-color: transparent !important;
-}
-
-.puffs-floating-controls {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  z-index: 20;
-  display: flex;
-  gap: 6px;
-}
-
 /* ── 目录 / 搜索共用侧边栏 ── */
 .puffs-toc-sidebar {
   width: var(--puffs-sidebar-width);

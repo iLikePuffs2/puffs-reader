@@ -44,7 +44,6 @@ export class ReaderView extends ItemView {
   private searchResultsEl!: HTMLElement;
   private readingArea!: HTMLElement;
   private contentContainer!: HTMLElement;
-  private floatingControls!: HTMLElement;
   private settingsBtn!: HTMLElement;
   private typographyPanel!: HTMLElement;
   private encodingBtn!: HTMLElement;
@@ -217,6 +216,13 @@ export class ReaderView extends ItemView {
 
     const header = this.tocSidebar.createDiv({ cls: 'puffs-toc-header' });
     this.tocTitleEl = header.createSpan({ cls: 'puffs-toc-title', text: '目录' });
+    this.settingsBtn = header.createEl('button', {
+      cls: 'puffs-icon-btn puffs-toc-search-btn',
+      attr: { 'aria-label': '书籍设置' },
+    });
+    setIcon(this.settingsBtn, 'settings');
+    this.settingsBtn.addEventListener('click', () => this.toggleTypography());
+
     this.tocModeBtn = header.createEl('button', {
       cls: 'puffs-icon-btn puffs-toc-search-btn',
       attr: { 'aria-label': '全书搜索' },
@@ -260,21 +266,6 @@ export class ReaderView extends ItemView {
 
     this.chapterTitleEl = this.readingArea.createDiv({ cls: 'puffs-page-chapter' });
     this.progressTitleEl = this.readingArea.createDiv({ cls: 'puffs-page-progress' });
-
-    this.floatingControls = this.readingArea.createDiv({ cls: 'puffs-floating-controls' });
-    const tocBtn = this.floatingControls.createEl('button', {
-      cls: 'puffs-icon-btn puffs-floating-btn',
-      attr: { 'aria-label': '目录侧边栏' },
-    });
-    setIcon(tocBtn, 'list');
-    tocBtn.addEventListener('click', () => this.toggleToc());
-
-    this.settingsBtn = this.floatingControls.createEl('button', {
-      cls: 'puffs-icon-btn puffs-floating-btn',
-      attr: { 'aria-label': '书籍设置' },
-    });
-    setIcon(this.settingsBtn, 'settings');
-    this.settingsBtn.addEventListener('click', () => this.toggleTypography());
 
     this.searchBackBtn = this.readingArea.createEl('button', {
       cls: 'puffs-search-back puffs-hidden',
@@ -1238,7 +1229,6 @@ export class ReaderView extends ItemView {
     const s = this.plugin.settings;
     const rgbBg = s.backgroundColor ? `rgb(${s.backgroundColor})` : '';
     const rgbFont = s.fontColor ? `rgb(${s.fontColor})` : '';
-    const floatingButtonColor = s.floatingButtonColor ? `rgb(${s.floatingButtonColor})` : '';
     const chapterColor = s.chapterMetaColor ? `rgb(${s.chapterMetaColor})` : '';
     const progressColor = s.progressMetaColor ? `rgb(${s.progressMetaColor})` : '';
 
@@ -1256,8 +1246,6 @@ export class ReaderView extends ItemView {
     this.rootEl.style.setProperty('--puffs-sidebar-transition', `${s.sidebarTransitionMs}ms`);
     this.rootEl.style.setProperty('--puffs-toc-font-size', `${s.tocFontSize}px`);
     this.rootEl.style.setProperty('--puffs-sidebar-title-size', `${s.sidebarTitleFontSize ?? 16}px`);
-    if (floatingButtonColor) this.rootEl.style.setProperty('--puffs-floating-button-color', floatingButtonColor);
-    else this.rootEl.style.removeProperty('--puffs-floating-button-color');
     this.rootEl.style.setProperty('--puffs-chapter-meta-size', `${s.chapterMetaFontSize}px`);
     this.rootEl.style.setProperty('--puffs-chapter-meta-top', `${s.chapterMetaTop}px`);
     this.rootEl.style.setProperty('--puffs-progress-meta-size', `${s.progressMetaFontSize}px`);
@@ -1295,7 +1283,7 @@ export class ReaderView extends ItemView {
     if (this.isTypographyOpen && !this.typographyPanel.contains(target) && !this.settingsBtn.contains(target)) {
       this.closeTypography();
     }
-    if (this.isTocOpen && !this.tocSidebar.contains(target) && !this.floatingControls.contains(target)) {
+    if (this.isTocOpen && !this.tocSidebar.contains(target)) {
       this.closeSidebar();
     }
   }
