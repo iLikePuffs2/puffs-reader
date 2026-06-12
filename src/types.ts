@@ -60,6 +60,10 @@ export interface ReaderSettings {
   searchHotkey: string;
   /** 目录侧边栏切换快捷键 */
   tocPanelHotkey: string;
+  /** 按章节复制原文快捷键 */
+  copySourceHotkey: string;
+  /** 按章节拆分原文的导出目录（vault 内相对路径） */
+  breakdownTextDir: string;
   /** 侧边栏顶部书名字号 (px) */
   sidebarTitleFontSize: number;
   /** 标注高亮背景色 (RGB)，空 = 跟随浏览器选区色 */
@@ -191,6 +195,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   defaultEncoding: 'utf-8',
   searchHotkey: 'Ctrl+F',
   tocPanelHotkey: 'Ctrl+B',
+  copySourceHotkey: 'Ctrl+Shift+C',
+  breakdownTextDir: '拆书文本',
   sidebarTitleFontSize: 16,
   annotationHighlightColor: '',
   annotationExportDir: '',

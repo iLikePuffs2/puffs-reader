@@ -1,6 +1,20 @@
-import { App, ItemView, Modal, Menu, Notice, TFile, ViewStateResult, WorkspaceLeaf, setIcon, Scope } from 'obsidian';
+import {
+  AbstractInputSuggest,
+  App,
+  ItemView,
+  Modal,
+  Menu,
+  Notice,
+  normalizePath,
+  prepareFuzzySearch,
+  TFile,
+  ViewStateResult,
+  WorkspaceLeaf,
+  setIcon,
+  Scope,
+} from 'obsidian';
 import PuffsReaderPlugin from './main';
-import { Annotation, BookSettings, Chapter, SearchMatch, SUPPORTED_ENCODINGS } from './types';
+import { Annotation, BookSettings, Chapter, DEFAULT_SETTINGS, SearchMatch, SUPPORTED_ENCODINGS } from './types';
 
 export const READER_VIEW_TYPE = 'puffs-reader-view';
 
@@ -78,6 +92,7 @@ export class ReaderView extends ItemView {
   private resizeObserver: ResizeObserver | null = null;
   private boundGlobalKeydown: ((e: KeyboardEvent) => void) | null = null;
   private boundMouseMove: ((e: MouseEvent) => void) | null = null;
+  private chapterCopyModal: ChapterRangeCopyModal | null = null;
 
   private spaceHoldTimer = 0;
   private spaceHoldFired = false;
@@ -111,6 +126,8 @@ export class ReaderView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    this.chapterCopyModal?.close();
+    this.chapterCopyModal = null;
     this.saveProgressNow();
     window.clearTimeout(this.progressSaveTimer);
     window.clearTimeout(this.searchTimer);
@@ -1454,6 +1471,13 @@ export class ReaderView extends ItemView {
         e.preventDefault();
         e.stopPropagation();
         this.toggleToc();
+        return;
+      }
+      if (this.matchesCopySourceHotkey(e)) {
+        if (!this.shouldHandleCopySourceHotkey(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.openChapterCopyModal();
       }
     };
     document.addEventListener('keydown', this.boundGlobalKeydown, true);
@@ -1520,6 +1544,10 @@ export class ReaderView extends ItemView {
     return this.matchesHotkey(e, this.plugin.settings.tocPanelHotkey || 'Ctrl+B');
   }
 
+  private matchesCopySourceHotkey(e: KeyboardEvent): boolean {
+    return this.matchesHotkey(e, this.plugin.settings.copySourceHotkey || 'Ctrl+Shift+C');
+  }
+
   private matchesPreviousPageHotkey(e: KeyboardEvent): boolean {
     return this.matchesHotkey(e, this.plugin.settings.previousPageHotkey || 'j');
   }
@@ -1533,6 +1561,13 @@ export class ReaderView extends ItemView {
   }
 
   private handleKeydown(e: KeyboardEvent): void {
+    if (this.matchesCopySourceHotkey(e)) {
+      if (!this.shouldHandleCopySourceHotkey(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.openChapterCopyModal();
+      return;
+    }
     if (this.matchesSearchHotkey(e)) {
       e.preventDefault();
       this.toggleSearchFromHotkey();
@@ -1598,6 +1633,95 @@ export class ReaderView extends ItemView {
   private shouldHandleSearchHotkey(): boolean {
     const active = document.activeElement;
     return this.app.workspace.activeLeaf === this.leaf && !!active && this.contentEl.contains(active);
+  }
+
+  private shouldHandleCopySourceHotkey(e: KeyboardEvent): boolean {
+    return this.app.workspace.activeLeaf === this.leaf && !this.isEditableTarget(e.target);
+  }
+
+  private openChapterCopyModal(): void {
+    if (this.chapterCopyModal) return;
+    if (this.chapters.length === 0) {
+      new Notice('未检测到可复制的章节');
+      return;
+    }
+
+    const currentChapter = Math.max(0, this.getActiveChapterIndex(this.currentPageStart.paraIndex));
+    const modal = new ChapterRangeCopyModal(
+      this.app,
+      this.chapters,
+      currentChapter,
+      async (startIndex, endIndex) => this.copyChapterRange(startIndex, endIndex),
+      () => {
+        if (this.chapterCopyModal === modal) this.chapterCopyModal = null;
+      },
+    );
+    this.chapterCopyModal = modal;
+    modal.open();
+  }
+
+  private async copyChapterRange(startIndex: number, endIndex: number): Promise<boolean> {
+    const start = this.chapters[startIndex];
+    const end = this.chapters[endIndex];
+    if (!start || !end) {
+      new Notice('复制失败：章节范围无效');
+      return false;
+    }
+    if (endIndex < startIndex) {
+      new Notice('结束章节不能早于起始章节');
+      return false;
+    }
+
+    const endParaIndex = this.chapters[endIndex + 1]?.startParaIndex ?? this.paragraphs.length;
+    const text = this.paragraphs.slice(start.startParaIndex, endParaIndex).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      new Notice('复制失败：无法写入剪贴板');
+      return false;
+    }
+
+    if (!this.currentFile) {
+      new Notice('保存失败：当前书籍文件无效');
+      return false;
+    }
+
+    try {
+      const baseDir = (this.plugin.settings.breakdownTextDir || DEFAULT_SETTINGS.breakdownTextDir)
+        .trim()
+        .replace(/^\/+|\/+$/g, '');
+      const bookName = this.sanitizePathComponent(this.currentFile.basename);
+      const targetDir = normalizePath(baseDir ? `${baseDir}/${bookName}` : bookName);
+      await this.ensureVaultFolder(targetDir);
+
+      const startTitle = this.sanitizePathComponent(start.title);
+      const endTitle = this.sanitizePathComponent(end.title);
+      const fileName = `${bookName}-${startTitle}-${endTitle}.txt`;
+      await this.app.vault.adapter.write(normalizePath(`${targetDir}/${fileName}`), text);
+      return true;
+    } catch {
+      new Notice('保存失败：无法创建拆书文本文件');
+      return false;
+    }
+  }
+
+  private sanitizePathComponent(value: string): string {
+    const sanitized = value
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+      .replace(/[. ]+$/g, '')
+      .trim();
+    return sanitized || '未命名';
+  }
+
+  private async ensureVaultFolder(folderPath: string): Promise<void> {
+    const parts = normalizePath(folderPath).split('/').filter(Boolean);
+    let current = '';
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part;
+      if (!(await this.app.vault.adapter.exists(current))) {
+        await this.app.vault.adapter.mkdir(current);
+      }
+    }
   }
 
   private scheduleProgressSave(): void {
@@ -1960,6 +2084,154 @@ export class ReaderView extends ItemView {
 }
 
 // ═══════════════════════════ 批注输入弹窗 ═══════════════════════════
+
+interface ChapterChoice {
+  chapter: Chapter;
+  index: number;
+}
+
+class ChapterInputSuggest extends AbstractInputSuggest<ChapterChoice> {
+  private choices: ChapterChoice[];
+  private preferredIndex: number;
+
+  constructor(app: App, inputEl: HTMLInputElement, chapters: Chapter[], preferredIndex: number) {
+    super(app, inputEl);
+    this.choices = chapters.map((chapter, index) => ({ chapter, index }));
+    this.preferredIndex = preferredIndex;
+    this.limit = 100;
+  }
+
+  setPreferredIndex(index: number): void {
+    this.preferredIndex = index;
+  }
+
+  protected getSuggestions(query: string): ChapterChoice[] {
+    const normalized = query.trim();
+    if (!normalized) {
+      return [...this.choices].sort((a, b) => {
+        if (a.index === this.preferredIndex) return -1;
+        if (b.index === this.preferredIndex) return 1;
+        return a.index - b.index;
+      });
+    }
+
+    const search = prepareFuzzySearch(normalized);
+    return this.choices
+      .map((choice) => ({
+        choice,
+        match: search(`${choice.chapter.title} ${choice.chapter.rawTitle}`),
+      }))
+      .filter((item) => item.match !== null)
+      .sort((a, b) => (b.match?.score ?? 0) - (a.match?.score ?? 0))
+      .map((item) => item.choice);
+  }
+
+  renderSuggestion(choice: ChapterChoice, el: HTMLElement): void {
+    el.createDiv({ cls: 'puffs-chapter-copy-suggestion', text: choice.chapter.title });
+  }
+}
+
+class ChapterRangeCopyModal extends Modal {
+  private chapters: Chapter[];
+  private initialChapterIndex: number;
+  private onCopy: (startIndex: number, endIndex: number) => Promise<boolean>;
+  private onDismiss: () => void;
+  private startIndex: number | null = null;
+  private headingEl!: HTMLElement;
+  private selectedEl!: HTMLElement;
+  private inputEl!: HTMLInputElement;
+  private suggest!: ChapterInputSuggest;
+
+  constructor(
+    app: App,
+    chapters: Chapter[],
+    initialChapterIndex: number,
+    onCopy: (startIndex: number, endIndex: number) => Promise<boolean>,
+    onDismiss: () => void,
+  ) {
+    super(app);
+    this.chapters = chapters;
+    this.initialChapterIndex = initialChapterIndex;
+    this.onCopy = onCopy;
+    this.onDismiss = onDismiss;
+  }
+
+  onOpen(): void {
+    const { contentEl, modalEl } = this;
+    contentEl.empty();
+    modalEl.addClass('puffs-chapter-copy-modal');
+
+    this.headingEl = contentEl.createEl('h3', {
+      cls: 'puffs-chapter-copy-title',
+      text: '选择起始章节',
+    });
+    this.selectedEl = contentEl.createDiv({ cls: 'puffs-chapter-copy-selected puffs-hidden' });
+    this.inputEl = contentEl.createEl('input', {
+      cls: 'puffs-chapter-copy-input',
+      attr: {
+        type: 'text',
+        placeholder: '输入章节标题进行搜索',
+        autocomplete: 'off',
+      },
+    }) as HTMLInputElement;
+
+    this.suggest = new ChapterInputSuggest(
+      this.app,
+      this.inputEl,
+      this.chapters,
+      this.initialChapterIndex,
+    );
+    this.suggest.onSelect((choice) => void this.selectChapter(choice));
+
+    window.setTimeout(() => {
+      this.inputEl.focus();
+      this.suggest.open();
+    }, 0);
+  }
+
+  private async selectChapter(choice: ChapterChoice): Promise<void> {
+    if (this.startIndex === null) {
+      this.startIndex = choice.index;
+      this.headingEl.textContent = '选择结束章节';
+      this.selectedEl.textContent = `起始：${choice.chapter.title}`;
+      this.selectedEl.classList.remove('puffs-hidden');
+      this.inputEl.value = '';
+      this.inputEl.placeholder = '输入结束章节标题';
+      this.suggest.setPreferredIndex(choice.index);
+      this.suggest.setValue('');
+      window.setTimeout(() => {
+        this.inputEl.focus();
+        this.suggest.open();
+      }, 0);
+      return;
+    }
+
+    if (choice.index < this.startIndex) {
+      new Notice('结束章节不能早于起始章节');
+      this.inputEl.value = '';
+      this.suggest.setValue('');
+      window.setTimeout(() => {
+        this.inputEl.focus();
+        this.suggest.open();
+      }, 0);
+      return;
+    }
+
+    const copied = await this.onCopy(this.startIndex, choice.index);
+    if (copied) {
+      this.close();
+    } else {
+      this.inputEl.focus();
+      this.suggest.open();
+    }
+  }
+
+  onClose(): void {
+    this.suggest?.close();
+    this.contentEl.empty();
+    this.onDismiss();
+  }
+}
 
 class AnnotationInputModal extends Modal {
   private defaultText: string;

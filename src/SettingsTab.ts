@@ -107,6 +107,20 @@ export class SettingsTab extends PluginSettingTab {
     );
 
     this.addTextSetting(
+      '复制原文快捷键',
+      '默认 Ctrl+Shift+C。依次选择起始和结束章节，将对应原文复制到剪贴板。',
+      'copySourceHotkey',
+      DEFAULT_SETTINGS.copySourceHotkey,
+    );
+
+    this.addTextSetting(
+      '拆书文本目录',
+      'vault 内相对路径。复制章节原文时，会按书名创建子文件夹并保存 TXT 文件。',
+      'breakdownTextDir',
+      DEFAULT_SETTINGS.breakdownTextDir,
+    );
+
+    this.addTextSetting(
       '上一页快捷键',
       '默认 j。除左方向键外，用于向前翻页的自定义按键。支持 Ctrl/Alt/Shift 加单个按键。',
       'previousPageHotkey',
@@ -226,7 +240,7 @@ export class SettingsTab extends PluginSettingTab {
   private addTextSetting(
     name: string,
     desc: string,
-    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
+    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'copySourceHotkey' | 'breakdownTextDir' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
     placeholder: string,
   ): void {
     new Setting(this.containerEl)
@@ -240,6 +254,8 @@ export class SettingsTab extends PluginSettingTab {
             const fallback =
               key === 'searchHotkey' ? DEFAULT_SETTINGS.searchHotkey :
               key === 'tocPanelHotkey' ? DEFAULT_SETTINGS.tocPanelHotkey :
+              key === 'copySourceHotkey' ? DEFAULT_SETTINGS.copySourceHotkey :
+              key === 'breakdownTextDir' ? DEFAULT_SETTINGS.breakdownTextDir :
               key === 'previousPageHotkey' ? DEFAULT_SETTINGS.previousPageHotkey :
               key === 'nextPageHotkey' ? DEFAULT_SETTINGS.nextPageHotkey :
               key === 'chapterTitleRegex' ? DEFAULT_SETTINGS.chapterTitleRegex :
