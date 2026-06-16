@@ -1548,16 +1548,20 @@ var ReaderView = class extends import_obsidian.ItemView {
   }
   openChapterCopyModal() {
     if (this.chapterCopyModal) return;
-    if (this.chapters.length === 0) {
+    const choices = this.getCopyableChapterChoices();
+    if (choices.length === 0) {
       new import_obsidian.Notice("\u672A\u68C0\u6D4B\u5230\u53EF\u590D\u5236\u7684\u7AE0\u8282");
       return;
     }
     const currentChapter = Math.max(0, this.getActiveChapterIndex(this.currentPageStart.paraIndex));
+    const initialChoiceIndex = this.getInitialCopyChoiceIndex(choices, currentChapter);
     const modal = new ChapterRangeCopyModal(
       this.app,
-      this.chapters,
-      currentChapter,
-      async (startIndex, endIndex) => this.copyChapterRange(startIndex, endIndex),
+      choices,
+      initialChoiceIndex,
+      (startIndex, endIndex) => this.getChapterRangeWordCount(startIndex, endIndex),
+      (startIndex, endIndex, chunkSize) => this.getFirstBatchChapterRangeWordCount(startIndex, endIndex, chunkSize),
+      async (startIndex, endIndex, chunkSize) => this.splitChapterRanges(startIndex, endIndex, chunkSize),
       () => {
         if (this.chapterCopyModal === modal) this.chapterCopyModal = null;
       }
@@ -1565,26 +1569,93 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.chapterCopyModal = modal;
     modal.open();
   }
-  async copyChapterRange(startIndex, endIndex) {
+  getCopyableChapterChoices() {
+    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
+    let parentTitle = null;
+    const choices = [];
+    this.chapters.forEach((chapter, index) => {
+      if (chapter.level === 1) parentTitle = chapter.title;
+      if (hasLevel2 && chapter.level !== 2) return;
+      choices.push({
+        chapter,
+        index,
+        displayTitle: hasLevel2 && parentTitle ? `${parentTitle}-${chapter.title}` : chapter.title
+      });
+    });
+    return choices;
+  }
+  getInitialCopyChoiceIndex(choices, activeChapterIndex) {
+    const exact = choices.findIndex((choice) => choice.index === activeChapterIndex);
+    if (exact >= 0) return choices[exact].index;
+    const next = choices.find((choice) => choice.index > activeChapterIndex);
+    return (next != null ? next : choices[choices.length - 1]).index;
+  }
+  async splitChapterRanges(startIndex, endIndex, chunkSize) {
+    const segments = chunkSize === null ? [[startIndex, endIndex]] : this.buildBatchChapterSegments(startIndex, endIndex, chunkSize);
+    if (segments.length === 0) {
+      new import_obsidian.Notice("\u62C6\u5206\u5931\u8D25\uFF1A\u7AE0\u8282\u8303\u56F4\u65E0\u6548");
+      return false;
+    }
+    for (let i = 0; i < segments.length; i++) {
+      const [segmentStart, segmentEnd] = segments[i];
+      const text = this.getChapterRangeText(segmentStart, segmentEnd);
+      if (text === null) return false;
+      if (chunkSize === null && i === 0) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch (e) {
+          new import_obsidian.Notice("\u590D\u5236\u5931\u8D25\uFF1A\u65E0\u6CD5\u5199\u5165\u526A\u8D34\u677F");
+          return false;
+        }
+      }
+      const ok = await this.writeChapterRangeText(segmentStart, segmentEnd, text);
+      if (!ok) return false;
+    }
+    return true;
+  }
+  getChapterRangeWordCount(startIndex, endIndex) {
+    const text = this.getChapterRangeText(startIndex, endIndex, false);
+    return text === null ? null : text.replace(/\s+/g, "").length;
+  }
+  getFirstBatchChapterRangeWordCount(startIndex, endIndex, chunkSize) {
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0) return null;
+    const first = this.buildBatchChapterSegments(startIndex, endIndex, chunkSize)[0];
+    return first ? this.getChapterRangeWordCount(first[0], first[1]) : null;
+  }
+  getChapterRangeText(startIndex, endIndex, showNotice = true) {
     var _a, _b;
     const start = this.chapters[startIndex];
     const end = this.chapters[endIndex];
     if (!start || !end) {
-      new import_obsidian.Notice("\u590D\u5236\u5931\u8D25\uFF1A\u7AE0\u8282\u8303\u56F4\u65E0\u6548");
-      return false;
+      if (showNotice) new import_obsidian.Notice("\u590D\u5236\u5931\u8D25\uFF1A\u7AE0\u8282\u8303\u56F4\u65E0\u6548");
+      return null;
     }
     if (endIndex < startIndex) {
-      new import_obsidian.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u65E9\u4E8E\u8D77\u59CB\u7AE0\u8282");
-      return false;
+      if (showNotice) new import_obsidian.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u65E9\u4E8E\u8D77\u59CB\u7AE0\u8282");
+      return null;
     }
     const endParaIndex = (_b = (_a = this.chapters[endIndex + 1]) == null ? void 0 : _a.startParaIndex) != null ? _b : this.paragraphs.length;
-    const text = this.paragraphs.slice(start.startParaIndex, endParaIndex).join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (e) {
-      new import_obsidian.Notice("\u590D\u5236\u5931\u8D25\uFF1A\u65E0\u6CD5\u5199\u5165\u526A\u8D34\u677F");
-      return false;
+    return this.paragraphs.slice(start.startParaIndex, endParaIndex).join("\n");
+  }
+  buildBatchChapterSegments(startIndex, endIndex, chunkSize) {
+    const choices = this.getCopyableChapterChoices().filter((choice) => choice.index >= startIndex && choice.index <= endIndex);
+    const segments = [];
+    let pos = 0;
+    while (pos < choices.length) {
+      const parentIndex = this.getChapterParentIndex(choices[pos].index);
+      let groupEnd = pos;
+      while (groupEnd + 1 < choices.length && this.getChapterParentIndex(choices[groupEnd + 1].index) === parentIndex) {
+        groupEnd++;
+      }
+      while (pos <= groupEnd) {
+        const target = Math.min(pos + chunkSize - 1, groupEnd);
+        segments.push([choices[pos].index, choices[target].index]);
+        pos = target + 1;
+      }
     }
+    return segments;
+  }
+  async writeChapterRangeText(startIndex, endIndex, text) {
     if (!this.currentFile) {
       new import_obsidian.Notice("\u4FDD\u5B58\u5931\u8D25\uFF1A\u5F53\u524D\u4E66\u7C4D\u6587\u4EF6\u65E0\u6548");
       return false;
@@ -1594,15 +1665,45 @@ var ReaderView = class extends import_obsidian.ItemView {
       const bookName = this.sanitizePathComponent(this.currentFile.basename);
       const targetDir = (0, import_obsidian.normalizePath)(baseDir ? `${baseDir}/${bookName}` : bookName);
       await this.ensureVaultFolder(targetDir);
-      const startTitle = this.sanitizePathComponent(start.title);
-      const endTitle = this.sanitizePathComponent(end.title);
-      const fileName = `${bookName}-${startTitle}-${endTitle}.txt`;
+      const fileName = this.buildChapterRangeFileName(bookName, startIndex, endIndex);
       await this.app.vault.adapter.write((0, import_obsidian.normalizePath)(`${targetDir}/${fileName}`), text);
       return true;
     } catch (e) {
       new import_obsidian.Notice("\u4FDD\u5B58\u5931\u8D25\uFF1A\u65E0\u6CD5\u521B\u5EFA\u62C6\u4E66\u6587\u672C\u6587\u4EF6");
       return false;
     }
+  }
+  buildChapterRangeFileName(bookName, startIndex, endIndex) {
+    const start = this.chapters[startIndex];
+    const end = this.chapters[endIndex];
+    const parts = [bookName];
+    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
+    const startParent = hasLevel2 ? this.getChapterParentTitle(startIndex) : null;
+    const endParent = hasLevel2 ? this.getChapterParentTitle(endIndex) : null;
+    if (startParent && endParent && startParent === endParent) {
+      parts.push(startParent);
+    } else if (startParent || endParent) {
+      if (startParent) parts.push(startParent);
+      parts.push(start.title);
+      if (endParent) parts.push(endParent);
+      parts.push(end.title);
+      return `${parts.map((part) => this.sanitizePathComponent(part)).join("-")}.txt`;
+    }
+    parts.push(start.title, end.title);
+    return `${parts.map((part) => this.sanitizePathComponent(part)).join("-")}.txt`;
+  }
+  getChapterParentTitle(chapterIndex) {
+    var _a, _b;
+    const parentIndex = this.getChapterParentIndex(chapterIndex);
+    return parentIndex === null ? null : (_b = (_a = this.chapters[parentIndex]) == null ? void 0 : _a.title) != null ? _b : null;
+  }
+  getChapterParentIndex(chapterIndex) {
+    var _a;
+    if (((_a = this.chapters[chapterIndex]) == null ? void 0 : _a.level) !== 2) return null;
+    for (let i = chapterIndex - 1; i >= 0; i--) {
+      if (this.chapters[i].level === 1) return i;
+    }
+    return null;
   }
   sanitizePathComponent(value) {
     const sanitized = value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/g, "").trim();
@@ -1997,12 +2098,12 @@ function getChapterSearchNumberTokens(text) {
   return [...result];
 }
 function buildChapterSearchCandidate(choice) {
-  const title = normalizeChapterSearchText(choice.chapter.title);
+  const title = normalizeChapterSearchText(choice.displayTitle);
   const rawTitle = normalizeChapterSearchText(choice.chapter.rawTitle);
   return {
     choice,
     textTargets: [title, rawTitle],
-    numberTargets: getChapterSearchNumberTokens(`${choice.chapter.title} ${choice.chapter.rawTitle}`)
+    numberTargets: getChapterSearchNumberTokens(`${choice.displayTitle} ${choice.chapter.rawTitle}`)
   };
 }
 function getChapterSearchRank(candidate, query, numericQuery) {
@@ -2014,10 +2115,26 @@ function getChapterSearchRank(candidate, query, numericQuery) {
   if (candidate.textTargets.some((target) => target.includes(query))) return numericQuery ? 3 : 0;
   return Number.POSITIVE_INFINITY;
 }
+function getChapterSuggestions(candidates, preferredIndex, query) {
+  const normalized = query.trim();
+  if (!normalized) {
+    return [...candidates].sort((a, b) => {
+      if (a.choice.index === preferredIndex) return -1;
+      if (b.choice.index === preferredIndex) return 1;
+      return a.choice.index - b.choice.index;
+    }).slice(0, 100).map((candidate) => candidate.choice);
+  }
+  const textQuery = normalizeChapterSearchText(normalized);
+  const numericQuery = normalizeChapterSearchNumber(normalized);
+  return candidates.map((candidate) => ({
+    candidate,
+    rank: getChapterSearchRank(candidate, textQuery, numericQuery)
+  })).filter((item) => Number.isFinite(item.rank)).sort((a, b) => a.rank - b.rank || a.candidate.choice.index - b.candidate.choice.index).slice(0, 100).map((item) => item.candidate.choice);
+}
 var ChapterInputSuggest = class extends import_obsidian.AbstractInputSuggest {
-  constructor(app, inputEl, chapters, preferredIndex) {
+  constructor(app, inputEl, choices, preferredIndex) {
     super(app, inputEl);
-    this.candidates = chapters.map((chapter, index) => ({ chapter, index })).map((choice) => buildChapterSearchCandidate(choice));
+    this.candidates = choices.map((choice) => buildChapterSearchCandidate(choice));
     this.preferredIndex = preferredIndex;
     this.limit = 100;
   }
@@ -2025,100 +2142,149 @@ var ChapterInputSuggest = class extends import_obsidian.AbstractInputSuggest {
     this.preferredIndex = index;
   }
   getSuggestions(query) {
-    const normalized = query.trim();
-    if (!normalized) {
-      return [...this.candidates].sort((a, b) => {
-        if (a.choice.index === this.preferredIndex) return -1;
-        if (b.choice.index === this.preferredIndex) return 1;
-        return a.choice.index - b.choice.index;
-      }).map((candidate) => candidate.choice);
-    }
-    const textQuery = normalizeChapterSearchText(normalized);
-    const numericQuery = normalizeChapterSearchNumber(normalized);
-    return this.candidates.map((candidate) => ({
-      candidate,
-      rank: getChapterSearchRank(candidate, textQuery, numericQuery)
-    })).filter((item) => Number.isFinite(item.rank)).sort((a, b) => a.rank - b.rank || a.candidate.choice.index - b.candidate.choice.index).map((item) => item.candidate.choice);
+    return getChapterSuggestions(this.candidates, this.preferredIndex, query);
   }
   renderSuggestion(choice, el) {
-    el.createDiv({ cls: "puffs-chapter-copy-suggestion", text: choice.chapter.title });
+    el.createDiv({ cls: "puffs-chapter-copy-suggestion", text: choice.displayTitle });
   }
 };
 var ChapterRangeCopyModal = class extends import_obsidian.Modal {
-  constructor(app, chapters, initialChapterIndex, onCopy, onDismiss) {
+  constructor(app, choices, initialChapterIndex, onPreview, onBatchPreview, onSplit, onDismiss) {
+    var _a;
     super(app);
-    this.startIndex = null;
-    this.chapters = chapters;
-    this.initialChapterIndex = initialChapterIndex;
-    this.onCopy = onCopy;
+    this.suggests = [];
+    this.activeSuggest = null;
+    this.choices = choices;
+    this.onPreview = onPreview;
+    this.onBatchPreview = onBatchPreview;
+    this.onSplit = onSplit;
     this.onDismiss = onDismiss;
+    this.batchStart = (_a = choices.find((choice) => choice.index === initialChapterIndex)) != null ? _a : choices[0];
+    this.batchEnd = choices[choices.length - 1];
   }
   onOpen() {
-    const { contentEl, modalEl } = this;
-    contentEl.empty();
-    modalEl.addClass("puffs-chapter-copy-modal");
-    this.headingEl = contentEl.createEl("h3", {
-      cls: "puffs-chapter-copy-title",
-      text: "\u9009\u62E9\u8D77\u59CB\u7AE0\u8282"
+    this.modalEl.addClass("puffs-chapter-copy-modal");
+    this.renderSplitForm();
+  }
+  renderHeader(title) {
+    const header = this.contentEl.createDiv({ cls: "puffs-chapter-copy-head" });
+    header.createEl("h3", { cls: "puffs-chapter-copy-title", text: title });
+  }
+  renderSplitForm() {
+    this.contentEl.empty();
+    this.renderHeader("\u62C6\u5206\u6587\u672C");
+    const startInput = this.createLabeledInput("\u8D77\u59CB\u7AE0\u8282", this.getChoiceDisplayText(this.batchStart));
+    const endInput = this.createLabeledInput("\u7ED3\u675F\u7AE0\u8282", this.getChoiceDisplayText(this.batchEnd));
+    this.chunkInput = this.createLabeledInput("\u6BCF\u4EFD\u51E0\u7AE0", "", "number");
+    this.chunkInput.min = "1";
+    this.chunkInput.step = "1";
+    this.estimateInput = this.createLabeledInput("\u9884\u8BA1\u5B57\u6570", "", "text");
+    this.estimateInput.readOnly = true;
+    const refreshEstimate = () => {
+      const chunkSize = this.parseChunkSize(false);
+      const count = chunkSize === void 0 ? null : chunkSize === null ? this.onPreview(this.batchStart.index, this.batchEnd.index) : this.onBatchPreview(this.batchStart.index, this.batchEnd.index, chunkSize);
+      this.estimateInput.value = count === null ? "" : String(count);
+    };
+    this.createSuggest(startInput, () => this.batchStart, (choice) => {
+      if (choice.index > this.batchEnd.index) {
+        new import_obsidian.Notice("\u8D77\u59CB\u7AE0\u8282\u4E0D\u80FD\u665A\u4E8E\u7ED3\u675F\u7AE0\u8282");
+        return false;
+      }
+      this.batchStart = choice;
+      startInput.value = this.getChoiceDisplayText(choice);
+      refreshEstimate();
+      return true;
     });
-    this.selectedEl = contentEl.createDiv({ cls: "puffs-chapter-copy-selected puffs-hidden" });
-    this.inputEl = contentEl.createEl("input", {
+    this.createSuggest(endInput, () => this.batchEnd, (choice) => {
+      if (choice.index < this.batchStart.index) {
+        new import_obsidian.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u65E9\u4E8E\u8D77\u59CB\u7AE0\u8282");
+        return false;
+      }
+      this.batchEnd = choice;
+      endInput.value = this.getChoiceDisplayText(choice);
+      refreshEstimate();
+      return true;
+    });
+    this.chunkInput.addEventListener("input", refreshEstimate);
+    for (const input of [startInput, endInput, this.chunkInput]) {
+      input.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        if ((input === startInput || input === endInput) && this.activeSuggest) return;
+        e.preventDefault();
+        void this.confirmSplit(this.chunkInput);
+      });
+    }
+    refreshEstimate();
+    window.setTimeout(() => this.chunkInput.focus(), 0);
+  }
+  createLabeledInput(label, value, type = "text") {
+    const row = this.contentEl.createDiv({ cls: "puffs-chapter-copy-row" });
+    row.createSpan({ cls: "puffs-chapter-copy-label", text: label });
+    const input = row.createEl("input", {
       cls: "puffs-chapter-copy-input",
-      attr: {
-        type: "text",
-        placeholder: "\u8F93\u5165\u7AE0\u8282\u6807\u9898\u8FDB\u884C\u641C\u7D22",
-        autocomplete: "off"
+      attr: { type, autocomplete: "off" }
+    });
+    input.value = value;
+    return input;
+  }
+  createSuggest(input, getCurrentChoice, onSelect) {
+    const suggest = new ChapterInputSuggest(this.app, input, this.choices, getCurrentChoice().index);
+    suggest.onSelect((choice) => {
+      if (!onSelect(choice)) return;
+      input.value = this.getChoiceDisplayText(choice);
+      suggest.close();
+      if (this.activeSuggest === suggest) this.activeSuggest = null;
+    });
+    input.addEventListener("click", () => {
+      suggest.setPreferredIndex(getCurrentChoice().index);
+      suggest.setValue(input.value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      this.activeSuggest = suggest;
+      suggest.open();
+    });
+    input.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        if (!input.value) input.value = this.getChoiceDisplayText(getCurrentChoice());
+        suggest.close();
+        if (this.activeSuggest === suggest) this.activeSuggest = null;
+      }, 120);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.activeSuggest === suggest) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        input.value = this.getChoiceDisplayText(getCurrentChoice());
+        suggest.close();
+        this.activeSuggest = null;
       }
     });
-    this.suggest = new ChapterInputSuggest(
-      this.app,
-      this.inputEl,
-      this.chapters,
-      this.initialChapterIndex
-    );
-    this.suggest.onSelect((choice) => void this.selectChapter(choice));
-    window.setTimeout(() => {
-      this.inputEl.focus();
-      this.suggest.open();
-    }, 0);
+    this.suggests.push(suggest);
   }
-  async selectChapter(choice) {
-    if (this.startIndex === null) {
-      this.startIndex = choice.index;
-      this.headingEl.textContent = "\u9009\u62E9\u7ED3\u675F\u7AE0\u8282";
-      this.selectedEl.textContent = `\u8D77\u59CB\uFF1A${choice.chapter.title}`;
-      this.selectedEl.classList.remove("puffs-hidden");
-      this.inputEl.value = "";
-      this.inputEl.placeholder = "\u8F93\u5165\u7ED3\u675F\u7AE0\u8282\u6807\u9898";
-      this.suggest.setPreferredIndex(choice.index);
-      this.suggest.setValue("");
-      window.setTimeout(() => {
-        this.inputEl.focus();
-        this.suggest.open();
-      }, 0);
+  async confirmSplit(input) {
+    const chunkSize = this.parseChunkSize(true);
+    if (chunkSize === void 0) {
+      input.focus();
       return;
     }
-    if (choice.index < this.startIndex) {
-      new import_obsidian.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u65E9\u4E8E\u8D77\u59CB\u7AE0\u8282");
-      this.inputEl.value = "";
-      this.suggest.setValue("");
-      window.setTimeout(() => {
-        this.inputEl.focus();
-        this.suggest.open();
-      }, 0);
-      return;
-    }
-    const copied = await this.onCopy(this.startIndex, choice.index);
-    if (copied) {
-      this.close();
-    } else {
-      this.inputEl.focus();
-      this.suggest.open();
-    }
+    const copied = await this.onSplit(this.batchStart.index, this.batchEnd.index, chunkSize);
+    if (copied) this.close();
+    else input.focus();
+  }
+  parseChunkSize(showNotice) {
+    const raw = this.chunkInput.value.trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    if (Number.isInteger(value) && value > 0) return value;
+    if (showNotice) new import_obsidian.Notice("\u6BCF\u4EFD\u51E0\u7AE0\u5FC5\u987B\u662F\u6B63\u6574\u6570\uFF0C\u6216\u7559\u7A7A\u8868\u793A\u62C6\u6210\u4E00\u4EFD\u6587\u672C");
+    return void 0;
+  }
+  getChoiceDisplayText(choice) {
+    return choice.displayTitle;
   }
   onClose() {
-    var _a;
-    (_a = this.suggest) == null ? void 0 : _a.close();
+    for (const suggest of this.suggests) suggest.close();
+    this.suggests = [];
+    this.activeSuggest = null;
     this.contentEl.empty();
     this.onDismiss();
   }
@@ -2237,8 +2403,8 @@ var SettingsTab = class extends import_obsidian2.PluginSettingTab {
       DEFAULT_SETTINGS.tocPanelHotkey
     );
     this.addTextSetting(
-      "\u590D\u5236\u539F\u6587\u5FEB\u6377\u952E",
-      "\u9ED8\u8BA4 Ctrl+Shift+C\u3002\u4F9D\u6B21\u9009\u62E9\u8D77\u59CB\u548C\u7ED3\u675F\u7AE0\u8282\uFF0C\u5C06\u5BF9\u5E94\u539F\u6587\u590D\u5236\u5230\u526A\u8D34\u677F\u3002",
+      "\u62C6\u5206\u6587\u672C\u5FEB\u6377\u952E",
+      "\u9ED8\u8BA4 Ctrl+Shift+C\u3002\u9009\u62E9\u8D77\u6B62\u7AE0\u8282\u540E\uFF0C\u5C06\u5BF9\u5E94\u539F\u6587\u62C6\u5206\u5E76\u4FDD\u5B58\u4E3A TXT \u6587\u4EF6\u3002",
       "copySourceHotkey",
       DEFAULT_SETTINGS.copySourceHotkey
     );

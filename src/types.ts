@@ -60,7 +60,7 @@ export interface ReaderSettings {
   searchHotkey: string;
   /** 目录侧边栏切换快捷键 */
   tocPanelHotkey: string;
-  /** 按章节复制原文快捷键 */
+  /** 拆分文本快捷键 */
   copySourceHotkey: string;
   /** 按章节拆分原文的导出目录（vault 内相对路径） */
   breakdownTextDir: string;

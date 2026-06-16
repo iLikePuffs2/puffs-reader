@@ -1760,17 +1760,21 @@ export class ReaderView extends ItemView {
 
   private openChapterCopyModal(): void {
     if (this.chapterCopyModal) return;
-    if (this.chapters.length === 0) {
+    const choices = this.getCopyableChapterChoices();
+    if (choices.length === 0) {
       new Notice('未检测到可复制的章节');
       return;
     }
 
     const currentChapter = Math.max(0, this.getActiveChapterIndex(this.currentPageStart.paraIndex));
+    const initialChoiceIndex = this.getInitialCopyChoiceIndex(choices, currentChapter);
     const modal = new ChapterRangeCopyModal(
       this.app,
-      this.chapters,
-      currentChapter,
-      async (startIndex, endIndex) => this.copyChapterRange(startIndex, endIndex),
+      choices,
+      initialChoiceIndex,
+      (startIndex, endIndex) => this.getChapterRangeWordCount(startIndex, endIndex),
+      (startIndex, endIndex, chunkSize) => this.getFirstBatchChapterRangeWordCount(startIndex, endIndex, chunkSize),
+      async (startIndex, endIndex, chunkSize) => this.splitChapterRanges(startIndex, endIndex, chunkSize),
       () => {
         if (this.chapterCopyModal === modal) this.chapterCopyModal = null;
       },
@@ -1779,27 +1783,109 @@ export class ReaderView extends ItemView {
     modal.open();
   }
 
-  private async copyChapterRange(startIndex: number, endIndex: number): Promise<boolean> {
+  private getCopyableChapterChoices(): ChapterChoice[] {
+    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
+    let parentTitle: string | null = null;
+    const choices: ChapterChoice[] = [];
+    this.chapters.forEach((chapter, index) => {
+      if (chapter.level === 1) parentTitle = chapter.title;
+      if (hasLevel2 && chapter.level !== 2) return;
+      choices.push({
+        chapter,
+        index,
+        displayTitle: hasLevel2 && parentTitle ? `${parentTitle}-${chapter.title}` : chapter.title,
+      });
+    });
+    return choices;
+  }
+
+  private getInitialCopyChoiceIndex(choices: ChapterChoice[], activeChapterIndex: number): number {
+    const exact = choices.findIndex((choice) => choice.index === activeChapterIndex);
+    if (exact >= 0) return choices[exact].index;
+    const next = choices.find((choice) => choice.index > activeChapterIndex);
+    return (next ?? choices[choices.length - 1]).index;
+  }
+
+  private async splitChapterRanges(startIndex: number, endIndex: number, chunkSize: number | null): Promise<boolean> {
+    const segments = chunkSize === null
+      ? [[startIndex, endIndex] as [number, number]]
+      : this.buildBatchChapterSegments(startIndex, endIndex, chunkSize);
+    if (segments.length === 0) {
+      new Notice('拆分失败：章节范围无效');
+      return false;
+    }
+
+    for (let i = 0; i < segments.length; i++) {
+      const [segmentStart, segmentEnd] = segments[i];
+      const text = this.getChapterRangeText(segmentStart, segmentEnd);
+      if (text === null) return false;
+      if (chunkSize === null && i === 0) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          new Notice('复制失败：无法写入剪贴板');
+          return false;
+        }
+      }
+      const ok = await this.writeChapterRangeText(segmentStart, segmentEnd, text);
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  private getChapterRangeWordCount(startIndex: number, endIndex: number): number | null {
+    const text = this.getChapterRangeText(startIndex, endIndex, false);
+    return text === null ? null : text.replace(/\s+/g, '').length;
+  }
+
+  private getFirstBatchChapterRangeWordCount(startIndex: number, endIndex: number, chunkSize: number): number | null {
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0) return null;
+    const first = this.buildBatchChapterSegments(startIndex, endIndex, chunkSize)[0];
+    return first ? this.getChapterRangeWordCount(first[0], first[1]) : null;
+  }
+
+  private getChapterRangeText(startIndex: number, endIndex: number, showNotice = true): string | null {
     const start = this.chapters[startIndex];
     const end = this.chapters[endIndex];
     if (!start || !end) {
-      new Notice('复制失败：章节范围无效');
-      return false;
+      if (showNotice) new Notice('复制失败：章节范围无效');
+      return null;
     }
     if (endIndex < startIndex) {
-      new Notice('结束章节不能早于起始章节');
-      return false;
+      if (showNotice) new Notice('结束章节不能早于起始章节');
+      return null;
     }
 
     const endParaIndex = this.chapters[endIndex + 1]?.startParaIndex ?? this.paragraphs.length;
-    const text = this.paragraphs.slice(start.startParaIndex, endParaIndex).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      new Notice('复制失败：无法写入剪贴板');
-      return false;
+    return this.paragraphs.slice(start.startParaIndex, endParaIndex).join('\n');
+  }
+
+  private buildBatchChapterSegments(startIndex: number, endIndex: number, chunkSize: number): Array<[number, number]> {
+    const choices = this.getCopyableChapterChoices().filter((choice) => choice.index >= startIndex && choice.index <= endIndex);
+    const segments: Array<[number, number]> = [];
+    let pos = 0;
+
+    while (pos < choices.length) {
+      const parentIndex = this.getChapterParentIndex(choices[pos].index);
+      let groupEnd = pos;
+      while (
+        groupEnd + 1 < choices.length &&
+        this.getChapterParentIndex(choices[groupEnd + 1].index) === parentIndex
+      ) {
+        groupEnd++;
+      }
+
+      while (pos <= groupEnd) {
+        const target = Math.min(pos + chunkSize - 1, groupEnd);
+        segments.push([choices[pos].index, choices[target].index]);
+        pos = target + 1;
+      }
     }
 
+    return segments;
+  }
+
+  private async writeChapterRangeText(startIndex: number, endIndex: number, text: string): Promise<boolean> {
     if (!this.currentFile) {
       new Notice('保存失败：当前书籍文件无效');
       return false;
@@ -1813,15 +1899,48 @@ export class ReaderView extends ItemView {
       const targetDir = normalizePath(baseDir ? `${baseDir}/${bookName}` : bookName);
       await this.ensureVaultFolder(targetDir);
 
-      const startTitle = this.sanitizePathComponent(start.title);
-      const endTitle = this.sanitizePathComponent(end.title);
-      const fileName = `${bookName}-${startTitle}-${endTitle}.txt`;
+      const fileName = this.buildChapterRangeFileName(bookName, startIndex, endIndex);
       await this.app.vault.adapter.write(normalizePath(`${targetDir}/${fileName}`), text);
       return true;
     } catch {
       new Notice('保存失败：无法创建拆书文本文件');
       return false;
     }
+  }
+
+  private buildChapterRangeFileName(bookName: string, startIndex: number, endIndex: number): string {
+    const start = this.chapters[startIndex];
+    const end = this.chapters[endIndex];
+    const parts = [bookName];
+    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
+    const startParent = hasLevel2 ? this.getChapterParentTitle(startIndex) : null;
+    const endParent = hasLevel2 ? this.getChapterParentTitle(endIndex) : null;
+
+    if (startParent && endParent && startParent === endParent) {
+      parts.push(startParent);
+    } else if (startParent || endParent) {
+      if (startParent) parts.push(startParent);
+      parts.push(start.title);
+      if (endParent) parts.push(endParent);
+      parts.push(end.title);
+      return `${parts.map((part) => this.sanitizePathComponent(part)).join('-')}.txt`;
+    }
+
+    parts.push(start.title, end.title);
+    return `${parts.map((part) => this.sanitizePathComponent(part)).join('-')}.txt`;
+  }
+
+  private getChapterParentTitle(chapterIndex: number): string | null {
+    const parentIndex = this.getChapterParentIndex(chapterIndex);
+    return parentIndex === null ? null : this.chapters[parentIndex]?.title ?? null;
+  }
+
+  private getChapterParentIndex(chapterIndex: number): number | null {
+    if (this.chapters[chapterIndex]?.level !== 2) return null;
+    for (let i = chapterIndex - 1; i >= 0; i--) {
+      if (this.chapters[i].level === 1) return i;
+    }
+    return null;
   }
 
   private sanitizePathComponent(value: string): string {
@@ -2207,6 +2326,7 @@ export class ReaderView extends ItemView {
 interface ChapterChoice {
   chapter: Chapter;
   index: number;
+  displayTitle: string;
 }
 
 interface ChapterSearchCandidate {
@@ -2294,12 +2414,12 @@ function getChapterSearchNumberTokens(text: string): string[] {
 }
 
 function buildChapterSearchCandidate(choice: ChapterChoice): ChapterSearchCandidate {
-  const title = normalizeChapterSearchText(choice.chapter.title);
+  const title = normalizeChapterSearchText(choice.displayTitle);
   const rawTitle = normalizeChapterSearchText(choice.chapter.rawTitle);
   return {
     choice,
     textTargets: [title, rawTitle],
-    numberTargets: getChapterSearchNumberTokens(`${choice.chapter.title} ${choice.chapter.rawTitle}`),
+    numberTargets: getChapterSearchNumberTokens(`${choice.displayTitle} ${choice.chapter.rawTitle}`),
   };
 }
 
@@ -2313,15 +2433,43 @@ function getChapterSearchRank(candidate: ChapterSearchCandidate, query: string, 
   return Number.POSITIVE_INFINITY;
 }
 
+function getChapterSuggestions(
+  candidates: ChapterSearchCandidate[],
+  preferredIndex: number,
+  query: string,
+): ChapterChoice[] {
+  const normalized = query.trim();
+  if (!normalized) {
+    return [...candidates]
+      .sort((a, b) => {
+        if (a.choice.index === preferredIndex) return -1;
+        if (b.choice.index === preferredIndex) return 1;
+        return a.choice.index - b.choice.index;
+      })
+      .slice(0, 100)
+      .map((candidate) => candidate.choice);
+  }
+
+  const textQuery = normalizeChapterSearchText(normalized);
+  const numericQuery = normalizeChapterSearchNumber(normalized);
+  return candidates
+    .map((candidate) => ({
+      candidate,
+      rank: getChapterSearchRank(candidate, textQuery, numericQuery),
+    }))
+    .filter((item) => Number.isFinite(item.rank))
+    .sort((a, b) => a.rank - b.rank || a.candidate.choice.index - b.candidate.choice.index)
+    .slice(0, 100)
+    .map((item) => item.candidate.choice);
+}
+
 class ChapterInputSuggest extends AbstractInputSuggest<ChapterChoice> {
   private candidates: ChapterSearchCandidate[];
   private preferredIndex: number;
 
-  constructor(app: App, inputEl: HTMLInputElement, chapters: Chapter[], preferredIndex: number) {
+  constructor(app: App, inputEl: HTMLInputElement, choices: ChapterChoice[], preferredIndex: number) {
     super(app, inputEl);
-    this.candidates = chapters
-      .map((chapter, index) => ({ chapter, index }))
-      .map((choice) => buildChapterSearchCandidate(choice));
+    this.candidates = choices.map((choice) => buildChapterSearchCandidate(choice));
     this.preferredIndex = preferredIndex;
     this.limit = 100;
   }
@@ -2331,131 +2479,187 @@ class ChapterInputSuggest extends AbstractInputSuggest<ChapterChoice> {
   }
 
   protected getSuggestions(query: string): ChapterChoice[] {
-    const normalized = query.trim();
-    if (!normalized) {
-      return [...this.candidates]
-        .sort((a, b) => {
-          if (a.choice.index === this.preferredIndex) return -1;
-          if (b.choice.index === this.preferredIndex) return 1;
-          return a.choice.index - b.choice.index;
-        })
-        .map((candidate) => candidate.choice);
-    }
-
-    const textQuery = normalizeChapterSearchText(normalized);
-    const numericQuery = normalizeChapterSearchNumber(normalized);
-    return this.candidates
-      .map((candidate) => ({
-        candidate,
-        rank: getChapterSearchRank(candidate, textQuery, numericQuery),
-      }))
-      .filter((item) => Number.isFinite(item.rank))
-      .sort((a, b) => a.rank - b.rank || a.candidate.choice.index - b.candidate.choice.index)
-      .map((item) => item.candidate.choice);
+    return getChapterSuggestions(this.candidates, this.preferredIndex, query);
   }
 
   renderSuggestion(choice: ChapterChoice, el: HTMLElement): void {
-    el.createDiv({ cls: 'puffs-chapter-copy-suggestion', text: choice.chapter.title });
+    el.createDiv({ cls: 'puffs-chapter-copy-suggestion', text: choice.displayTitle });
   }
 }
 
 class ChapterRangeCopyModal extends Modal {
-  private chapters: Chapter[];
-  private initialChapterIndex: number;
-  private onCopy: (startIndex: number, endIndex: number) => Promise<boolean>;
+  private choices: ChapterChoice[];
+  private onPreview: (startIndex: number, endIndex: number) => number | null;
+  private onBatchPreview: (startIndex: number, endIndex: number, chunkSize: number) => number | null;
+  private onSplit: (startIndex: number, endIndex: number, chunkSize: number | null) => Promise<boolean>;
   private onDismiss: () => void;
-  private startIndex: number | null = null;
-  private headingEl!: HTMLElement;
-  private selectedEl!: HTMLElement;
-  private inputEl!: HTMLInputElement;
-  private suggest!: ChapterInputSuggest;
+  private suggests: ChapterInputSuggest[] = [];
+  private activeSuggest: ChapterInputSuggest | null = null;
+  private batchStart: ChapterChoice;
+  private batchEnd: ChapterChoice;
+  private estimateInput!: HTMLInputElement;
+  private chunkInput!: HTMLInputElement;
 
   constructor(
     app: App,
-    chapters: Chapter[],
+    choices: ChapterChoice[],
     initialChapterIndex: number,
-    onCopy: (startIndex: number, endIndex: number) => Promise<boolean>,
+    onPreview: (startIndex: number, endIndex: number) => number | null,
+    onBatchPreview: (startIndex: number, endIndex: number, chunkSize: number) => number | null,
+    onSplit: (startIndex: number, endIndex: number, chunkSize: number | null) => Promise<boolean>,
     onDismiss: () => void,
   ) {
     super(app);
-    this.chapters = chapters;
-    this.initialChapterIndex = initialChapterIndex;
-    this.onCopy = onCopy;
+    this.choices = choices;
+    this.onPreview = onPreview;
+    this.onBatchPreview = onBatchPreview;
+    this.onSplit = onSplit;
     this.onDismiss = onDismiss;
+    this.batchStart = choices.find((choice) => choice.index === initialChapterIndex) ?? choices[0];
+    this.batchEnd = choices[choices.length - 1];
   }
 
   onOpen(): void {
-    const { contentEl, modalEl } = this;
-    contentEl.empty();
-    modalEl.addClass('puffs-chapter-copy-modal');
-
-    this.headingEl = contentEl.createEl('h3', {
-      cls: 'puffs-chapter-copy-title',
-      text: '选择起始章节',
-    });
-    this.selectedEl = contentEl.createDiv({ cls: 'puffs-chapter-copy-selected puffs-hidden' });
-    this.inputEl = contentEl.createEl('input', {
-      cls: 'puffs-chapter-copy-input',
-      attr: {
-        type: 'text',
-        placeholder: '输入章节标题进行搜索',
-        autocomplete: 'off',
-      },
-    }) as HTMLInputElement;
-
-    this.suggest = new ChapterInputSuggest(
-      this.app,
-      this.inputEl,
-      this.chapters,
-      this.initialChapterIndex,
-    );
-    this.suggest.onSelect((choice) => void this.selectChapter(choice));
-
-    window.setTimeout(() => {
-      this.inputEl.focus();
-      this.suggest.open();
-    }, 0);
+    this.modalEl.addClass('puffs-chapter-copy-modal');
+    this.renderSplitForm();
   }
 
-  private async selectChapter(choice: ChapterChoice): Promise<void> {
-    if (this.startIndex === null) {
-      this.startIndex = choice.index;
-      this.headingEl.textContent = '选择结束章节';
-      this.selectedEl.textContent = `起始：${choice.chapter.title}`;
-      this.selectedEl.classList.remove('puffs-hidden');
-      this.inputEl.value = '';
-      this.inputEl.placeholder = '输入结束章节标题';
-      this.suggest.setPreferredIndex(choice.index);
-      this.suggest.setValue('');
+  private renderHeader(title: string): void {
+    const header = this.contentEl.createDiv({ cls: 'puffs-chapter-copy-head' });
+    header.createEl('h3', { cls: 'puffs-chapter-copy-title', text: title });
+  }
+
+  private renderSplitForm(): void {
+    this.contentEl.empty();
+    this.renderHeader('拆分文本');
+
+    const startInput = this.createLabeledInput('起始章节', this.getChoiceDisplayText(this.batchStart));
+    const endInput = this.createLabeledInput('结束章节', this.getChoiceDisplayText(this.batchEnd));
+    this.chunkInput = this.createLabeledInput('每份几章', '', 'number');
+    this.chunkInput.min = '1';
+    this.chunkInput.step = '1';
+    this.estimateInput = this.createLabeledInput('预计字数', '', 'text');
+    this.estimateInput.readOnly = true;
+
+    const refreshEstimate = () => {
+      const chunkSize = this.parseChunkSize(false);
+      const count = chunkSize === undefined ? null : chunkSize === null
+        ? this.onPreview(this.batchStart.index, this.batchEnd.index)
+        : this.onBatchPreview(this.batchStart.index, this.batchEnd.index, chunkSize);
+      this.estimateInput.value = count === null ? '' : String(count);
+    };
+
+    this.createSuggest(startInput, () => this.batchStart, (choice) => {
+      if (choice.index > this.batchEnd.index) {
+        new Notice('起始章节不能晚于结束章节');
+        return false;
+      }
+      this.batchStart = choice;
+      startInput.value = this.getChoiceDisplayText(choice);
+      refreshEstimate();
+      return true;
+    });
+    this.createSuggest(endInput, () => this.batchEnd, (choice) => {
+      if (choice.index < this.batchStart.index) {
+        new Notice('结束章节不能早于起始章节');
+        return false;
+      }
+      this.batchEnd = choice;
+      endInput.value = this.getChoiceDisplayText(choice);
+      refreshEstimate();
+      return true;
+    });
+
+    this.chunkInput.addEventListener('input', refreshEstimate);
+    for (const input of [startInput, endInput, this.chunkInput]) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        if ((input === startInput || input === endInput) && this.activeSuggest) return;
+        e.preventDefault();
+        void this.confirmSplit(this.chunkInput);
+      });
+    }
+    refreshEstimate();
+    window.setTimeout(() => this.chunkInput.focus(), 0);
+  }
+
+  private createLabeledInput(label: string, value: string, type = 'text'): HTMLInputElement {
+    const row = this.contentEl.createDiv({ cls: 'puffs-chapter-copy-row' });
+    row.createSpan({ cls: 'puffs-chapter-copy-label', text: label });
+    const input = row.createEl('input', {
+      cls: 'puffs-chapter-copy-input',
+      attr: { type, autocomplete: 'off' },
+    }) as HTMLInputElement;
+    input.value = value;
+    return input;
+  }
+
+  private createSuggest(
+    input: HTMLInputElement,
+    getCurrentChoice: () => ChapterChoice,
+    onSelect: (choice: ChapterChoice) => boolean,
+  ): void {
+    const suggest = new ChapterInputSuggest(this.app, input, this.choices, getCurrentChoice().index);
+    suggest.onSelect((choice) => {
+      if (!onSelect(choice)) return;
+      input.value = this.getChoiceDisplayText(choice);
+      suggest.close();
+      if (this.activeSuggest === suggest) this.activeSuggest = null;
+    });
+    input.addEventListener('click', () => {
+      suggest.setPreferredIndex(getCurrentChoice().index);
+      suggest.setValue(input.value);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      this.activeSuggest = suggest;
+      suggest.open();
+    });
+    input.addEventListener('blur', () => {
       window.setTimeout(() => {
-        this.inputEl.focus();
-        this.suggest.open();
-      }, 0);
+        if (!input.value) input.value = this.getChoiceDisplayText(getCurrentChoice());
+        suggest.close();
+        if (this.activeSuggest === suggest) this.activeSuggest = null;
+      }, 120);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.activeSuggest === suggest) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        input.value = this.getChoiceDisplayText(getCurrentChoice());
+        suggest.close();
+        this.activeSuggest = null;
+      }
+    });
+    this.suggests.push(suggest);
+  }
+
+  private async confirmSplit(input: HTMLInputElement): Promise<void> {
+    const chunkSize = this.parseChunkSize(true);
+    if (chunkSize === undefined) {
+      input.focus();
       return;
     }
+    const copied = await this.onSplit(this.batchStart.index, this.batchEnd.index, chunkSize);
+    if (copied) this.close();
+    else input.focus();
+  }
 
-    if (choice.index < this.startIndex) {
-      new Notice('结束章节不能早于起始章节');
-      this.inputEl.value = '';
-      this.suggest.setValue('');
-      window.setTimeout(() => {
-        this.inputEl.focus();
-        this.suggest.open();
-      }, 0);
-      return;
-    }
+  private parseChunkSize(showNotice: boolean): number | null | undefined {
+    const raw = this.chunkInput.value.trim();
+    if (!raw) return null;
+    const value = Number(raw);
+    if (Number.isInteger(value) && value > 0) return value;
+    if (showNotice) new Notice('每份几章必须是正整数，或留空表示拆成一份文本');
+    return undefined;
+  }
 
-    const copied = await this.onCopy(this.startIndex, choice.index);
-    if (copied) {
-      this.close();
-    } else {
-      this.inputEl.focus();
-      this.suggest.open();
-    }
+  private getChoiceDisplayText(choice: ChapterChoice): string {
+    return choice.displayTitle;
   }
 
   onClose(): void {
-    this.suggest?.close();
+    for (const suggest of this.suggests) suggest.close();
+    this.suggests = [];
+    this.activeSuggest = null;
     this.contentEl.empty();
     this.onDismiss();
   }

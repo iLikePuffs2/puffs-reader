@@ -107,8 +107,8 @@ export class SettingsTab extends PluginSettingTab {
     );
 
     this.addTextSetting(
-      '复制原文快捷键',
-      '默认 Ctrl+Shift+C。依次选择起始和结束章节，将对应原文复制到剪贴板。',
+      '拆分文本快捷键',
+      '默认 Ctrl+Shift+C。选择起止章节后，将对应原文拆分并保存为 TXT 文件。',
       'copySourceHotkey',
       DEFAULT_SETTINGS.copySourceHotkey,
     );
