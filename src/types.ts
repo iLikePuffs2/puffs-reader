@@ -110,6 +110,12 @@ export interface BookSettings {
   tocRegex?: string;
   /** 当前书的章名提取正则覆写 */
   chapterTitleRegex?: string;
+  /** Whether the current book uses two-level TOC indentation. */
+  tocIndentEnabled?: boolean;
+  /** Regex for the level-1 chapter marker, e.g. "卷" or "部". */
+  tocIndentLevel1Regex?: string;
+  /** Regex for the level-2 chapter marker, e.g. "章". */
+  tocIndentLevel2Regex?: string;
   /** 当前书的标注/批注列表 */
   annotations?: Annotation[];
 }

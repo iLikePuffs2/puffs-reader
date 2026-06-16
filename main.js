@@ -97,6 +97,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.currentEncoding = "utf-8";
     this.paragraphs = [];
     this.chapters = [];
+    this.collapsedTocGroups = /* @__PURE__ */ new Set();
     this.searchQuery = "";
     this.searchResults = [];
     this.currentPageStart = { paraIndex: 0, charOffset: 0 };
@@ -822,6 +823,7 @@ var ReaderView = class extends import_obsidian.ItemView {
   }
   parseChapters() {
     this.chapters = [];
+    this.collapsedTocGroups.clear();
     const tocRegexText = this.getEffectiveTocRegex();
     if (!tocRegexText) return;
     let regex;
@@ -837,9 +839,35 @@ var ReaderView = class extends import_obsidian.ItemView {
           title: this.extractChapterTitle(line),
           rawTitle: line,
           startParaIndex: i,
-          level: 1
+          level: this.getTocIndentLevel(line)
         });
       }
+    }
+  }
+  getTocIndentLevel(line) {
+    var _a, _b;
+    const settings = this.getBookSettings();
+    if (!settings.tocIndentEnabled) return 1;
+    const marker = this.extractChapterMarker(line);
+    if (!marker) return 1;
+    try {
+      const level1Regex = new RegExp(((_a = settings.tocIndentLevel1Regex) == null ? void 0 : _a.trim()) || "\u5377");
+      const level2Regex = new RegExp(((_b = settings.tocIndentLevel2Regex) == null ? void 0 : _b.trim()) || "\u7AE0");
+      if (level1Regex.test(marker)) return 1;
+      if (level2Regex.test(marker)) return 2;
+    } catch (e) {
+      return 1;
+    }
+    return 1;
+  }
+  extractChapterMarker(line) {
+    var _a, _b, _c;
+    const customRegex = (_a = this.getBookSettings().chapterTitleRegex) != null ? _a : this.plugin.settings.chapterTitleRegex;
+    try {
+      const match = line.match(new RegExp(customRegex));
+      return (_c = (_b = match == null ? void 0 : match[2]) == null ? void 0 : _b.trim()) != null ? _c : "";
+    } catch (e) {
+      return "";
     }
   }
   extractChapterTitle(line) {
@@ -871,13 +899,52 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.tocListEl.createDiv({ cls: "puffs-toc-empty", text: "\u672A\u68C0\u6D4B\u5230\u7AE0\u8282" });
       return;
     }
-    this.chapters.forEach((ch) => {
-      const item = this.tocListEl.createDiv({ cls: "puffs-toc-item", text: ch.title });
+    this.chapters.forEach((ch, index) => {
+      if (ch.level === 2 && this.isTocChildHidden(index)) return;
+      const item = this.tocListEl.createDiv({ cls: "puffs-toc-item" });
+      item.dataset.chapterIndex = String(index);
+      item.classList.add(ch.level === 2 ? "puffs-toc-level-2" : "puffs-toc-level-1");
+      if (ch.level === 1 && this.hasTocChildren(index)) {
+        const toggle = item.createEl("button", {
+          cls: "puffs-toc-toggle",
+          attr: { "aria-label": this.collapsedTocGroups.has(index) ? "\u5C55\u5F00" : "\u6536\u8D77" }
+        });
+        (0, import_obsidian.setIcon)(toggle, this.collapsedTocGroups.has(index) ? "chevron-right" : "chevron-down");
+        toggle.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleTocGroup(index);
+        });
+      }
+      item.createSpan({ cls: "puffs-toc-item-title", text: ch.title });
       item.addEventListener("click", () => {
         this.jumpToPosition({ paraIndex: ch.startParaIndex, charOffset: 0 });
         this.applySidebarMode("toc");
       });
     });
+  }
+  hasTocChildren(index) {
+    for (let i = index + 1; i < this.chapters.length; i++) {
+      if (this.chapters[i].level === 1) return false;
+      if (this.chapters[i].level === 2) return true;
+    }
+    return false;
+  }
+  isTocChildHidden(index) {
+    const parentIndex = this.getTocParentIndex(index);
+    return parentIndex !== null && this.collapsedTocGroups.has(parentIndex);
+  }
+  getTocParentIndex(index) {
+    for (let i = index - 1; i >= 0; i--) {
+      if (this.chapters[i].level === 1) return i;
+    }
+    return null;
+  }
+  toggleTocGroup(index) {
+    if (this.collapsedTocGroups.has(index)) this.collapsedTocGroups.delete(index);
+    else this.collapsedTocGroups.add(index);
+    this.buildTocList();
+    this.highlightCurrentTocItem(this.getActiveChapterIndex(this.currentPageStart.paraIndex));
   }
   updatePageMeta() {
     const activeChapter = this.getActiveChapterIndex(this.currentPageStart.paraIndex);
@@ -901,9 +968,10 @@ var ReaderView = class extends import_obsidian.ItemView {
     return active;
   }
   highlightCurrentTocItem(idx) {
-    var _a;
-    (_a = this.tocListEl) == null ? void 0 : _a.querySelectorAll(".puffs-toc-item").forEach((el, i) => {
-      el.classList.toggle("puffs-toc-active", i === idx);
+    var _a, _b;
+    const visibleIdx = this.isTocChildHidden(idx) ? (_a = this.getTocParentIndex(idx)) != null ? _a : idx : idx;
+    (_b = this.tocListEl) == null ? void 0 : _b.querySelectorAll(".puffs-toc-item").forEach((el) => {
+      el.classList.toggle("puffs-toc-active", Number(el.dataset.chapterIndex) === visibleIdx);
     });
   }
   toggleToc() {
@@ -966,9 +1034,11 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.tocTitleEl.textContent = (_b = (_a = this.currentFile) == null ? void 0 : _a.basename) != null ? _b : "\u76EE\u5F55";
   }
   scrollTocToActiveChapter() {
+    var _a;
     const activeChapter = this.getActiveChapterIndex(this.currentPageStart.paraIndex);
     if (activeChapter < 0) return;
-    const item = this.tocListEl.querySelectorAll(".puffs-toc-item")[activeChapter];
+    const visibleChapter = this.isTocChildHidden(activeChapter) ? (_a = this.getTocParentIndex(activeChapter)) != null ? _a : activeChapter : activeChapter;
+    const item = this.tocListEl.querySelector(`.puffs-toc-item[data-chapter-index="${visibleChapter}"]`);
     if (!item) return;
     item.scrollIntoView({ block: "center" });
   }
@@ -1112,6 +1182,7 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.buildTocList();
       this.updatePageMeta();
     });
+    this.addTocIndentRows(p, bookSettings);
     const exportRow = p.createDiv({ cls: "puffs-typo-row" });
     exportRow.createSpan({ cls: "puffs-typo-label", text: "\u6807\u6CE8\u4E0E\u6279\u6CE8" });
     const exportBtn = exportRow.createEl("button", {
@@ -1143,6 +1214,42 @@ var ReaderView = class extends import_obsidian.ItemView {
     const input = row.createEl("input", { cls: "puffs-typo-text-input", attr: { type: "text" } });
     input.value = value;
     input.addEventListener("change", () => onChange(input.value.trim()));
+  }
+  addTocIndentRows(parent, bookSettings) {
+    var _a, _b;
+    const enabled = !!bookSettings.tocIndentEnabled;
+    const row = parent.createDiv({ cls: "puffs-typo-row" });
+    row.createSpan({ cls: "puffs-typo-label", text: "\u4E8C\u7EA7\u7F29\u8FDB" });
+    const toggle = row.createEl("input", {
+      cls: "puffs-typo-toggle",
+      attr: { type: "checkbox" }
+    });
+    toggle.checked = enabled;
+    toggle.addEventListener("change", () => {
+      var _a2, _b2;
+      this.updateBookSettings({
+        tocIndentEnabled: toggle.checked,
+        tocIndentLevel1Regex: toggle.checked ? ((_a2 = bookSettings.tocIndentLevel1Regex) == null ? void 0 : _a2.trim()) || "\u5377" : void 0,
+        tocIndentLevel2Regex: toggle.checked ? ((_b2 = bookSettings.tocIndentLevel2Regex) == null ? void 0 : _b2.trim()) || "\u7AE0" : void 0
+      });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+      this.refreshTypographyPanel();
+    });
+    if (!enabled) return;
+    this.addTextRow(parent, "1\u7EA7\u5173\u952E\u5B57\u6B63\u5219", (_a = bookSettings.tocIndentLevel1Regex) != null ? _a : "\u5377", (v) => {
+      this.updateBookSettings({ tocIndentLevel1Regex: v || "\u5377" });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
+    this.addTextRow(parent, "2\u7EA7\u5173\u952E\u5B57\u6B63\u5219", (_b = bookSettings.tocIndentLevel2Regex) != null ? _b : "\u7AE0", (v) => {
+      this.updateBookSettings({ tocIndentLevel2Regex: v || "\u7AE0" });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
   }
   applyTypography() {
     var _a;
@@ -2468,12 +2575,18 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     return (_a = this.bookSettings[filePath]) != null ? _a : {};
   }
   async saveBookSettings(filePath, settings) {
+    var _a, _b;
     const compact = {};
     if (settings.encoding) compact.encoding = settings.encoding;
     if (settings.firstLineIndent !== void 0) compact.firstLineIndent = settings.firstLineIndent;
     if (settings.tocRegex !== void 0 && settings.tocRegex !== "") compact.tocRegex = settings.tocRegex;
     if (settings.chapterTitleRegex !== void 0 && settings.chapterTitleRegex !== "") {
       compact.chapterTitleRegex = settings.chapterTitleRegex;
+    }
+    if (settings.tocIndentEnabled) {
+      compact.tocIndentEnabled = true;
+      compact.tocIndentLevel1Regex = ((_a = settings.tocIndentLevel1Regex) == null ? void 0 : _a.trim()) || "\u5377";
+      compact.tocIndentLevel2Regex = ((_b = settings.tocIndentLevel2Regex) == null ? void 0 : _b.trim()) || "\u7AE0";
     }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;

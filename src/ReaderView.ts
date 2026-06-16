@@ -67,6 +67,7 @@ export class ReaderView extends ItemView {
 
   private paragraphs: string[] = [];
   private chapters: Chapter[] = [];
+  private collapsedTocGroups = new Set<number>();
   private searchQuery = '';
   private searchResults: SearchMatch[] = [];
 
@@ -930,6 +931,7 @@ export class ReaderView extends ItemView {
 
   private parseChapters(): void {
     this.chapters = [];
+    this.collapsedTocGroups.clear();
     const tocRegexText = this.getEffectiveTocRegex();
     if (!tocRegexText) return;
 
@@ -947,9 +949,38 @@ export class ReaderView extends ItemView {
           title: this.extractChapterTitle(line),
           rawTitle: line,
           startParaIndex: i,
-          level: 1,
+          level: this.getTocIndentLevel(line),
         });
       }
+    }
+  }
+
+  private getTocIndentLevel(line: string): number {
+    const settings = this.getBookSettings();
+    if (!settings.tocIndentEnabled) return 1;
+
+    const marker = this.extractChapterMarker(line);
+    if (!marker) return 1;
+
+    try {
+      const level1Regex = new RegExp(settings.tocIndentLevel1Regex?.trim() || '\u5377');
+      const level2Regex = new RegExp(settings.tocIndentLevel2Regex?.trim() || '\u7ae0');
+      if (level1Regex.test(marker)) return 1;
+      if (level2Regex.test(marker)) return 2;
+    } catch {
+      return 1;
+    }
+
+    return 1;
+  }
+
+  private extractChapterMarker(line: string): string {
+    const customRegex = this.getBookSettings().chapterTitleRegex ?? this.plugin.settings.chapterTitleRegex;
+    try {
+      const match = line.match(new RegExp(customRegex));
+      return match?.[2]?.trim() ?? '';
+    } catch {
+      return '';
     }
   }
 
@@ -984,13 +1015,59 @@ export class ReaderView extends ItemView {
       return;
     }
 
-    this.chapters.forEach((ch) => {
-      const item = this.tocListEl.createDiv({ cls: 'puffs-toc-item', text: ch.title });
+    this.chapters.forEach((ch, index) => {
+      if (ch.level === 2 && this.isTocChildHidden(index)) return;
+
+      const item = this.tocListEl.createDiv({ cls: 'puffs-toc-item' });
+      item.dataset.chapterIndex = String(index);
+      item.classList.add(ch.level === 2 ? 'puffs-toc-level-2' : 'puffs-toc-level-1');
+
+      if (ch.level === 1 && this.hasTocChildren(index)) {
+        const toggle = item.createEl('button', {
+          cls: 'puffs-toc-toggle',
+          attr: { 'aria-label': this.collapsedTocGroups.has(index) ? '展开' : '收起' },
+        });
+        setIcon(toggle, this.collapsedTocGroups.has(index) ? 'chevron-right' : 'chevron-down');
+        toggle.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.toggleTocGroup(index);
+        });
+      }
+
+      item.createSpan({ cls: 'puffs-toc-item-title', text: ch.title });
       item.addEventListener('click', () => {
         this.jumpToPosition({ paraIndex: ch.startParaIndex, charOffset: 0 });
         this.applySidebarMode('toc');
       });
     });
+  }
+
+  private hasTocChildren(index: number): boolean {
+    for (let i = index + 1; i < this.chapters.length; i++) {
+      if (this.chapters[i].level === 1) return false;
+      if (this.chapters[i].level === 2) return true;
+    }
+    return false;
+  }
+
+  private isTocChildHidden(index: number): boolean {
+    const parentIndex = this.getTocParentIndex(index);
+    return parentIndex !== null && this.collapsedTocGroups.has(parentIndex);
+  }
+
+  private getTocParentIndex(index: number): number | null {
+    for (let i = index - 1; i >= 0; i--) {
+      if (this.chapters[i].level === 1) return i;
+    }
+    return null;
+  }
+
+  private toggleTocGroup(index: number): void {
+    if (this.collapsedTocGroups.has(index)) this.collapsedTocGroups.delete(index);
+    else this.collapsedTocGroups.add(index);
+    this.buildTocList();
+    this.highlightCurrentTocItem(this.getActiveChapterIndex(this.currentPageStart.paraIndex));
   }
 
   private updatePageMeta(): void {
@@ -1018,8 +1095,9 @@ export class ReaderView extends ItemView {
   }
 
   private highlightCurrentTocItem(idx: number): void {
-    this.tocListEl?.querySelectorAll('.puffs-toc-item').forEach((el, i) => {
-      el.classList.toggle('puffs-toc-active', i === idx);
+    const visibleIdx = this.isTocChildHidden(idx) ? (this.getTocParentIndex(idx) ?? idx) : idx;
+    this.tocListEl?.querySelectorAll<HTMLElement>('.puffs-toc-item').forEach((el) => {
+      el.classList.toggle('puffs-toc-active', Number(el.dataset.chapterIndex) === visibleIdx);
     });
   }
 
@@ -1093,7 +1171,10 @@ export class ReaderView extends ItemView {
     const activeChapter = this.getActiveChapterIndex(this.currentPageStart.paraIndex);
     if (activeChapter < 0) return;
 
-    const item = this.tocListEl.querySelectorAll<HTMLElement>('.puffs-toc-item')[activeChapter];
+    const visibleChapter = this.isTocChildHidden(activeChapter)
+      ? (this.getTocParentIndex(activeChapter) ?? activeChapter)
+      : activeChapter;
+    const item = this.tocListEl.querySelector<HTMLElement>(`.puffs-toc-item[data-chapter-index="${visibleChapter}"]`);
     if (!item) return;
 
     item.scrollIntoView({ block: 'center' });
@@ -1257,6 +1338,8 @@ export class ReaderView extends ItemView {
       this.updatePageMeta();
     });
 
+    this.addTocIndentRows(p, bookSettings);
+
     const exportRow = p.createDiv({ cls: 'puffs-typo-row' });
     exportRow.createSpan({ cls: 'puffs-typo-label', text: '标注与批注' });
     const exportBtn = exportRow.createEl('button', {
@@ -1299,6 +1382,43 @@ export class ReaderView extends ItemView {
     const input = row.createEl('input', { cls: 'puffs-typo-text-input', attr: { type: 'text' } }) as HTMLInputElement;
     input.value = value;
     input.addEventListener('change', () => onChange(input.value.trim()));
+  }
+
+  private addTocIndentRows(parent: HTMLElement, bookSettings: BookSettings): void {
+    const enabled = !!bookSettings.tocIndentEnabled;
+    const row = parent.createDiv({ cls: 'puffs-typo-row' });
+    row.createSpan({ cls: 'puffs-typo-label', text: '\u4e8c\u7ea7\u7f29\u8fdb' });
+    const toggle = row.createEl('input', {
+      cls: 'puffs-typo-toggle',
+      attr: { type: 'checkbox' },
+    }) as HTMLInputElement;
+    toggle.checked = enabled;
+    toggle.addEventListener('change', () => {
+      this.updateBookSettings({
+        tocIndentEnabled: toggle.checked,
+        tocIndentLevel1Regex: toggle.checked ? (bookSettings.tocIndentLevel1Regex?.trim() || '\u5377') : undefined,
+        tocIndentLevel2Regex: toggle.checked ? (bookSettings.tocIndentLevel2Regex?.trim() || '\u7ae0') : undefined,
+      });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+      this.refreshTypographyPanel();
+    });
+
+    if (!enabled) return;
+
+    this.addTextRow(parent, '1\u7ea7\u5173\u952e\u5b57\u6b63\u5219', bookSettings.tocIndentLevel1Regex ?? '\u5377', (v) => {
+      this.updateBookSettings({ tocIndentLevel1Regex: v || '\u5377' });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
+    this.addTextRow(parent, '2\u7ea7\u5173\u952e\u5b57\u6b63\u5219', bookSettings.tocIndentLevel2Regex ?? '\u7ae0', (v) => {
+      this.updateBookSettings({ tocIndentLevel2Regex: v || '\u7ae0' });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
   }
 
   private applyTypography(): void {

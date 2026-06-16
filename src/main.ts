@@ -399,6 +399,11 @@ export default class PuffsReaderPlugin extends Plugin {
     if (settings.chapterTitleRegex !== undefined && settings.chapterTitleRegex !== '') {
       compact.chapterTitleRegex = settings.chapterTitleRegex;
     }
+    if (settings.tocIndentEnabled) {
+      compact.tocIndentEnabled = true;
+      compact.tocIndentLevel1Regex = settings.tocIndentLevel1Regex?.trim() || '\u5377';
+      compact.tocIndentLevel2Regex = settings.tocIndentLevel2Regex?.trim() || '\u7ae0';
+    }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;
     }
