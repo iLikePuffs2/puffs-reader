@@ -13,7 +13,16 @@ import {
   Scope,
 } from 'obsidian';
 import PuffsReaderPlugin from './main';
-import { Annotation, BookSettings, Chapter, DEFAULT_SETTINGS, SearchMatch, SUPPORTED_ENCODINGS } from './types';
+import {
+  Annotation,
+  BookSettings,
+  Chapter,
+  CountedRange,
+  DEFAULT_SETTINGS,
+  ReadChapterRange,
+  SearchMatch,
+  SUPPORTED_ENCODINGS,
+} from './types';
 
 export const READER_VIEW_TYPE = 'puffs-reader-view';
 
@@ -30,6 +39,16 @@ interface AnnotationSelection {
   length: number;
   text: string;
 }
+
+interface ReadingStatsPageRange {
+  start: ReaderPosition;
+  end: ReaderPosition;
+  startOffset: number;
+  endOffset: number;
+}
+
+const DEFAULT_READING_STATS_PAGE_MIN_MS = 3000;
+const DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1000;
 
 /**
  * Puffs Reader 阅读器核心视图。
@@ -65,6 +84,7 @@ export class ReaderView extends ItemView {
   private searchBackBtn!: HTMLElement;
 
   private paragraphs: string[] = [];
+  private paragraphStartOffsets: number[] = [0];
   private chapters: Chapter[] = [];
   private collapsedTocGroups = new Set<number>();
   private searchQuery = '';
@@ -86,6 +106,9 @@ export class ReaderView extends ItemView {
   private notesTabBtn!: HTMLElement;
 
   private progressSaveTimer = 0;
+  private readingStatsTimer = 0;
+  private readingStatsPageKey = '';
+  private readingStatsLastTurnAt = 0;
   private searchTimer = 0;
   private cursorHideTimer = 0;
   private lastManualPageTurnAt = 0;
@@ -128,6 +151,8 @@ export class ReaderView extends ItemView {
   async onClose(): Promise<void> {
     this.chapterCopyModal?.close();
     this.chapterCopyModal = null;
+    this.settleReadingStatsTime();
+    this.clearReadingStatsPageTimer();
     this.saveProgressNow();
     window.clearTimeout(this.progressSaveTimer);
     window.clearTimeout(this.searchTimer);
@@ -152,6 +177,8 @@ export class ReaderView extends ItemView {
     const viewState = state as Record<string, unknown> | null;
     const path = viewState?.file as string | undefined;
     if (path && path !== this.filePath) {
+      this.settleReadingStatsTime();
+      this.clearReadingStatsPageTimer();
       this.filePath = path;
       const file = this.app.vault.getAbstractFileByPath(path);
       if (file instanceof TFile) {
@@ -218,9 +245,13 @@ export class ReaderView extends ItemView {
     this.registerEvent(
       this.app.workspace.on('active-leaf-change', (leaf) => {
         if (leaf === this.leaf) {
+          this.readingStatsLastTurnAt = Date.now();
+          this.scheduleReadingPageStats();
           this.focusReader();
           this.resetCursorIdleState();
         } else {
+          this.settleReadingStatsTime();
+          this.clearReadingStatsPageTimer();
           this.showCursor();
           this.clearCursorHideTimer();
         }
@@ -327,6 +358,7 @@ export class ReaderView extends ItemView {
 
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
     this.parseChapters();
     this.buildTocList();
     this.updateSidebarTitle();
@@ -396,9 +428,12 @@ export class ReaderView extends ItemView {
   private switchEncoding(encoding: string): void {
     if (!this.fileBuffer || !this.currentFile) return;
 
+    this.settleReadingStatsTime();
+    this.clearReadingStatsPageTimer();
     const { text } = this.decodeBuffer(this.fileBuffer, encoding);
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
     this.updateBookSettings({ encoding });
     this.parseChapters();
     this.buildTocList();
@@ -436,6 +471,16 @@ export class ReaderView extends ItemView {
     return lines;
   }
 
+  private rebuildParagraphStartOffsets(): void {
+    this.paragraphStartOffsets = [0];
+    let offset = 0;
+    for (let i = 0; i < this.paragraphs.length; i++) {
+      offset += this.paragraphs[i].length;
+      if (i < this.paragraphs.length - 1) offset += 1;
+      this.paragraphStartOffsets.push(offset);
+    }
+  }
+
   /** 章节标题后面的空行只会拉开章节名和正文第一段，这里直接清理掉。 */
   private removeBlankLinesAfterChapter(lines: string[]): string[] {
     const tocRegexText = this.getEffectiveTocRegex();
@@ -462,6 +507,7 @@ export class ReaderView extends ItemView {
 
   private renderCurrentPage(): void {
     if (this.paragraphs.length === 0) {
+      this.clearReadingStatsPageTimer();
       this.contentContainer.empty();
       this.chapterTitleEl.textContent = '';
       this.progressTitleEl.textContent = '';
@@ -484,6 +530,7 @@ export class ReaderView extends ItemView {
     this.fillPaintedPageToFit();
     this.updatePageMeta();
     this.scheduleProgressSave();
+    this.scheduleReadingPageStats();
     this.isRenderingPage = false;
   }
 
@@ -827,6 +874,8 @@ export class ReaderView extends ItemView {
   private pageDown(): boolean {
     if (this.comparePositions(this.currentPageEnd, this.currentPageStart) <= 0) return false;
     if (this.currentPageEnd.paraIndex >= this.paragraphs.length) return false;
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.pageBackStack.push({ ...this.currentPageStart });
     this.currentPageStart = this.skipBlankPageStart(this.clampPosition(this.currentPageEnd));
     this.recordPageTurnAfterSearchJump();
@@ -837,6 +886,8 @@ export class ReaderView extends ItemView {
 
   private pageUp(): boolean {
     if (this.currentPageStart.paraIndex === 0 && this.currentPageStart.charOffset === 0) return false;
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.pageBackStack.pop() ?? this.findPreviousPageStart(this.currentPageStart);
     this.recordPageTurnAfterSearchJump();
     this.renderCurrentPage();
@@ -882,6 +933,8 @@ export class ReaderView extends ItemView {
   }
 
   private jumpToPosition(pos: ReaderPosition): void {
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.clampPosition(pos);
     this.pageBackStack = [];
     this.renderCurrentPage();
@@ -926,6 +979,211 @@ export class ReaderView extends ItemView {
   private comparePositions(a: ReaderPosition, b: ReaderPosition): number {
     if (a.paraIndex !== b.paraIndex) return a.paraIndex - b.paraIndex;
     return a.charOffset - b.charOffset;
+  }
+
+  private positionToGlobalOffset(pos: ReaderPosition): number {
+    if (this.paragraphs.length === 0) return 0;
+    const clamped = this.clampPosition(pos);
+    if (clamped.paraIndex >= this.paragraphs.length) {
+      return this.paragraphStartOffsets[this.paragraphs.length] ?? 0;
+    }
+    return (this.paragraphStartOffsets[clamped.paraIndex] ?? 0) + clamped.charOffset;
+  }
+
+  private globalOffsetToPosition(offset: number): ReaderPosition {
+    if (this.paragraphs.length === 0) return { paraIndex: 0, charOffset: 0 };
+    const total = this.paragraphStartOffsets[this.paragraphs.length] ?? 0;
+    const target = Math.max(0, Math.min(offset, total));
+    if (target >= total) return { paraIndex: this.paragraphs.length, charOffset: 0 };
+
+    let low = 0;
+    let high = this.paragraphs.length - 1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const start = this.paragraphStartOffsets[mid] ?? 0;
+      const next = this.paragraphStartOffsets[mid + 1] ?? start;
+      if (target < start) {
+        high = mid - 1;
+      } else if (target >= next) {
+        low = mid + 1;
+      } else {
+        return {
+          paraIndex: mid,
+          charOffset: Math.min(target - start, this.paragraphs[mid].length),
+        };
+      }
+    }
+    return { paraIndex: this.paragraphs.length, charOffset: 0 };
+  }
+
+  private getCurrentPageStatsRange(): ReadingStatsPageRange | null {
+    if (this.paragraphs.length === 0) return null;
+    const start = this.clampPosition(this.currentPageStart);
+    const end = this.clampPosition(this.currentPageEnd);
+    const startOffset = this.positionToGlobalOffset(start);
+    const endOffset = this.positionToGlobalOffset(end);
+    if (endOffset <= startOffset) return null;
+    return { start, end, startOffset, endOffset };
+  }
+
+  private scheduleReadingPageStats(): void {
+    this.clearReadingStatsPageTimer();
+    if (!this.currentFile || this.paragraphs.length === 0) return;
+    if (!this.isReadingStatsActive()) return;
+
+    const range = this.getCurrentPageStatsRange();
+    if (!range) return;
+    if (this.readingStatsLastTurnAt === 0) this.readingStatsLastTurnAt = Date.now();
+
+    const pageKey = this.getReadingStatsPageKey(range);
+    this.readingStatsPageKey = pageKey;
+    this.readingStatsTimer = window.setTimeout(() => {
+      this.commitReadingPageStats(pageKey);
+    }, this.getReadingStatsMinPageMs());
+  }
+
+  private clearReadingStatsPageTimer(): void {
+    if (this.readingStatsTimer) {
+      window.clearTimeout(this.readingStatsTimer);
+      this.readingStatsTimer = 0;
+    }
+    this.readingStatsPageKey = '';
+  }
+
+  private getReadingStatsPageKey(range: ReadingStatsPageRange): string {
+    return `${this.currentFile?.path ?? ''}:${range.startOffset}:${range.endOffset}`;
+  }
+
+  private commitReadingPageStats(pageKey: string): void {
+    if (!this.currentFile || !this.isReadingStatsActive()) return;
+    const range = this.getCurrentPageStatsRange();
+    if (!range || pageKey !== this.getReadingStatsPageKey(range)) return;
+
+    const countedRange = { start: range.startOffset, end: range.endOffset };
+    const existingRanges = this.plugin.getReadingStats().books[this.currentFile.path]?.countedRanges ?? [];
+    const uncountedRanges = this.getUncountedRanges(countedRange, existingRanges);
+    if (uncountedRanges.length === 0) return;
+
+    const readWords = this.countWordsInGlobalRanges(uncountedRanges);
+    const chapterRanges = this.getReadChapterRangesForPage(range.start, range.end);
+    this.plugin.recordReadingStat({
+      filePath: this.currentFile.path,
+      title: this.currentFile.basename,
+      readWords,
+      countedRange,
+      chapterRanges,
+      timestamp: Date.now(),
+    }).catch((error) => console.error('[Puffs Reader] Failed to record reading page stats:', error));
+  }
+
+  private settleReadingStatsTime(now = Date.now(), keepSession = false): void {
+    if (!this.currentFile || this.readingStatsLastTurnAt <= 0) {
+      if (!keepSession) this.readingStatsLastTurnAt = 0;
+      return;
+    }
+    const elapsed = Math.max(0, now - this.readingStatsLastTurnAt);
+    const readingMs = Math.min(elapsed, this.getReadingStatsIdleLimitMs());
+    if (readingMs > 0) {
+      this.plugin.recordReadingStat({
+        filePath: this.currentFile.path,
+        title: this.currentFile.basename,
+        readingMs,
+        timestamp: now,
+      }).catch((error) => console.error('[Puffs Reader] Failed to record reading time:', error));
+    }
+    this.readingStatsLastTurnAt = keepSession ? now : 0;
+  }
+
+  private isReadingStatsActive(): boolean {
+    return this.app.workspace.activeLeaf === this.leaf && document.hasFocus();
+  }
+
+  private getReadingStatsMinPageMs(): number {
+    const value = Number(this.plugin.settings.readingStatsMinPageMs);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_PAGE_MIN_MS;
+  }
+
+  private getReadingStatsIdleLimitMs(): number {
+    const value = Number(this.plugin.settings.readingStatsIdleLimitMs);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_IDLE_LIMIT_MS;
+  }
+
+  private getUncountedRanges(range: CountedRange, existing: CountedRange[]): CountedRange[] {
+    let pending: CountedRange[] = [{ ...range }];
+    const sorted = [...existing]
+      .filter((item) => item.end > item.start)
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+
+    for (const counted of sorted) {
+      const next: CountedRange[] = [];
+      for (const item of pending) {
+        if (counted.end <= item.start || counted.start >= item.end) {
+          next.push(item);
+          continue;
+        }
+        if (counted.start > item.start) {
+          next.push({ start: item.start, end: Math.min(counted.start, item.end) });
+        }
+        if (counted.end < item.end) {
+          next.push({ start: Math.max(counted.end, item.start), end: item.end });
+        }
+      }
+      pending = next;
+      if (pending.length === 0) break;
+    }
+    return pending.filter((item) => item.end > item.start);
+  }
+
+  private countWordsInGlobalRanges(ranges: CountedRange[]): number {
+    return ranges.reduce((sum, range) => sum + this.getTextInGlobalRange(range.start, range.end).replace(/\s+/g, '').length, 0);
+  }
+
+  private getTextInGlobalRange(startOffset: number, endOffset: number): string {
+    const start = this.globalOffsetToPosition(startOffset);
+    const end = this.globalOffsetToPosition(endOffset);
+    const parts: string[] = [];
+    for (let pi = start.paraIndex; pi <= end.paraIndex && pi < this.paragraphs.length; pi++) {
+      const paragraph = this.paragraphs[pi] ?? '';
+      const begin = pi === start.paraIndex ? start.charOffset : 0;
+      const finish = pi === end.paraIndex ? end.charOffset : paragraph.length;
+      if (finish > begin) parts.push(paragraph.slice(begin, finish));
+    }
+    return parts.join('\n');
+  }
+
+  private getReadChapterRangesForPage(start: ReaderPosition, end: ReaderPosition): ReadChapterRange[] {
+    if (this.chapters.length === 0) {
+      return [{ start: -1, end: -1, startTitle: '未识别章节', endTitle: '未识别章节' }];
+    }
+
+    const startPara = Math.max(0, Math.min(start.paraIndex, Math.max(0, this.paragraphs.length - 1)));
+    const endPara = this.getVisiblePageEndParaIndex(start, end);
+    const indices: number[] = [];
+    for (let i = 0; i < this.chapters.length; i++) {
+      const chapterStart = this.chapters[i].startParaIndex;
+      const chapterEnd = this.chapters[i + 1]?.startParaIndex ?? this.paragraphs.length;
+      if (chapterStart <= endPara && chapterEnd > startPara) indices.push(i);
+    }
+
+    if (indices.length === 0) {
+      return [{ start: -1, end: -1, startTitle: '未识别章节', endTitle: '未识别章节' }];
+    }
+
+    const startIndex = indices[0];
+    const endIndex = indices[indices.length - 1];
+    return [{
+      start: startIndex,
+      end: endIndex,
+      startTitle: this.chapters[startIndex].title,
+      endTitle: this.chapters[endIndex].title,
+    }];
+  }
+
+  private getVisiblePageEndParaIndex(start: ReaderPosition, end: ReaderPosition): number {
+    if (this.paragraphs.length === 0) return 0;
+    if (end.paraIndex >= this.paragraphs.length) return this.paragraphs.length - 1;
+    if (end.charOffset === 0 && end.paraIndex > start.paraIndex) return end.paraIndex - 1;
+    return Math.max(start.paraIndex, end.paraIndex);
   }
 
   private parseChapters(): void {

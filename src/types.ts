@@ -80,6 +80,10 @@ export interface ReaderSettings {
   dataBackupFrequencyHours: number;
   /** 书库 Git 同步：书库目录路径（绝对路径或相对于 vault 的路径），留空禁用 */
   bookLibraryPath: string;
+  /** 页面停留多久后计入已读字数和章节 (ms) */
+  readingStatsMinPageMs: number;
+  /** 单页停留超过多久后停止继续累计阅读时长 (ms) */
+  readingStatsIdleLimitMs: number;
 }
 
 /** 一条标注或批注 */
@@ -134,6 +138,52 @@ export interface BookProgress {
   encoding?: string;
 }
 
+/** 已计入阅读统计的全书字符区间，半开区间 [start, end) */
+export interface CountedRange {
+  start: number;
+  end: number;
+}
+
+/** 已阅读章节区间，索引为解析后的目录索引，end 为闭区间 */
+export interface ReadChapterRange {
+  start: number;
+  end: number;
+  startTitle: string;
+  endTitle: string;
+}
+
+/** 单本书阅读统计 */
+export interface BookReadingStats {
+  title: string;
+  totalReadingMs: number;
+  totalReadWords: number;
+  countedRanges: CountedRange[];
+  readChapterRanges: ReadChapterRange[];
+  daily: Record<string, BookDailyReadingStats>;
+  lastReadAt: number;
+}
+
+/** 单本书单日阅读统计 */
+export interface BookDailyReadingStats {
+  readingMs: number;
+  readWords: number;
+  readChapterRanges: ReadChapterRange[];
+}
+
+/** 单日阅读统计 */
+export interface DailyReadingStats {
+  readingMs: number;
+  readWords: number;
+  bookPaths: string[];
+}
+
+/** 阅读统计持久化数据 */
+export interface ReadingStatsData {
+  schemaVersion: 2;
+  books: Record<string, BookReadingStats>;
+  daily: Record<string, DailyReadingStats>;
+}
+
 /** 解析出的章节 */
 export interface Chapter {
   /** 展示用章节标题 */
@@ -168,8 +218,8 @@ export const SUPPORTED_ENCODINGS = [
   { value: 'euc-kr', label: 'EUC-KR' },
 ];
 
-export const DEFAULT_TOC_REGEX = '^\\s*第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*$';
-export const DEFAULT_CHAPTER_TITLE_REGEX = '^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)$';
+export const DEFAULT_TOC_REGEX = '^\\s*(?:第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*|(?:序章|楔子|引子)(?:\\s+.*)?)$';
+export const DEFAULT_CHAPTER_TITLE_REGEX = '^\\s*(?:第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)|((?:序章|楔子|引子)(?:\\s+.*)?))$';
 
 /** 默认设置 */
 export const DEFAULT_SETTINGS: ReaderSettings = {
@@ -213,4 +263,6 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   dataBackupPath: '',
   dataBackupFrequencyHours: 24,
   bookLibraryPath: '',
+  readingStatsMinPageMs: 3000,
+  readingStatsIdleLimitMs: 120000,
 };

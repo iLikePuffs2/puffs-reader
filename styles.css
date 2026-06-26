@@ -519,6 +519,343 @@
   border-color: var(--interactive-accent);
 }
 
+/* ── 阅读统计标签页 ── */
+.workspace-leaf-content[data-type='puffs-reading-stats-view'] .view-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.puffs-reading-stats-view {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--background-primary);
+}
+
+.puffs-reading-stats-page {
+  box-sizing: border-box;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 18px 20px 28px;
+}
+
+.puffs-reading-stats-title {
+  margin: 0;
+  color: var(--text-normal);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.puffs-reading-stats-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin-bottom: 14px;
+}
+
+.puffs-reading-stats-back {
+  flex: 0 0 auto;
+}
+
+.puffs-reading-stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.puffs-reading-stats-summary-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-muted) 5%, transparent);
+}
+
+.puffs-reading-stats-summary-item.is-clickable {
+  cursor: pointer;
+}
+
+.puffs-reading-stats-summary-item.is-clickable:hover,
+.puffs-reading-stats-summary-item.is-clickable:focus-visible,
+.puffs-reading-stats-summary-item.is-active {
+  border-color: color-mix(in srgb, var(--text-normal) 24%, transparent);
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  outline: none;
+}
+
+.puffs-reading-stats-summary-value {
+  margin-top: 4px;
+  color: var(--text-normal);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.puffs-reading-stats-summary-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-reading-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.puffs-reading-stats-empty {
+  padding: 24px 12px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.puffs-reading-stats-book {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 14px;
+  min-height: 74px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: var(--background-primary);
+  cursor: pointer;
+}
+
+.puffs-reading-stats-book:hover,
+.puffs-reading-stats-book:focus-visible {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 5%, var(--background-primary));
+  outline: none;
+}
+
+.puffs-reading-stats-book-main {
+  min-width: 0;
+}
+
+.puffs-reading-stats-book-title {
+  margin-bottom: 5px;
+  color: var(--text-normal);
+  font-size: 16px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puffs-reading-stats-book-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.puffs-reading-stats-book-arrow {
+  display: flex;
+  color: var(--text-faint);
+}
+
+.puffs-reading-stats-chapters {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.puffs-reading-stats-detail-chapters {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-muted) 5%, transparent);
+}
+
+.puffs-reading-stats-section-title {
+  margin: 18px 0 12px;
+  color: var(--text-normal);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.puffs-reading-stats-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin: -2px 0 16px;
+}
+
+.puffs-reading-stats-progress-item {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.puffs-reading-stats-progress-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-reading-stats-progress-top span:last-child {
+  color: var(--text-normal);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.puffs-reading-stats-progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+}
+
+.puffs-reading-stats-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--interactive-accent);
+}
+
+.puffs-reading-stats-chart-card {
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.puffs-reading-stats-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.puffs-reading-stats-chart-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.puffs-reading-stats-chart-title {
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.puffs-reading-stats-chart-toggle {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-muted) 5%, transparent);
+}
+
+.puffs-reading-stats-chart-toggle button {
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-reading-stats-chart-toggle button.is-active {
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.puffs-reading-stats-chart-total {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.puffs-reading-stats-chart {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+
+.puffs-chart-axis {
+  stroke: color-mix(in srgb, var(--text-muted) 24%, transparent);
+  stroke-width: 1;
+}
+
+.puffs-chart-line {
+  fill: none;
+  stroke: var(--interactive-accent);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.puffs-chart-point {
+  fill: var(--interactive-accent);
+  stroke: var(--background-primary);
+  stroke-width: 2;
+}
+
+.puffs-chart-label {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-chart-label-end {
+  text-anchor: end;
+}
+
+.puffs-reading-stats-day {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: var(--background-primary);
+}
+
+.puffs-reading-stats-day-title {
+  margin-bottom: 6px;
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .puffs-reading-stats-page {
+    padding: 14px 12px 22px;
+  }
+
+  .puffs-reading-stats-summary {
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+
+  .puffs-reading-stats-book {
+    grid-template-columns: minmax(0, 1fr) 18px;
+  }
+
+  .puffs-reading-stats-chart {
+    height: 180px;
+  }
+
+}
+
 /* ── 排版设置面板 ── */
 .puffs-chapter-copy-modal {
   width: min(520px, calc(100vw - 32px));

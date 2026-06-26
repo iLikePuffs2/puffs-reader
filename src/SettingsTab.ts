@@ -80,6 +80,26 @@ export class SettingsTab extends PluginSettingTab {
     this.addNumberSetting('鼠标隐藏延迟', '阅读器标签页激活时，鼠标静止多久后隐藏光标。设为 0 则不自动隐藏。', 'cursorHideDelayMs', 0, 10000, 100, 'ms');
     this.addNumberSetting('每秒手动翻页速度上限', '按键盘方向键翻页时，每秒最多允许翻过的页数。', 'manualPageTurnsPerSecond', 1, 20, 1, '页/秒');
 
+    containerEl.createEl('h3', { text: '阅读统计' });
+    this.addNumberSetting(
+      '计入已读停留时间',
+      '页面至少停留多久后，才计入已读字数和已读章节。',
+      'readingStatsMinPageMs',
+      500,
+      60000,
+      500,
+      'ms',
+    );
+    this.addNumberSetting(
+      '阅读计时空闲截止',
+      '在同一页停留超过多久后，停止继续累计阅读时长，直到下一次翻页或跳转。',
+      'readingStatsIdleLimitMs',
+      10000,
+      600000,
+      5000,
+      'ms',
+    );
+
     containerEl.createEl('h3', { text: '目录与编码' });
     this.addTextSetting('目录匹配正则', '所有书籍默认章节匹配正则；单书设置可覆写。', 'tocRegex', DEFAULT_SETTINGS.tocRegex);
     this.addTextSetting('章名提取正则', '从章节行中提取显示标题的正则（需含捕获组）；单书设置可覆写。', 'chapterTitleRegex', DEFAULT_SETTINGS.chapterTitleRegex);

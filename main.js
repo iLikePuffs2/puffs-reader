@@ -42,8 +42,8 @@ var SUPPORTED_ENCODINGS = [
   { value: "shift_jis", label: "Shift_JIS" },
   { value: "euc-kr", label: "EUC-KR" }
 ];
-var DEFAULT_TOC_REGEX = "^\\s*\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*$";
-var DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)$";
+var DEFAULT_TOC_REGEX = "^\\s*(?:\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*|(?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?)$";
+var DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*(?:\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)|((?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?))$";
 var DEFAULT_SETTINGS = {
   fontSize: 18,
   lineHeight: 1.8,
@@ -84,11 +84,15 @@ var DEFAULT_SETTINGS = {
   deleteAnnotationsAfterExport: true,
   dataBackupPath: "",
   dataBackupFrequencyHours: 24,
-  bookLibraryPath: ""
+  bookLibraryPath: "",
+  readingStatsMinPageMs: 3e3,
+  readingStatsIdleLimitMs: 12e4
 };
 
 // src/ReaderView.ts
 var READER_VIEW_TYPE = "puffs-reader-view";
+var DEFAULT_READING_STATS_PAGE_MIN_MS = 3e3;
+var DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1e3;
 var ReaderView = class extends import_obsidian.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -97,6 +101,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.fileBuffer = null;
     this.currentEncoding = "utf-8";
     this.paragraphs = [];
+    this.paragraphStartOffsets = [0];
     this.chapters = [];
     this.collapsedTocGroups = /* @__PURE__ */ new Set();
     this.searchQuery = "";
@@ -111,6 +116,9 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.isTypographyOpen = false;
     this.isRenderingPage = false;
     this.progressSaveTimer = 0;
+    this.readingStatsTimer = 0;
+    this.readingStatsPageKey = "";
+    this.readingStatsLastTurnAt = 0;
     this.searchTimer = 0;
     this.cursorHideTimer = 0;
     this.lastManualPageTurnAt = 0;
@@ -146,6 +154,8 @@ var ReaderView = class extends import_obsidian.ItemView {
     var _a, _b;
     (_a = this.chapterCopyModal) == null ? void 0 : _a.close();
     this.chapterCopyModal = null;
+    this.settleReadingStatsTime();
+    this.clearReadingStatsPageTimer();
     this.saveProgressNow();
     window.clearTimeout(this.progressSaveTimer);
     window.clearTimeout(this.searchTimer);
@@ -168,6 +178,8 @@ var ReaderView = class extends import_obsidian.ItemView {
     const viewState = state;
     const path = viewState == null ? void 0 : viewState.file;
     if (path && path !== this.filePath) {
+      this.settleReadingStatsTime();
+      this.clearReadingStatsPageTimer();
       this.filePath = path;
       const file = this.app.vault.getAbstractFileByPath(path);
       if (file instanceof import_obsidian.TFile) {
@@ -226,9 +238,13 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", (leaf) => {
         if (leaf === this.leaf) {
+          this.readingStatsLastTurnAt = Date.now();
+          this.scheduleReadingPageStats();
           this.focusReader();
           this.resetCursorIdleState();
         } else {
+          this.settleReadingStatsTime();
+          this.clearReadingStatsPageTimer();
           this.showCursor();
           this.clearCursorHideTimer();
         }
@@ -319,6 +335,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     const { text, encoding } = this.decodeBuffer(this.fileBuffer, (_a = bookSettings.encoding) != null ? _a : saved == null ? void 0 : saved.encoding);
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
     this.parseChapters();
     this.buildTocList();
     this.updateSidebarTitle();
@@ -378,9 +395,12 @@ var ReaderView = class extends import_obsidian.ItemView {
   }
   switchEncoding(encoding) {
     if (!this.fileBuffer || !this.currentFile) return;
+    this.settleReadingStatsTime();
+    this.clearReadingStatsPageTimer();
     const { text } = this.decodeBuffer(this.fileBuffer, encoding);
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
     this.updateBookSettings({ encoding });
     this.parseChapters();
     this.buildTocList();
@@ -412,6 +432,15 @@ var ReaderView = class extends import_obsidian.ItemView {
     while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
     return lines;
   }
+  rebuildParagraphStartOffsets() {
+    this.paragraphStartOffsets = [0];
+    let offset = 0;
+    for (let i = 0; i < this.paragraphs.length; i++) {
+      offset += this.paragraphs[i].length;
+      if (i < this.paragraphs.length - 1) offset += 1;
+      this.paragraphStartOffsets.push(offset);
+    }
+  }
   /** 章节标题后面的空行只会拉开章节名和正文第一段，这里直接清理掉。 */
   removeBlankLinesAfterChapter(lines) {
     const tocRegexText = this.getEffectiveTocRegex();
@@ -434,6 +463,7 @@ var ReaderView = class extends import_obsidian.ItemView {
   }
   renderCurrentPage() {
     if (this.paragraphs.length === 0) {
+      this.clearReadingStatsPageTimer();
       this.contentContainer.empty();
       this.chapterTitleEl.textContent = "";
       this.progressTitleEl.textContent = "";
@@ -453,6 +483,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.fillPaintedPageToFit();
     this.updatePageMeta();
     this.scheduleProgressSave();
+    this.scheduleReadingPageStats();
     this.isRenderingPage = false;
   }
   /** 在真实容器内临时排版，找出当前页可以容纳到哪个字符位置。 */
@@ -735,6 +766,8 @@ var ReaderView = class extends import_obsidian.ItemView {
   pageDown() {
     if (this.comparePositions(this.currentPageEnd, this.currentPageStart) <= 0) return false;
     if (this.currentPageEnd.paraIndex >= this.paragraphs.length) return false;
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.pageBackStack.push({ ...this.currentPageStart });
     this.currentPageStart = this.skipBlankPageStart(this.clampPosition(this.currentPageEnd));
     this.recordPageTurnAfterSearchJump();
@@ -745,6 +778,8 @@ var ReaderView = class extends import_obsidian.ItemView {
   pageUp() {
     var _a;
     if (this.currentPageStart.paraIndex === 0 && this.currentPageStart.charOffset === 0) return false;
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.currentPageStart = (_a = this.pageBackStack.pop()) != null ? _a : this.findPreviousPageStart(this.currentPageStart);
     this.recordPageTurnAfterSearchJump();
     this.renderCurrentPage();
@@ -785,6 +820,8 @@ var ReaderView = class extends import_obsidian.ItemView {
     }
   }
   jumpToPosition(pos) {
+    this.settleReadingStatsTime(Date.now(), true);
+    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.clampPosition(pos);
     this.pageBackStack = [];
     this.renderCurrentPage();
@@ -821,6 +858,190 @@ var ReaderView = class extends import_obsidian.ItemView {
   comparePositions(a, b) {
     if (a.paraIndex !== b.paraIndex) return a.paraIndex - b.paraIndex;
     return a.charOffset - b.charOffset;
+  }
+  positionToGlobalOffset(pos) {
+    var _a, _b;
+    if (this.paragraphs.length === 0) return 0;
+    const clamped = this.clampPosition(pos);
+    if (clamped.paraIndex >= this.paragraphs.length) {
+      return (_a = this.paragraphStartOffsets[this.paragraphs.length]) != null ? _a : 0;
+    }
+    return ((_b = this.paragraphStartOffsets[clamped.paraIndex]) != null ? _b : 0) + clamped.charOffset;
+  }
+  globalOffsetToPosition(offset) {
+    var _a, _b, _c;
+    if (this.paragraphs.length === 0) return { paraIndex: 0, charOffset: 0 };
+    const total = (_a = this.paragraphStartOffsets[this.paragraphs.length]) != null ? _a : 0;
+    const target = Math.max(0, Math.min(offset, total));
+    if (target >= total) return { paraIndex: this.paragraphs.length, charOffset: 0 };
+    let low = 0;
+    let high = this.paragraphs.length - 1;
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const start = (_b = this.paragraphStartOffsets[mid]) != null ? _b : 0;
+      const next = (_c = this.paragraphStartOffsets[mid + 1]) != null ? _c : start;
+      if (target < start) {
+        high = mid - 1;
+      } else if (target >= next) {
+        low = mid + 1;
+      } else {
+        return {
+          paraIndex: mid,
+          charOffset: Math.min(target - start, this.paragraphs[mid].length)
+        };
+      }
+    }
+    return { paraIndex: this.paragraphs.length, charOffset: 0 };
+  }
+  getCurrentPageStatsRange() {
+    if (this.paragraphs.length === 0) return null;
+    const start = this.clampPosition(this.currentPageStart);
+    const end = this.clampPosition(this.currentPageEnd);
+    const startOffset = this.positionToGlobalOffset(start);
+    const endOffset = this.positionToGlobalOffset(end);
+    if (endOffset <= startOffset) return null;
+    return { start, end, startOffset, endOffset };
+  }
+  scheduleReadingPageStats() {
+    this.clearReadingStatsPageTimer();
+    if (!this.currentFile || this.paragraphs.length === 0) return;
+    if (!this.isReadingStatsActive()) return;
+    const range = this.getCurrentPageStatsRange();
+    if (!range) return;
+    if (this.readingStatsLastTurnAt === 0) this.readingStatsLastTurnAt = Date.now();
+    const pageKey = this.getReadingStatsPageKey(range);
+    this.readingStatsPageKey = pageKey;
+    this.readingStatsTimer = window.setTimeout(() => {
+      this.commitReadingPageStats(pageKey);
+    }, this.getReadingStatsMinPageMs());
+  }
+  clearReadingStatsPageTimer() {
+    if (this.readingStatsTimer) {
+      window.clearTimeout(this.readingStatsTimer);
+      this.readingStatsTimer = 0;
+    }
+    this.readingStatsPageKey = "";
+  }
+  getReadingStatsPageKey(range) {
+    var _a, _b;
+    return `${(_b = (_a = this.currentFile) == null ? void 0 : _a.path) != null ? _b : ""}:${range.startOffset}:${range.endOffset}`;
+  }
+  commitReadingPageStats(pageKey) {
+    var _a, _b;
+    if (!this.currentFile || !this.isReadingStatsActive()) return;
+    const range = this.getCurrentPageStatsRange();
+    if (!range || pageKey !== this.getReadingStatsPageKey(range)) return;
+    const countedRange = { start: range.startOffset, end: range.endOffset };
+    const existingRanges = (_b = (_a = this.plugin.getReadingStats().books[this.currentFile.path]) == null ? void 0 : _a.countedRanges) != null ? _b : [];
+    const uncountedRanges = this.getUncountedRanges(countedRange, existingRanges);
+    if (uncountedRanges.length === 0) return;
+    const readWords = this.countWordsInGlobalRanges(uncountedRanges);
+    const chapterRanges = this.getReadChapterRangesForPage(range.start, range.end);
+    this.plugin.recordReadingStat({
+      filePath: this.currentFile.path,
+      title: this.currentFile.basename,
+      readWords,
+      countedRange,
+      chapterRanges,
+      timestamp: Date.now()
+    }).catch((error) => console.error("[Puffs Reader] Failed to record reading page stats:", error));
+  }
+  settleReadingStatsTime(now = Date.now(), keepSession = false) {
+    if (!this.currentFile || this.readingStatsLastTurnAt <= 0) {
+      if (!keepSession) this.readingStatsLastTurnAt = 0;
+      return;
+    }
+    const elapsed = Math.max(0, now - this.readingStatsLastTurnAt);
+    const readingMs = Math.min(elapsed, this.getReadingStatsIdleLimitMs());
+    if (readingMs > 0) {
+      this.plugin.recordReadingStat({
+        filePath: this.currentFile.path,
+        title: this.currentFile.basename,
+        readingMs,
+        timestamp: now
+      }).catch((error) => console.error("[Puffs Reader] Failed to record reading time:", error));
+    }
+    this.readingStatsLastTurnAt = keepSession ? now : 0;
+  }
+  isReadingStatsActive() {
+    return this.app.workspace.activeLeaf === this.leaf && document.hasFocus();
+  }
+  getReadingStatsMinPageMs() {
+    const value = Number(this.plugin.settings.readingStatsMinPageMs);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_PAGE_MIN_MS;
+  }
+  getReadingStatsIdleLimitMs() {
+    const value = Number(this.plugin.settings.readingStatsIdleLimitMs);
+    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_IDLE_LIMIT_MS;
+  }
+  getUncountedRanges(range, existing) {
+    let pending = [{ ...range }];
+    const sorted = [...existing].filter((item) => item.end > item.start).sort((a, b) => a.start - b.start || a.end - b.end);
+    for (const counted of sorted) {
+      const next = [];
+      for (const item of pending) {
+        if (counted.end <= item.start || counted.start >= item.end) {
+          next.push(item);
+          continue;
+        }
+        if (counted.start > item.start) {
+          next.push({ start: item.start, end: Math.min(counted.start, item.end) });
+        }
+        if (counted.end < item.end) {
+          next.push({ start: Math.max(counted.end, item.start), end: item.end });
+        }
+      }
+      pending = next;
+      if (pending.length === 0) break;
+    }
+    return pending.filter((item) => item.end > item.start);
+  }
+  countWordsInGlobalRanges(ranges) {
+    return ranges.reduce((sum, range) => sum + this.getTextInGlobalRange(range.start, range.end).replace(/\s+/g, "").length, 0);
+  }
+  getTextInGlobalRange(startOffset, endOffset) {
+    var _a;
+    const start = this.globalOffsetToPosition(startOffset);
+    const end = this.globalOffsetToPosition(endOffset);
+    const parts = [];
+    for (let pi = start.paraIndex; pi <= end.paraIndex && pi < this.paragraphs.length; pi++) {
+      const paragraph = (_a = this.paragraphs[pi]) != null ? _a : "";
+      const begin = pi === start.paraIndex ? start.charOffset : 0;
+      const finish = pi === end.paraIndex ? end.charOffset : paragraph.length;
+      if (finish > begin) parts.push(paragraph.slice(begin, finish));
+    }
+    return parts.join("\n");
+  }
+  getReadChapterRangesForPage(start, end) {
+    var _a, _b;
+    if (this.chapters.length === 0) {
+      return [{ start: -1, end: -1, startTitle: "\u672A\u8BC6\u522B\u7AE0\u8282", endTitle: "\u672A\u8BC6\u522B\u7AE0\u8282" }];
+    }
+    const startPara = Math.max(0, Math.min(start.paraIndex, Math.max(0, this.paragraphs.length - 1)));
+    const endPara = this.getVisiblePageEndParaIndex(start, end);
+    const indices = [];
+    for (let i = 0; i < this.chapters.length; i++) {
+      const chapterStart = this.chapters[i].startParaIndex;
+      const chapterEnd = (_b = (_a = this.chapters[i + 1]) == null ? void 0 : _a.startParaIndex) != null ? _b : this.paragraphs.length;
+      if (chapterStart <= endPara && chapterEnd > startPara) indices.push(i);
+    }
+    if (indices.length === 0) {
+      return [{ start: -1, end: -1, startTitle: "\u672A\u8BC6\u522B\u7AE0\u8282", endTitle: "\u672A\u8BC6\u522B\u7AE0\u8282" }];
+    }
+    const startIndex = indices[0];
+    const endIndex = indices[indices.length - 1];
+    return [{
+      start: startIndex,
+      end: endIndex,
+      startTitle: this.chapters[startIndex].title,
+      endTitle: this.chapters[endIndex].title
+    }];
+  }
+  getVisiblePageEndParaIndex(start, end) {
+    if (this.paragraphs.length === 0) return 0;
+    if (end.paraIndex >= this.paragraphs.length) return this.paragraphs.length - 1;
+    if (end.charOffset === 0 && end.paraIndex > start.paraIndex) return end.paraIndex - 1;
+    return Math.max(start.paraIndex, end.paraIndex);
   }
   parseChapters() {
     this.chapters = [];
@@ -2388,6 +2609,25 @@ var SettingsTab = class extends import_obsidian2.PluginSettingTab {
     );
     this.addNumberSetting("\u9F20\u6807\u9690\u85CF\u5EF6\u8FDF", "\u9605\u8BFB\u5668\u6807\u7B7E\u9875\u6FC0\u6D3B\u65F6\uFF0C\u9F20\u6807\u9759\u6B62\u591A\u4E45\u540E\u9690\u85CF\u5149\u6807\u3002\u8BBE\u4E3A 0 \u5219\u4E0D\u81EA\u52A8\u9690\u85CF\u3002", "cursorHideDelayMs", 0, 1e4, 100, "ms");
     this.addNumberSetting("\u6BCF\u79D2\u624B\u52A8\u7FFB\u9875\u901F\u5EA6\u4E0A\u9650", "\u6309\u952E\u76D8\u65B9\u5411\u952E\u7FFB\u9875\u65F6\uFF0C\u6BCF\u79D2\u6700\u591A\u5141\u8BB8\u7FFB\u8FC7\u7684\u9875\u6570\u3002", "manualPageTurnsPerSecond", 1, 20, 1, "\u9875/\u79D2");
+    containerEl.createEl("h3", { text: "\u9605\u8BFB\u7EDF\u8BA1" });
+    this.addNumberSetting(
+      "\u8BA1\u5165\u5DF2\u8BFB\u505C\u7559\u65F6\u95F4",
+      "\u9875\u9762\u81F3\u5C11\u505C\u7559\u591A\u4E45\u540E\uFF0C\u624D\u8BA1\u5165\u5DF2\u8BFB\u5B57\u6570\u548C\u5DF2\u8BFB\u7AE0\u8282\u3002",
+      "readingStatsMinPageMs",
+      500,
+      6e4,
+      500,
+      "ms"
+    );
+    this.addNumberSetting(
+      "\u9605\u8BFB\u8BA1\u65F6\u7A7A\u95F2\u622A\u6B62",
+      "\u5728\u540C\u4E00\u9875\u505C\u7559\u8D85\u8FC7\u591A\u4E45\u540E\uFF0C\u505C\u6B62\u7EE7\u7EED\u7D2F\u8BA1\u9605\u8BFB\u65F6\u957F\uFF0C\u76F4\u5230\u4E0B\u4E00\u6B21\u7FFB\u9875\u6216\u8DF3\u8F6C\u3002",
+      "readingStatsIdleLimitMs",
+      1e4,
+      6e5,
+      5e3,
+      "ms"
+    );
     containerEl.createEl("h3", { text: "\u76EE\u5F55\u4E0E\u7F16\u7801" });
     this.addTextSetting("\u76EE\u5F55\u5339\u914D\u6B63\u5219", "\u6240\u6709\u4E66\u7C4D\u9ED8\u8BA4\u7AE0\u8282\u5339\u914D\u6B63\u5219\uFF1B\u5355\u4E66\u8BBE\u7F6E\u53EF\u8986\u5199\u3002", "tocRegex", DEFAULT_SETTINGS.tocRegex);
     this.addTextSetting("\u7AE0\u540D\u63D0\u53D6\u6B63\u5219", "\u4ECE\u7AE0\u8282\u884C\u4E2D\u63D0\u53D6\u663E\u793A\u6807\u9898\u7684\u6B63\u5219\uFF08\u9700\u542B\u6355\u83B7\u7EC4\uFF09\uFF1B\u5355\u4E66\u8BBE\u7F6E\u53EF\u8986\u5199\u3002", "chapterTitleRegex", DEFAULT_SETTINGS.chapterTitleRegex);
@@ -2527,6 +2767,9 @@ var SettingsTab = class extends import_obsidian2.PluginSettingTab {
 
 // src/main.ts
 var execAsync = (0, import_util.promisify)(import_child_process.exec);
+var READING_STATS_VIEW_TYPE = "puffs-reading-stats-view";
+var LEGACY_DEFAULT_TOC_REGEX = "^\\s*\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*$";
+var LEGACY_DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)$";
 var TxtFileSuggestModal = class extends import_obsidian3.FuzzySuggestModal {
   constructor(plugin) {
     super(plugin.app);
@@ -2546,12 +2789,424 @@ var TxtFileSuggestModal = class extends import_obsidian3.FuzzySuggestModal {
     this.plugin.openInReader(item);
   }
 };
+var ReadingStatsView = class extends import_obsidian3.ItemView {
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.selectedBookPath = null;
+    this.renderVersion = 0;
+    this.globalMetric = null;
+    this.bookMetric = null;
+    this.speedUnit = "hour";
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return READING_STATS_VIEW_TYPE;
+  }
+  getDisplayText() {
+    return "\u9605\u8BFB\u7EDF\u8BA1";
+  }
+  getIcon() {
+    return "bar-chart-3";
+  }
+  async onOpen() {
+    this.render();
+  }
+  showGlobalDefault() {
+    this.selectedBookPath = null;
+    this.globalMetric = null;
+    this.bookMetric = null;
+    this.render();
+  }
+  getState() {
+    return { book: this.selectedBookPath };
+  }
+  async setState(state, result) {
+    const viewState = state;
+    this.selectedBookPath = typeof (viewState == null ? void 0 : viewState.book) === "string" ? viewState.book : null;
+    this.render();
+    await super.setState(state, result);
+  }
+  render() {
+    this.renderVersion++;
+    this.contentEl.empty();
+    this.contentEl.addClass("puffs-reading-stats-view");
+    const page = this.contentEl.createDiv({ cls: "puffs-reading-stats-page" });
+    if (this.selectedBookPath) {
+      void this.renderBookDetail(page, this.selectedBookPath, this.renderVersion);
+    } else {
+      this.renderGlobal(page);
+    }
+  }
+  renderGlobal(parent) {
+    const stats = this.plugin.getReadingStats();
+    const books = Object.entries(stats.books).map(([filePath, book]) => ({ filePath, book })).sort((a, b) => b.book.lastReadAt - a.book.lastReadAt);
+    const dailyEntries = Object.entries(stats.daily).sort((a, b) => a[0].localeCompare(b[0]));
+    const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
+    const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
+    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1");
+    const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
+    summary.addClass("is-global");
+    this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
+    this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(totalReadWords), "words", this.globalMetric === "words", () => this.toggleGlobalMetric("words"));
+    this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(totalReadingMs), "time", this.globalMetric === "time", () => this.toggleGlobalMetric("time"));
+    this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(totalReadWords, totalReadingMs, "hour"), "speed", this.globalMetric === "speed", () => this.toggleGlobalMetric("speed"));
+    this.createSummaryItem(summary, "\u7EDF\u8BA1\u4E66\u7C4D", `${books.length} \u672C`);
+    if (this.globalMetric) {
+      this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
+        date,
+        readWords: item.readWords,
+        readingMs: item.readingMs
+      })));
+    }
+    this.createSectionTitle(parent, "\u6700\u8FD1\u9605\u8BFB");
+    const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
+    if (books.length === 0) {
+      list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002" });
+      return;
+    }
+    for (const { filePath, book } of books) {
+      const card = list.createDiv({ cls: "puffs-reading-stats-book" });
+      const openBook = () => {
+        this.selectedBookPath = filePath;
+        this.render();
+      };
+      card.setAttr("tabindex", "0");
+      card.addEventListener("click", openBook);
+      card.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openBook();
+        }
+      });
+      const main = card.createDiv({ cls: "puffs-reading-stats-book-main" });
+      main.createDiv({ cls: "puffs-reading-stats-book-title", text: book.title || filePath });
+      const meta = main.createDiv({ cls: "puffs-reading-stats-book-meta" });
+      meta.createSpan({
+        text: [
+          `\u65F6\u957F ${this.formatCompactDuration(book.totalReadingMs)}`,
+          `\u5B57\u6570 ${this.formatCompactNumber(book.totalReadWords)}`,
+          `\u5E73\u5747\u9605\u8BFB\u901F\u5EA6 ${this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour")}`,
+          `\u6700\u8FD1 ${this.formatDateTime(book.lastReadAt)}`
+        ].join("\uFF1B")
+      });
+      main.createDiv({ cls: "puffs-reading-stats-chapters", text: this.formatChapterRanges(book.readChapterRanges) });
+      const arrow = card.createSpan({ cls: "puffs-reading-stats-book-arrow" });
+      (0, import_obsidian3.setIcon)(arrow, "chevron-right");
+    }
+  }
+  async renderBookDetail(parent, filePath, renderVersion) {
+    var _a;
+    const stats = this.plugin.getReadingStats();
+    const book = stats.books[filePath];
+    if (!book) {
+      this.selectedBookPath = null;
+      this.renderGlobal(parent);
+      return;
+    }
+    this.renderHeader(parent, book.title || filePath, true);
+    const loading = parent.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6B63\u5728\u8BA1\u7B97\u8FDB\u5EA6..." });
+    const metrics = await this.getBookProgressMetrics(filePath, book);
+    if (renderVersion !== this.renderVersion) return;
+    loading.remove();
+    const dailyEntries = Object.entries((_a = book.daily) != null ? _a : {}).sort((a, b) => b[0].localeCompare(a[0]));
+    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
+    summary.addClass("is-detail");
+    this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
+    this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(book.totalReadWords), "words", this.bookMetric === "words", () => this.toggleBookMetric("words"));
+    this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(book.totalReadingMs), "time", this.bookMetric === "time", () => this.toggleBookMetric("time"));
+    this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour"), "speed", this.bookMetric === "speed", () => this.toggleBookMetric("speed"));
+    parent.createDiv({ cls: "puffs-reading-stats-chapters puffs-reading-stats-detail-chapters", text: this.formatChapterRanges(book.readChapterRanges) });
+    if (this.bookMetric) {
+      this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
+        date,
+        readWords: item.readWords,
+        readingMs: item.readingMs
+      })));
+    }
+    const progress = parent.createDiv({ cls: "puffs-reading-stats-progress-grid" });
+    this.createProgressItem(progress, "\u5F53\u524D\u4F4D\u7F6E\u8FDB\u5EA6", metrics.positionProgress);
+    this.createProgressItem(progress, "\u7EDF\u8BA1\u8986\u76D6\u8FDB\u5EA6", metrics.coverageProgress);
+    this.createSectionTitle(parent, "\u6BCF\u65E5\u660E\u7EC6");
+    const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
+    if (dailyEntries.length === 0) {
+      list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u8FD9\u672C\u4E66\u6682\u65E0\u6BCF\u65E5\u660E\u7EC6\u3002" });
+      return;
+    }
+    for (const [date, item] of dailyEntries) {
+      const card = list.createDiv({ cls: "puffs-reading-stats-day" });
+      card.createDiv({ cls: "puffs-reading-stats-day-title", text: date });
+      const meta = card.createDiv({ cls: "puffs-reading-stats-book-meta" });
+      meta.createSpan({
+        text: [
+          `\u65F6\u957F ${this.formatCompactDuration(item.readingMs)}`,
+          `\u5B57\u6570 ${this.formatCompactNumber(item.readWords)}`,
+          `\u5E73\u5747\u9605\u8BFB\u901F\u5EA6 ${this.formatSpeed(item.readWords, item.readingMs, "hour")}`
+        ].join("\uFF1B")
+      });
+      card.createDiv({ cls: "puffs-reading-stats-chapters", text: this.formatChapterRanges(item.readChapterRanges, "\u9605\u8BFB\u7AE0\u8282") });
+    }
+  }
+  renderHeader(parent, title, withBack = false) {
+    const header = parent.createDiv({ cls: "puffs-reading-stats-header" });
+    if (withBack) {
+      const back = header.createEl("button", { cls: "puffs-icon-btn puffs-reading-stats-back", attr: { "aria-label": "\u8FD4\u56DE\u9605\u8BFB\u7EDF\u8BA1" } });
+      (0, import_obsidian3.setIcon)(back, "arrow-left");
+      back.addEventListener("click", () => {
+        this.selectedBookPath = null;
+        this.globalMetric = null;
+        this.render();
+      });
+    }
+    header.createEl("h3", { cls: "puffs-reading-stats-title", text: title });
+  }
+  createSummaryItem(parent, label, value, metric, active = false, onClick) {
+    const item = parent.createDiv({ cls: "puffs-reading-stats-summary-item" });
+    if (metric) {
+      item.addClass("is-clickable");
+      item.setAttr("tabindex", "0");
+      item.setAttr("role", "button");
+      item.setAttr("aria-pressed", active ? "true" : "false");
+    }
+    if (active) item.addClass("is-active");
+    item.createDiv({ cls: "puffs-reading-stats-summary-label", text: label });
+    item.createDiv({ cls: "puffs-reading-stats-summary-value", text: value });
+    if (onClick) {
+      item.addEventListener("click", onClick);
+      item.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      });
+    }
+  }
+  createProgressItem(parent, label, value) {
+    const item = parent.createDiv({ cls: "puffs-reading-stats-progress-item" });
+    const top = item.createDiv({ cls: "puffs-reading-stats-progress-top" });
+    top.createSpan({ text: label });
+    top.createSpan({ text: value });
+    const track = item.createDiv({ cls: "puffs-reading-stats-progress-track" });
+    const bar = track.createDiv({ cls: "puffs-reading-stats-progress-bar" });
+    bar.style.width = this.parsePercent(value);
+  }
+  createSectionTitle(parent, title) {
+    parent.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
+  }
+  toggleGlobalMetric(metric) {
+    this.globalMetric = this.globalMetric === metric ? null : metric;
+    if (this.globalMetric === "speed") this.speedUnit = "hour";
+    this.render();
+  }
+  toggleBookMetric(metric) {
+    this.bookMetric = this.bookMetric === metric ? null : metric;
+    if (this.bookMetric === "speed") this.speedUnit = "hour";
+    this.render();
+  }
+  renderMetricChart(parent, metric, entries) {
+    const totalWords = entries.reduce((sum, item) => sum + item.readWords, 0);
+    const totalMs = entries.reduce((sum, item) => sum + item.readingMs, 0);
+    if (metric === "words") {
+      this.renderLineChart(
+        parent,
+        "\u7D2F\u8BA1\u5B57\u6570",
+        entries.map((item) => ({
+          label: this.formatShortDate(item.date),
+          value: item.readWords,
+          title: `${item.date}\uFF1A${this.formatCompactNumber(item.readWords)} \u5B57`
+        })),
+        (value) => `${this.formatCompactNumber(value)}\u5B57`,
+        `${this.formatCompactNumber(totalWords)}\u5B57`
+      );
+      return;
+    }
+    if (metric === "time") {
+      this.renderLineChart(
+        parent,
+        "\u7D2F\u8BA1\u65F6\u957F",
+        entries.map((item) => ({
+          label: this.formatShortDate(item.date),
+          value: item.readingMs / 6e4,
+          title: `${item.date}\uFF1A${this.formatCompactDuration(item.readingMs)}`
+        })),
+        (value) => this.formatChartMinutes(value),
+        this.formatCompactDuration(totalMs)
+      );
+      return;
+    }
+    this.renderLineChart(
+      parent,
+      "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6",
+      entries.map((item) => ({
+        label: this.formatShortDate(item.date),
+        value: this.getSpeedValue(item.readWords, item.readingMs, this.speedUnit),
+        title: `${item.date}\uFF1A${this.formatSpeed(item.readWords, item.readingMs, this.speedUnit)}`
+      })),
+      (value) => `${this.formatCompactNumber(value)}${this.speedUnit === "hour" ? "\u5B57/h" : "\u5B57/min"}`,
+      this.formatSpeed(totalWords, totalMs, this.speedUnit),
+      (header) => this.renderSpeedUnitToggle(header)
+    );
+  }
+  renderSpeedUnitToggle(parent) {
+    const toggle = parent.createDiv({ cls: "puffs-reading-stats-chart-toggle" });
+    for (const unit of ["hour", "minute"]) {
+      const button = toggle.createEl("button", {
+        text: unit === "hour" ? "\u5C0F\u65F6" : "\u5206\u949F",
+        cls: unit === this.speedUnit ? "is-active" : ""
+      });
+      button.addEventListener("click", () => {
+        this.speedUnit = unit;
+        this.render();
+      });
+    }
+  }
+  renderLineChart(parent, title, points, formatValue, summaryText, renderHeaderControl) {
+    const card = parent.createDiv({ cls: "puffs-reading-stats-chart-card" });
+    const header = card.createDiv({ cls: "puffs-reading-stats-chart-header" });
+    const titleWrap = header.createDiv({ cls: "puffs-reading-stats-chart-title-wrap" });
+    titleWrap.createDiv({ cls: "puffs-reading-stats-chart-title", text: title });
+    if (renderHeaderControl) renderHeaderControl(titleWrap);
+    const valid = points.filter((point) => Number.isFinite(point.value));
+    if (valid.length === 0 || valid.every((point) => point.value <= 0)) {
+      card.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6682\u65E0\u56FE\u8868\u6570\u636E" });
+      return;
+    }
+    header.createDiv({ cls: "puffs-reading-stats-chart-total", text: summaryText });
+    const width = 720;
+    const height = 220;
+    const padLeft = 48;
+    const padRight = 18;
+    const padTop = 18;
+    const padBottom = 34;
+    const plotWidth = width - padLeft - padRight;
+    const plotHeight = height - padTop - padBottom;
+    const maxValue = Math.max(...valid.map((point) => point.value), 1);
+    const x = (idx) => valid.length === 1 ? padLeft + plotWidth / 2 : padLeft + idx / (valid.length - 1) * plotWidth;
+    const y = (value) => padTop + plotHeight - value / maxValue * plotHeight;
+    const path = valid.map((point, idx) => `${idx === 0 ? "M" : "L"} ${x(idx).toFixed(1)} ${y(point.value).toFixed(1)}`).join(" ");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "puffs-reading-stats-chart");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", title);
+    svg.innerHTML = `
+      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop + plotHeight}" x2="${width - padRight}" y2="${padTop + plotHeight}" />
+      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotHeight}" />
+      <text class="puffs-chart-label" x="${padLeft}" y="${padTop + 10}">${this.escapeSvg(formatValue(maxValue))}</text>
+      <text class="puffs-chart-label" x="${padLeft}" y="${height - 8}">${this.escapeSvg(valid[0].label)}</text>
+      <text class="puffs-chart-label puffs-chart-label-end" x="${width - padRight}" y="${height - 8}">${this.escapeSvg(valid[valid.length - 1].label)}</text>
+      <path class="puffs-chart-line" d="${path}" />
+    `;
+    valid.forEach((point, idx) => {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("class", "puffs-chart-point");
+      circle.setAttribute("cx", x(idx).toFixed(1));
+      circle.setAttribute("cy", y(point.value).toFixed(1));
+      circle.setAttribute("r", "3.5");
+      const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      titleEl.textContent = point.title;
+      circle.appendChild(titleEl);
+      svg.appendChild(circle);
+    });
+    card.appendChild(svg);
+  }
+  parsePercent(value) {
+    const match = value.match(/([\d.]+)%/);
+    if (!match) return "0%";
+    const percent = Math.max(0, Math.min(100, Number(match[1])));
+    return Number.isFinite(percent) ? `${percent}%` : "0%";
+  }
+  async getBookProgressMetrics(filePath, book) {
+    var _a;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof import_obsidian3.TFile)) return { positionProgress: "--", coverageProgress: "--" };
+    try {
+      const buffer = await this.app.vault.readBinary(file);
+      const encoding = (_a = this.plugin.getBookSettings(filePath).encoding) != null ? _a : this.plugin.settings.defaultEncoding;
+      const text = this.decodeBuffer(buffer, encoding);
+      const paragraphs = this.plugin.settings.removeExtraBlankLines ? text.split(/\r?\n/).filter((line) => line.trim() !== "") : text.split(/\r?\n/);
+      const progress = this.plugin.getProgress(filePath);
+      const positionProgress = progress && paragraphs.length > 0 ? `${Math.min(100, Math.min(progress.paragraphIndex, paragraphs.length) / paragraphs.length * 100).toFixed(1)}%` : "--";
+      const totalChars = paragraphs.join("\n").length;
+      const covered = book.countedRanges.reduce((sum, range) => sum + Math.max(0, range.end - range.start), 0);
+      const coverageProgress = totalChars > 0 ? `${Math.min(100, covered / totalChars * 100).toFixed(1)}%` : "--";
+      return { positionProgress, coverageProgress };
+    } catch (e) {
+      return { positionProgress: "--", coverageProgress: "--" };
+    }
+  }
+  decodeBuffer(buffer, encoding) {
+    try {
+      return new TextDecoder(encoding, { fatal: false }).decode(buffer);
+    } catch (e) {
+      return new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+    }
+  }
+  formatChapterRanges(ranges, label = "\u5DF2\u8BFB\u7AE0\u8282") {
+    if (ranges.length === 0) return `${label}\uFF1A\u672A\u8BC6\u522B\u7AE0\u8282`;
+    return `${label}\uFF1A${ranges.map((range) => {
+      if (range.start === range.end || range.startTitle === range.endTitle) return range.startTitle;
+      return `${range.startTitle} - ${range.endTitle}`;
+    }).join("\u3001")}`;
+  }
+  formatCompactDuration(ms) {
+    const totalMinutes = Math.max(0, Math.round(ms / 6e4));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours >= 10) return `${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}min`;
+    return `${totalMinutes}min`;
+  }
+  formatChartMinutes(minutes) {
+    const totalMinutes = Math.max(0, Math.round(minutes));
+    const hours = Math.floor(totalMinutes / 60);
+    const rest = totalMinutes % 60;
+    if (hours >= 10) return `${hours}h`;
+    if (hours > 0) return `${hours}h ${rest}min`;
+    return `${totalMinutes}min`;
+  }
+  formatSpeed(words, ms, unit) {
+    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return "--";
+    const value = this.getSpeedValue(words, ms, unit);
+    return `${this.formatCompactNumber(value)} \u5B57/${unit === "hour" ? "\u5C0F\u65F6" : "\u5206\u949F"}`;
+  }
+  getSpeedValue(words, ms, unit) {
+    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return 0;
+    return unit === "hour" ? words / (ms / 36e5) : words / (ms / 6e4);
+  }
+  formatCompactNumber(value) {
+    const n = Math.max(0, Math.round(value));
+    if (n < 1e4) return String(n);
+    const compact = Math.round(n / 1e4 * 10) / 10;
+    return `${Number.isInteger(compact) ? compact.toFixed(0) : compact.toFixed(1)}W`;
+  }
+  formatNumber(value) {
+    return Math.max(0, Math.floor(value)).toLocaleString("zh-CN");
+  }
+  formatDateTime(timestamp) {
+    if (!timestamp) return "\u65E0";
+    return new Date(timestamp).toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+  formatShortDate(date) {
+    return date.slice(5) || date;
+  }
+  escapeSvg(value) {
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+};
 var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
   constructor() {
     super(...arguments);
     this.settings = DEFAULT_SETTINGS;
     this.progress = {};
     this.bookSettings = {};
+    this.readingStats = { schemaVersion: 2, books: {}, daily: {} };
     this.lastDataBackupAt = 0;
     this.knownBooks = [];
     this.dataBackupTimer = null;
@@ -2560,6 +3215,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
   async onload() {
     await this.loadPluginData();
     this.registerView(READER_VIEW_TYPE, (leaf) => new ReaderView(leaf, this));
+    this.registerView(READING_STATS_VIEW_TYPE, (leaf) => new ReadingStatsView(leaf, this));
     this.addCommand({
       id: "open-txt-in-reader",
       name: "\u5728\u9605\u8BFB\u5668\u4E2D\u6253\u5F00 TXT \u6587\u4EF6",
@@ -2579,6 +3235,13 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       callback: () => {
         const view = this.app.workspace.getActiveViewOfType(ReaderView);
         if (view) view.toggleSearchFromHotkey();
+      }
+    });
+    this.addCommand({
+      id: "show-reading-stats",
+      name: "Puffs Reader\uFF1A\u9605\u8BFB\u7EDF\u8BA1",
+      callback: () => {
+        this.openReadingStats();
       }
     });
     this.registerEvent(
@@ -2619,13 +3282,31 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       view.focusReader();
     }
   }
+  async openReadingStats() {
+    const existing = this.app.workspace.getLeavesOfType(READING_STATS_VIEW_TYPE)[0];
+    const leaf = existing != null ? existing : this.app.workspace.getLeaf("tab");
+    if (!existing) {
+      await leaf.setViewState({ type: READING_STATS_VIEW_TYPE, state: {} });
+    }
+    await this.app.workspace.revealLeaf(leaf);
+    if (leaf.view instanceof ReadingStatsView) {
+      leaf.view.showGlobalDefault();
+    }
+  }
   // ═══════════════════════════ 数据持久化 ═══════════════════════════
   async loadPluginData() {
     var _a, _b, _c, _d, _e;
     const data = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data == null ? void 0 : data.settings);
+    if (this.settings.tocRegex === LEGACY_DEFAULT_TOC_REGEX) {
+      this.settings.tocRegex = DEFAULT_SETTINGS.tocRegex;
+    }
+    if (this.settings.chapterTitleRegex === LEGACY_DEFAULT_CHAPTER_TITLE_REGEX) {
+      this.settings.chapterTitleRegex = DEFAULT_SETTINGS.chapterTitleRegex;
+    }
     this.progress = (_a = data == null ? void 0 : data.progress) != null ? _a : {};
     this.bookSettings = (_b = data == null ? void 0 : data.bookSettings) != null ? _b : {};
+    this.readingStats = this.normalizeReadingStats(data == null ? void 0 : data.readingStats);
     this.lastDataBackupAt = (_c = data == null ? void 0 : data.lastDataBackupAt) != null ? _c : 0;
     this.knownBooks = (_d = data == null ? void 0 : data.knownBooks) != null ? _d : [];
     for (const [filePath, progress] of Object.entries(this.progress)) {
@@ -2650,9 +3331,53 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       settings: this.settings,
       progress: this.progress,
       bookSettings: this.bookSettings,
+      readingStats: this.readingStats,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks
     });
+  }
+  normalizeReadingStats(input) {
+    var _a, _b, _c, _d, _e, _f;
+    if (!input || input.schemaVersion !== 2) {
+      return { schemaVersion: 2, books: {}, daily: {} };
+    }
+    const books = {};
+    for (const [filePath, book] of Object.entries((_a = input == null ? void 0 : input.books) != null ? _a : {})) {
+      books[filePath] = {
+        title: book.title || ((_b = filePath.split("/").pop()) == null ? void 0 : _b.replace(/\.txt$/i, "")) || filePath,
+        totalReadingMs: this.safeNonNegativeNumber(book.totalReadingMs),
+        totalReadWords: this.safeNonNegativeNumber(book.totalReadWords),
+        countedRanges: this.mergeCountedRanges((_c = book.countedRanges) != null ? _c : []),
+        readChapterRanges: this.mergeChapterRanges((_d = book.readChapterRanges) != null ? _d : []),
+        daily: this.normalizeBookDailyStats(book.daily),
+        lastReadAt: this.safeNonNegativeNumber(book.lastReadAt)
+      };
+    }
+    const daily = {};
+    for (const [date, item] of Object.entries((_e = input == null ? void 0 : input.daily) != null ? _e : {})) {
+      daily[date] = {
+        readingMs: this.safeNonNegativeNumber(item.readingMs),
+        readWords: this.safeNonNegativeNumber(item.readWords),
+        bookPaths: [...new Set(((_f = item.bookPaths) != null ? _f : []).filter(Boolean))]
+      };
+    }
+    return { schemaVersion: 2, books, daily };
+  }
+  safeNonNegativeNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+  normalizeBookDailyStats(input) {
+    var _a;
+    const result = {};
+    for (const [date, item] of Object.entries(input != null ? input : {})) {
+      result[date] = {
+        readingMs: this.safeNonNegativeNumber(item.readingMs),
+        readWords: this.safeNonNegativeNumber(item.readWords),
+        readChapterRanges: this.mergeChapterRanges((_a = item.readChapterRanges) != null ? _a : [])
+      };
+    }
+    return result;
   }
   scheduleNextDataBackup() {
     this.clearDataBackupTimer();
@@ -2820,6 +3545,96 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
   // ═══════════════════════════ 阅读进度 ═══════════════════════════
   getProgress(filePath) {
     return this.progress[filePath];
+  }
+  getReadingStats() {
+    return this.readingStats;
+  }
+  async saveReadingStats(stats) {
+    this.readingStats = this.normalizeReadingStats(stats);
+    await this.savePluginData();
+  }
+  async recordReadingStat(record) {
+    var _a, _b, _c, _d, _e;
+    const timestamp = (_a = record.timestamp) != null ? _a : Date.now();
+    const readingMs = this.safeNonNegativeNumber(record.readingMs);
+    const readWords = this.safeNonNegativeNumber(record.readWords);
+    const hasRange = !!record.countedRange && record.countedRange.end > record.countedRange.start;
+    const hasChapterRanges = ((_c = (_b = record.chapterRanges) == null ? void 0 : _b.length) != null ? _c : 0) > 0;
+    if (readingMs <= 0 && readWords <= 0 && !hasRange && !hasChapterRanges) return;
+    const existing = this.readingStats.books[record.filePath];
+    const dayKey = this.getLocalDateKey(timestamp);
+    const book = existing != null ? existing : {
+      title: record.title,
+      totalReadingMs: 0,
+      totalReadWords: 0,
+      countedRanges: [],
+      readChapterRanges: [],
+      daily: {},
+      lastReadAt: 0
+    };
+    book.title = record.title || book.title;
+    book.totalReadingMs += readingMs;
+    book.totalReadWords += readWords;
+    if (record.countedRange && record.countedRange.end > record.countedRange.start) {
+      book.countedRanges = this.mergeCountedRanges([...book.countedRanges, record.countedRange]);
+    }
+    if (record.chapterRanges && record.chapterRanges.length > 0) {
+      book.readChapterRanges = this.mergeChapterRanges([...book.readChapterRanges, ...record.chapterRanges]);
+    }
+    const bookDaily = (_d = book.daily[dayKey]) != null ? _d : { readingMs: 0, readWords: 0, readChapterRanges: [] };
+    bookDaily.readingMs += readingMs;
+    bookDaily.readWords += readWords;
+    if (record.chapterRanges && record.chapterRanges.length > 0) {
+      bookDaily.readChapterRanges = this.mergeChapterRanges([...bookDaily.readChapterRanges, ...record.chapterRanges]);
+    }
+    book.daily[dayKey] = bookDaily;
+    book.lastReadAt = Math.max(book.lastReadAt, timestamp);
+    this.readingStats.books[record.filePath] = book;
+    const daily = (_e = this.readingStats.daily[dayKey]) != null ? _e : { readingMs: 0, readWords: 0, bookPaths: [] };
+    daily.readingMs += readingMs;
+    daily.readWords += readWords;
+    if (!daily.bookPaths.includes(record.filePath)) daily.bookPaths.push(record.filePath);
+    this.readingStats.daily[dayKey] = daily;
+    await this.savePluginData();
+  }
+  mergeCountedRanges(ranges) {
+    const sorted = ranges.filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end > range.start).map((range) => ({ start: Math.floor(range.start), end: Math.floor(range.end) })).sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged = [];
+    for (const range of sorted) {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end) {
+        merged.push({ ...range });
+      } else {
+        last.end = Math.max(last.end, range.end);
+      }
+    }
+    return merged;
+  }
+  mergeChapterRanges(ranges) {
+    const sorted = ranges.filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end >= range.start).map((range) => ({
+      start: Math.floor(range.start),
+      end: Math.floor(range.end),
+      startTitle: range.startTitle || "\u672A\u8BC6\u522B\u7AE0\u8282",
+      endTitle: range.endTitle || range.startTitle || "\u672A\u8BC6\u522B\u7AE0\u8282"
+    })).sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged = [];
+    for (const range of sorted) {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end + 1) {
+        merged.push({ ...range });
+      } else if (range.end > last.end) {
+        last.end = range.end;
+        last.endTitle = range.endTitle;
+      }
+    }
+    return merged;
+  }
+  getLocalDateKey(timestamp) {
+    const d = new Date(timestamp);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
   async markBookAsRecentlyRead(filePath) {
     var _a, _b;
