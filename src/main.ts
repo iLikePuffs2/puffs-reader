@@ -53,6 +53,11 @@ interface ReadingStatsChartPoint {
   title: string;
 }
 
+interface BookProgressMetrics {
+  positionProgress: string;
+  coverageProgress: string;
+}
+
 /**
  * TXT 文件选择弹窗
  * 使用 Obsidian 原生的模糊搜索 Modal，列出仓库中所有 .txt 文件供用户选择。
@@ -89,6 +94,7 @@ class ReadingStatsView extends ItemView {
   private globalMetric: ReadingStatsMetric | null = null;
   private bookMetric: ReadingStatsMetric | null = null;
   private speedUnit: ReadingStatsSpeedUnit = 'hour';
+  private bookProgressMetricsCache = new Map<string, BookProgressMetrics>();
 
   constructor(leaf: WorkspaceLeaf, plugin: PuffsReaderPlugin) {
     super(leaf);
@@ -206,7 +212,7 @@ class ReadingStatsView extends ItemView {
     }
   }
 
-  private async renderBookDetail(parent: HTMLElement, filePath: string, renderVersion: number): Promise<void> {
+  private renderBookDetail(parent: HTMLElement, filePath: string, renderVersion: number): void {
     const stats = this.plugin.getReadingStats();
     const book = stats.books[filePath];
     if (!book) {
@@ -216,11 +222,6 @@ class ReadingStatsView extends ItemView {
     }
 
     this.renderHeader(parent, book.title || filePath, true);
-    const loading = parent.createDiv({ cls: 'puffs-reading-stats-empty', text: '正在计算进度...' });
-    const metrics = await this.getBookProgressMetrics(filePath, book);
-    if (renderVersion !== this.renderVersion) return;
-    loading.remove();
-
     const dailyEntries = Object.entries(book.daily ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
@@ -242,8 +243,10 @@ class ReadingStatsView extends ItemView {
     }
 
     const progress = parent.createDiv({ cls: 'puffs-reading-stats-progress-grid' });
+    const metrics = this.bookProgressMetricsCache.get(filePath) ?? { positionProgress: '--', coverageProgress: '--' };
     this.createProgressItem(progress, '当前位置进度', metrics.positionProgress);
     this.createProgressItem(progress, '统计覆盖进度', metrics.coverageProgress);
+    this.refreshBookProgressMetrics(filePath, book, progress, renderVersion);
 
     this.createSectionTitle(parent, '每日明细');
     const list = parent.createDiv({ cls: 'puffs-reading-stats-list' });
@@ -463,7 +466,19 @@ class ReadingStatsView extends ItemView {
     return Number.isFinite(percent) ? `${percent}%` : '0%';
   }
 
-  private async getBookProgressMetrics(filePath: string, book: { countedRanges: CountedRange[] }): Promise<{ positionProgress: string; coverageProgress: string }> {
+  private refreshBookProgressMetrics(filePath: string, book: { countedRanges: CountedRange[] }, container: HTMLElement, renderVersion: number): void {
+    this.getBookProgressMetrics(filePath, book)
+      .then((metrics) => {
+        this.bookProgressMetricsCache.set(filePath, metrics);
+        if (renderVersion !== this.renderVersion || this.selectedBookPath !== filePath || !container.isConnected) return;
+        container.empty();
+        this.createProgressItem(container, '当前位置进度', metrics.positionProgress);
+        this.createProgressItem(container, '统计覆盖进度', metrics.coverageProgress);
+      })
+      .catch((error) => console.error('[Puffs Reader] Failed to refresh book progress metrics:', error));
+  }
+
+  private async getBookProgressMetrics(filePath: string, book: { countedRanges: CountedRange[] }): Promise<BookProgressMetrics> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!(file instanceof TFile)) return { positionProgress: '--', coverageProgress: '--' };
     try {
