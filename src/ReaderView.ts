@@ -1219,8 +1219,10 @@ export class ReaderView extends ItemView {
     try {
       const level1Regex = new RegExp(settings.tocIndentLevel1Regex?.trim() || '\u5377');
       const level2Regex = new RegExp(settings.tocIndentLevel2Regex?.trim() || '\u7ae0');
+      const level3Regex = new RegExp(settings.tocIndentLevel3Regex?.trim() || '\u8282');
       if (level1Regex.test(marker)) return 1;
       if (level2Regex.test(marker)) return 2;
+      if (level3Regex.test(marker)) return 3;
     } catch {
       return 1;
     }
@@ -1278,13 +1280,14 @@ export class ReaderView extends ItemView {
     }
 
     this.chapters.forEach((ch, index) => {
-      if (ch.level === 2 && this.isTocChildHidden(index)) return;
+      if (this.isTocChildHidden(index)) return;
 
       const item = this.tocListEl.createDiv({ cls: 'puffs-toc-item' });
       item.dataset.chapterIndex = String(index);
-      item.classList.add(ch.level === 2 ? 'puffs-toc-level-2' : 'puffs-toc-level-1');
+      const displayLevel = this.getTocDisplayLevel(index);
+      item.classList.add(`puffs-toc-level-${displayLevel}`);
 
-      if (ch.level === 1 && this.hasTocChildren(index)) {
+      if (this.hasTocChildren(index)) {
         const toggle = item.createEl('button', {
           cls: 'puffs-toc-toggle',
           attr: { 'aria-label': this.collapsedTocGroups.has(index) ? '展开' : '收起' },
@@ -1306,23 +1309,50 @@ export class ReaderView extends ItemView {
   }
 
   private hasTocChildren(index: number): boolean {
+    const level = this.chapters[index]?.level ?? 1;
     for (let i = index + 1; i < this.chapters.length; i++) {
-      if (this.chapters[i].level === 1) return false;
-      if (this.chapters[i].level === 2) return true;
+      if (this.chapters[i].level <= level) return false;
+      if (this.chapters[i].level > level) return true;
     }
     return false;
   }
 
   private isTocChildHidden(index: number): boolean {
-    const parentIndex = this.getTocParentIndex(index);
-    return parentIndex !== null && this.collapsedTocGroups.has(parentIndex);
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      if (this.collapsedTocGroups.has(parentIndex)) return true;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return false;
   }
 
   private getTocParentIndex(index: number): number | null {
+    const level = this.chapters[index]?.level ?? 1;
+    if (level <= 1) return null;
     for (let i = index - 1; i >= 0; i--) {
-      if (this.chapters[i].level === 1) return i;
+      if (this.chapters[i].level < level) return i;
     }
     return null;
+  }
+
+  private getTocDisplayLevel(index: number): number {
+    let displayLevel = 1;
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      displayLevel++;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return Math.min(3, displayLevel);
+  }
+
+  private getVisibleTocIndex(index: number): number {
+    let visibleIndex = index;
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      if (this.collapsedTocGroups.has(parentIndex)) visibleIndex = parentIndex;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return visibleIndex;
   }
 
   private toggleTocGroup(index: number): void {
@@ -1362,7 +1392,7 @@ export class ReaderView extends ItemView {
   }
 
   private highlightCurrentTocItem(idx: number): void {
-    const visibleIdx = this.isTocChildHidden(idx) ? (this.getTocParentIndex(idx) ?? idx) : idx;
+    const visibleIdx = this.getVisibleTocIndex(idx);
     this.tocListEl?.querySelectorAll<HTMLElement>('.puffs-toc-item').forEach((el) => {
       el.classList.toggle('puffs-toc-active', Number(el.dataset.chapterIndex) === visibleIdx);
     });
@@ -1438,9 +1468,7 @@ export class ReaderView extends ItemView {
     const activeChapter = this.getActiveChapterIndex(this.currentPageStart.paraIndex);
     if (activeChapter < 0) return;
 
-    const visibleChapter = this.isTocChildHidden(activeChapter)
-      ? (this.getTocParentIndex(activeChapter) ?? activeChapter)
-      : activeChapter;
+    const visibleChapter = this.getVisibleTocIndex(activeChapter);
     const item = this.tocListEl.querySelector<HTMLElement>(`.puffs-toc-item[data-chapter-index="${visibleChapter}"]`);
     if (!item) return;
 
@@ -1660,7 +1688,7 @@ export class ReaderView extends ItemView {
   private addTocIndentRows(parent: HTMLElement, bookSettings: BookSettings): void {
     const enabled = !!bookSettings.tocIndentEnabled;
     const row = parent.createDiv({ cls: 'puffs-typo-row' });
-    row.createSpan({ cls: 'puffs-typo-label', text: '\u4e8c\u7ea7\u7f29\u8fdb' });
+    row.createSpan({ cls: 'puffs-typo-label', text: '\u76ee\u5f55\u7f29\u8fdb' });
     const toggle = row.createEl('input', {
       cls: 'puffs-typo-toggle',
       attr: { type: 'checkbox' },
@@ -1671,6 +1699,7 @@ export class ReaderView extends ItemView {
         tocIndentEnabled: toggle.checked,
         tocIndentLevel1Regex: toggle.checked ? (bookSettings.tocIndentLevel1Regex?.trim() || '\u5377') : undefined,
         tocIndentLevel2Regex: toggle.checked ? (bookSettings.tocIndentLevel2Regex?.trim() || '\u7ae0') : undefined,
+        tocIndentLevel3Regex: toggle.checked ? (bookSettings.tocIndentLevel3Regex?.trim() || '\u8282') : undefined,
       });
       this.parseChapters();
       this.buildTocList();
@@ -1688,6 +1717,12 @@ export class ReaderView extends ItemView {
     });
     this.addTextRow(parent, '2\u7ea7\u5173\u952e\u5b57\u6b63\u5219', bookSettings.tocIndentLevel2Regex ?? '\u7ae0', (v) => {
       this.updateBookSettings({ tocIndentLevel2Regex: v || '\u7ae0' });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
+    this.addTextRow(parent, '3\u7ea7\u5173\u952e\u5b57\u6b63\u5219', bookSettings.tocIndentLevel3Regex ?? '\u8282', (v) => {
+      this.updateBookSettings({ tocIndentLevel3Regex: v || '\u8282' });
       this.parseChapters();
       this.buildTocList();
       this.updatePageMeta();
@@ -2069,16 +2104,14 @@ export class ReaderView extends ItemView {
   }
 
   private getCopyableChapterChoices(): ChapterChoice[] {
-    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
-    let parentTitle: string | null = null;
+    const hasNestedToc = this.chapters.some((chapter) => chapter.level > 1);
     const choices: ChapterChoice[] = [];
     this.chapters.forEach((chapter, index) => {
-      if (chapter.level === 1) parentTitle = chapter.title;
-      if (hasLevel2 && chapter.level !== 2) return;
+      if (hasNestedToc && this.hasTocChildren(index)) return;
       choices.push({
         chapter,
         index,
-        displayTitle: hasLevel2 && parentTitle ? `${parentTitle}-${chapter.title}` : chapter.title,
+        displayTitle: hasNestedToc ? this.getChapterPathTitle(index) : chapter.title,
       });
     });
     return choices;
@@ -2194,36 +2227,55 @@ export class ReaderView extends ItemView {
   }
 
   private buildChapterRangeFileName(bookName: string, startIndex: number, endIndex: number): string {
-    const start = this.chapters[startIndex];
-    const end = this.chapters[endIndex];
-    const parts = [bookName];
-    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
-    const startParent = hasLevel2 ? this.getChapterParentTitle(startIndex) : null;
-    const endParent = hasLevel2 ? this.getChapterParentTitle(endIndex) : null;
-
-    if (startParent && endParent && startParent === endParent) {
-      parts.push(startParent);
-    } else if (startParent || endParent) {
-      if (startParent) parts.push(startParent);
-      parts.push(start.title);
-      if (endParent) parts.push(endParent);
-      parts.push(end.title);
-      return `${parts.map((part) => this.sanitizePathComponent(part)).join('-')}.txt`;
-    }
-
-    parts.push(start.title, end.title);
+    const parts = [bookName, ...this.getChapterRangeTitleParts(startIndex, endIndex)];
     return `${parts.map((part) => this.sanitizePathComponent(part)).join('-')}.txt`;
   }
 
-  private getChapterParentTitle(chapterIndex: number): string | null {
-    const parentIndex = this.getChapterParentIndex(chapterIndex);
-    return parentIndex === null ? null : this.chapters[parentIndex]?.title ?? null;
+  private getChapterRangeTitleParts(startIndex: number, endIndex: number): string[] {
+    const startPath = this.getChapterPathTitles(startIndex);
+    const endPath = this.getChapterPathTitles(endIndex);
+    const startAncestors = startPath.slice(0, -1);
+    const endAncestors = endPath.slice(0, -1);
+    let commonAncestorCount = 0;
+    while (
+      commonAncestorCount < startAncestors.length &&
+      commonAncestorCount < endAncestors.length &&
+      startAncestors[commonAncestorCount] === endAncestors[commonAncestorCount]
+    ) {
+      commonAncestorCount++;
+    }
+    return [
+      ...startPath.slice(0, commonAncestorCount),
+      ...startPath.slice(commonAncestorCount),
+      ...endPath.slice(commonAncestorCount),
+    ];
+  }
+
+  private getChapterPathTitle(chapterIndex: number): string {
+    return this.getChapterPathTitles(chapterIndex).join('-');
+  }
+
+  private getChapterPathTitles(chapterIndex: number): string[] {
+    return [...this.getChapterAncestorIndices(chapterIndex), chapterIndex]
+      .map((index) => this.chapters[index]?.title)
+      .filter((title): title is string => !!title);
+  }
+
+  private getChapterAncestorIndices(chapterIndex: number): number[] {
+    const ancestors: number[] = [];
+    let parentIndex = this.getChapterParentIndex(chapterIndex);
+    while (parentIndex !== null) {
+      ancestors.unshift(parentIndex);
+      parentIndex = this.getChapterParentIndex(parentIndex);
+    }
+    return ancestors;
   }
 
   private getChapterParentIndex(chapterIndex: number): number | null {
-    if (this.chapters[chapterIndex]?.level !== 2) return null;
+    const level = this.chapters[chapterIndex]?.level ?? 1;
+    if (level <= 1) return null;
     for (let i = chapterIndex - 1; i >= 0; i--) {
-      if (this.chapters[i].level === 1) return i;
+      if (this.chapters[i].level < level) return i;
     }
     return null;
   }

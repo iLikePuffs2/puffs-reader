@@ -1067,7 +1067,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     }
   }
   getTocIndentLevel(line) {
-    var _a, _b;
+    var _a, _b, _c;
     const settings = this.getBookSettings();
     if (!settings.tocIndentEnabled) return 1;
     const marker = this.extractChapterMarker(line);
@@ -1075,8 +1075,10 @@ var ReaderView = class extends import_obsidian.ItemView {
     try {
       const level1Regex = new RegExp(((_a = settings.tocIndentLevel1Regex) == null ? void 0 : _a.trim()) || "\u5377");
       const level2Regex = new RegExp(((_b = settings.tocIndentLevel2Regex) == null ? void 0 : _b.trim()) || "\u7AE0");
+      const level3Regex = new RegExp(((_c = settings.tocIndentLevel3Regex) == null ? void 0 : _c.trim()) || "\u8282");
       if (level1Regex.test(marker)) return 1;
       if (level2Regex.test(marker)) return 2;
+      if (level3Regex.test(marker)) return 3;
     } catch (e) {
       return 1;
     }
@@ -1129,11 +1131,12 @@ var ReaderView = class extends import_obsidian.ItemView {
       return;
     }
     this.chapters.forEach((ch, index) => {
-      if (ch.level === 2 && this.isTocChildHidden(index)) return;
+      if (this.isTocChildHidden(index)) return;
       const item = this.tocListEl.createDiv({ cls: "puffs-toc-item" });
       item.dataset.chapterIndex = String(index);
-      item.classList.add(ch.level === 2 ? "puffs-toc-level-2" : "puffs-toc-level-1");
-      if (ch.level === 1 && this.hasTocChildren(index)) {
+      const displayLevel = this.getTocDisplayLevel(index);
+      item.classList.add(`puffs-toc-level-${displayLevel}`);
+      if (this.hasTocChildren(index)) {
         const toggle = item.createEl("button", {
           cls: "puffs-toc-toggle",
           attr: { "aria-label": this.collapsedTocGroups.has(index) ? "\u5C55\u5F00" : "\u6536\u8D77" }
@@ -1153,21 +1156,48 @@ var ReaderView = class extends import_obsidian.ItemView {
     });
   }
   hasTocChildren(index) {
+    var _a, _b;
+    const level = (_b = (_a = this.chapters[index]) == null ? void 0 : _a.level) != null ? _b : 1;
     for (let i = index + 1; i < this.chapters.length; i++) {
-      if (this.chapters[i].level === 1) return false;
-      if (this.chapters[i].level === 2) return true;
+      if (this.chapters[i].level <= level) return false;
+      if (this.chapters[i].level > level) return true;
     }
     return false;
   }
   isTocChildHidden(index) {
-    const parentIndex = this.getTocParentIndex(index);
-    return parentIndex !== null && this.collapsedTocGroups.has(parentIndex);
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      if (this.collapsedTocGroups.has(parentIndex)) return true;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return false;
   }
   getTocParentIndex(index) {
+    var _a, _b;
+    const level = (_b = (_a = this.chapters[index]) == null ? void 0 : _a.level) != null ? _b : 1;
+    if (level <= 1) return null;
     for (let i = index - 1; i >= 0; i--) {
-      if (this.chapters[i].level === 1) return i;
+      if (this.chapters[i].level < level) return i;
     }
     return null;
+  }
+  getTocDisplayLevel(index) {
+    let displayLevel = 1;
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      displayLevel++;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return Math.min(3, displayLevel);
+  }
+  getVisibleTocIndex(index) {
+    let visibleIndex = index;
+    let parentIndex = this.getTocParentIndex(index);
+    while (parentIndex !== null) {
+      if (this.collapsedTocGroups.has(parentIndex)) visibleIndex = parentIndex;
+      parentIndex = this.getTocParentIndex(parentIndex);
+    }
+    return visibleIndex;
   }
   toggleTocGroup(index) {
     if (this.collapsedTocGroups.has(index)) this.collapsedTocGroups.delete(index);
@@ -1202,9 +1232,9 @@ var ReaderView = class extends import_obsidian.ItemView {
     return active;
   }
   highlightCurrentTocItem(idx) {
-    var _a, _b;
-    const visibleIdx = this.isTocChildHidden(idx) ? (_a = this.getTocParentIndex(idx)) != null ? _a : idx : idx;
-    (_b = this.tocListEl) == null ? void 0 : _b.querySelectorAll(".puffs-toc-item").forEach((el) => {
+    var _a;
+    const visibleIdx = this.getVisibleTocIndex(idx);
+    (_a = this.tocListEl) == null ? void 0 : _a.querySelectorAll(".puffs-toc-item").forEach((el) => {
       el.classList.toggle("puffs-toc-active", Number(el.dataset.chapterIndex) === visibleIdx);
     });
   }
@@ -1268,10 +1298,9 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.tocTitleEl.textContent = (_b = (_a = this.currentFile) == null ? void 0 : _a.basename) != null ? _b : "\u76EE\u5F55";
   }
   scrollTocToActiveChapter() {
-    var _a;
     const activeChapter = this.getActiveChapterIndex(this.currentPageStart.paraIndex);
     if (activeChapter < 0) return;
-    const visibleChapter = this.isTocChildHidden(activeChapter) ? (_a = this.getTocParentIndex(activeChapter)) != null ? _a : activeChapter : activeChapter;
+    const visibleChapter = this.getVisibleTocIndex(activeChapter);
     const item = this.tocListEl.querySelector(`.puffs-toc-item[data-chapter-index="${visibleChapter}"]`);
     if (!item) return;
     item.scrollIntoView({ block: "center" });
@@ -1456,21 +1485,22 @@ var ReaderView = class extends import_obsidian.ItemView {
     input.addEventListener("change", () => onChange(input.value.trim()));
   }
   addTocIndentRows(parent, bookSettings) {
-    var _a, _b;
+    var _a, _b, _c;
     const enabled = !!bookSettings.tocIndentEnabled;
     const row = parent.createDiv({ cls: "puffs-typo-row" });
-    row.createSpan({ cls: "puffs-typo-label", text: "\u4E8C\u7EA7\u7F29\u8FDB" });
+    row.createSpan({ cls: "puffs-typo-label", text: "\u76EE\u5F55\u7F29\u8FDB" });
     const toggle = row.createEl("input", {
       cls: "puffs-typo-toggle",
       attr: { type: "checkbox" }
     });
     toggle.checked = enabled;
     toggle.addEventListener("change", () => {
-      var _a2, _b2;
+      var _a2, _b2, _c2;
       this.updateBookSettings({
         tocIndentEnabled: toggle.checked,
         tocIndentLevel1Regex: toggle.checked ? ((_a2 = bookSettings.tocIndentLevel1Regex) == null ? void 0 : _a2.trim()) || "\u5377" : void 0,
-        tocIndentLevel2Regex: toggle.checked ? ((_b2 = bookSettings.tocIndentLevel2Regex) == null ? void 0 : _b2.trim()) || "\u7AE0" : void 0
+        tocIndentLevel2Regex: toggle.checked ? ((_b2 = bookSettings.tocIndentLevel2Regex) == null ? void 0 : _b2.trim()) || "\u7AE0" : void 0,
+        tocIndentLevel3Regex: toggle.checked ? ((_c2 = bookSettings.tocIndentLevel3Regex) == null ? void 0 : _c2.trim()) || "\u8282" : void 0
       });
       this.parseChapters();
       this.buildTocList();
@@ -1486,6 +1516,12 @@ var ReaderView = class extends import_obsidian.ItemView {
     });
     this.addTextRow(parent, "2\u7EA7\u5173\u952E\u5B57\u6B63\u5219", (_b = bookSettings.tocIndentLevel2Regex) != null ? _b : "\u7AE0", (v) => {
       this.updateBookSettings({ tocIndentLevel2Regex: v || "\u7AE0" });
+      this.parseChapters();
+      this.buildTocList();
+      this.updatePageMeta();
+    });
+    this.addTextRow(parent, "3\u7EA7\u5173\u952E\u5B57\u6B63\u5219", (_c = bookSettings.tocIndentLevel3Regex) != null ? _c : "\u8282", (v) => {
+      this.updateBookSettings({ tocIndentLevel3Regex: v || "\u8282" });
       this.parseChapters();
       this.buildTocList();
       this.updatePageMeta();
@@ -1817,16 +1853,14 @@ var ReaderView = class extends import_obsidian.ItemView {
     modal.open();
   }
   getCopyableChapterChoices() {
-    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
-    let parentTitle = null;
+    const hasNestedToc = this.chapters.some((chapter) => chapter.level > 1);
     const choices = [];
     this.chapters.forEach((chapter, index) => {
-      if (chapter.level === 1) parentTitle = chapter.title;
-      if (hasLevel2 && chapter.level !== 2) return;
+      if (hasNestedToc && this.hasTocChildren(index)) return;
       choices.push({
         chapter,
         index,
-        displayTitle: hasLevel2 && parentTitle ? `${parentTitle}-${chapter.title}` : chapter.title
+        displayTitle: hasNestedToc ? this.getChapterPathTitle(index) : chapter.title
       });
     });
     return choices;
@@ -1921,34 +1955,48 @@ var ReaderView = class extends import_obsidian.ItemView {
     }
   }
   buildChapterRangeFileName(bookName, startIndex, endIndex) {
-    const start = this.chapters[startIndex];
-    const end = this.chapters[endIndex];
-    const parts = [bookName];
-    const hasLevel2 = this.chapters.some((chapter) => chapter.level === 2);
-    const startParent = hasLevel2 ? this.getChapterParentTitle(startIndex) : null;
-    const endParent = hasLevel2 ? this.getChapterParentTitle(endIndex) : null;
-    if (startParent && endParent && startParent === endParent) {
-      parts.push(startParent);
-    } else if (startParent || endParent) {
-      if (startParent) parts.push(startParent);
-      parts.push(start.title);
-      if (endParent) parts.push(endParent);
-      parts.push(end.title);
-      return `${parts.map((part) => this.sanitizePathComponent(part)).join("-")}.txt`;
-    }
-    parts.push(start.title, end.title);
+    const parts = [bookName, ...this.getChapterRangeTitleParts(startIndex, endIndex)];
     return `${parts.map((part) => this.sanitizePathComponent(part)).join("-")}.txt`;
   }
-  getChapterParentTitle(chapterIndex) {
-    var _a, _b;
-    const parentIndex = this.getChapterParentIndex(chapterIndex);
-    return parentIndex === null ? null : (_b = (_a = this.chapters[parentIndex]) == null ? void 0 : _a.title) != null ? _b : null;
+  getChapterRangeTitleParts(startIndex, endIndex) {
+    const startPath = this.getChapterPathTitles(startIndex);
+    const endPath = this.getChapterPathTitles(endIndex);
+    const startAncestors = startPath.slice(0, -1);
+    const endAncestors = endPath.slice(0, -1);
+    let commonAncestorCount = 0;
+    while (commonAncestorCount < startAncestors.length && commonAncestorCount < endAncestors.length && startAncestors[commonAncestorCount] === endAncestors[commonAncestorCount]) {
+      commonAncestorCount++;
+    }
+    return [
+      ...startPath.slice(0, commonAncestorCount),
+      ...startPath.slice(commonAncestorCount),
+      ...endPath.slice(commonAncestorCount)
+    ];
+  }
+  getChapterPathTitle(chapterIndex) {
+    return this.getChapterPathTitles(chapterIndex).join("-");
+  }
+  getChapterPathTitles(chapterIndex) {
+    return [...this.getChapterAncestorIndices(chapterIndex), chapterIndex].map((index) => {
+      var _a;
+      return (_a = this.chapters[index]) == null ? void 0 : _a.title;
+    }).filter((title) => !!title);
+  }
+  getChapterAncestorIndices(chapterIndex) {
+    const ancestors = [];
+    let parentIndex = this.getChapterParentIndex(chapterIndex);
+    while (parentIndex !== null) {
+      ancestors.unshift(parentIndex);
+      parentIndex = this.getChapterParentIndex(parentIndex);
+    }
+    return ancestors;
   }
   getChapterParentIndex(chapterIndex) {
-    var _a;
-    if (((_a = this.chapters[chapterIndex]) == null ? void 0 : _a.level) !== 2) return null;
+    var _a, _b;
+    const level = (_b = (_a = this.chapters[chapterIndex]) == null ? void 0 : _a.level) != null ? _b : 1;
+    if (level <= 1) return null;
     for (let i = chapterIndex - 1; i >= 0; i--) {
-      if (this.chapters[i].level === 1) return i;
+      if (this.chapters[i].level < level) return i;
     }
     return null;
   }
@@ -3759,7 +3807,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     return (_a = this.bookSettings[filePath]) != null ? _a : {};
   }
   async saveBookSettings(filePath, settings) {
-    var _a, _b;
+    var _a, _b, _c;
     const compact = {};
     if (settings.encoding) compact.encoding = settings.encoding;
     if (settings.firstLineIndent !== void 0) compact.firstLineIndent = settings.firstLineIndent;
@@ -3774,6 +3822,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       compact.tocIndentEnabled = true;
       compact.tocIndentLevel1Regex = ((_a = settings.tocIndentLevel1Regex) == null ? void 0 : _a.trim()) || "\u5377";
       compact.tocIndentLevel2Regex = ((_b = settings.tocIndentLevel2Regex) == null ? void 0 : _b.trim()) || "\u7AE0";
+      compact.tocIndentLevel3Regex = ((_c = settings.tocIndentLevel3Regex) == null ? void 0 : _c.trim()) || "\u8282";
     }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;

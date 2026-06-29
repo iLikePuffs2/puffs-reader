@@ -120,12 +120,14 @@ export interface BookSettings {
   chapterTitleRegex?: string;
   /** 当前书的序章类标题匹配正则覆写 */
   prologueTitleRegex?: string;
-  /** Whether the current book uses two-level TOC indentation. */
+  /** Whether the current book uses nested TOC indentation. */
   tocIndentEnabled?: boolean;
   /** Regex for the level-1 chapter marker, e.g. "卷" or "部". */
   tocIndentLevel1Regex?: string;
   /** Regex for the level-2 chapter marker, e.g. "章". */
   tocIndentLevel2Regex?: string;
+  /** Regex for the level-3 chapter marker, e.g. "节". */
+  tocIndentLevel3Regex?: string;
   /** 当前书的标注/批注列表 */
   annotations?: Annotation[];
 }
@@ -196,7 +198,7 @@ export interface Chapter {
   rawTitle: string;
   /** 起始段落索引 */
   startParaIndex: number;
-  /** 层级 (1=卷, 2=章) */
+  /** 层级 (1=卷, 2=章, 3=节) */
   level: number;
 }
 

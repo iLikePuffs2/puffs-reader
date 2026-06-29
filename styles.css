@@ -905,6 +905,10 @@
   padding-left: 36px;
 }
 
+.puffs-toc-level-3 {
+  padding-left: 58px;
+}
+
 .puffs-toc-toggle {
   position: absolute;
   left: 0;
@@ -921,6 +925,14 @@
   box-shadow: none !important;
   color: var(--text-muted);
   cursor: pointer;
+}
+
+.puffs-toc-level-2 .puffs-toc-toggle {
+  left: 18px;
+}
+
+.puffs-toc-level-3 .puffs-toc-toggle {
+  left: 40px;
 }
 
 .puffs-toc-toggle svg {

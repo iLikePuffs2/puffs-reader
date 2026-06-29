@@ -1145,6 +1145,7 @@ export default class PuffsReaderPlugin extends Plugin {
       compact.tocIndentEnabled = true;
       compact.tocIndentLevel1Regex = settings.tocIndentLevel1Regex?.trim() || '\u5377';
       compact.tocIndentLevel2Regex = settings.tocIndentLevel2Regex?.trim() || '\u7ae0';
+      compact.tocIndentLevel3Regex = settings.tocIndentLevel3Regex?.trim() || '\u8282';
     }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;
