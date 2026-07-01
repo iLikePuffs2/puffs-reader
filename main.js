@@ -215,7 +215,7 @@ var ReaderView = class extends import_obsidian.ItemView {
   refreshSettingsFromGlobal() {
     this.applyTypography();
     this.resetCursorIdleState();
-    this.renderCurrentPage();
+    this.reprocessCurrentText(true);
   }
   /** 供外部打开/切换书籍后调用，把键盘焦点稳定交给阅读区。 */
   focusReader() {
@@ -427,12 +427,32 @@ var ReaderView = class extends import_obsidian.ItemView {
   }
   processText(text) {
     let lines = text.split(/\r?\n/);
-    if (this.plugin.settings.removeExtraBlankLines) {
+    if (this.getEffectiveRemoveExtraBlankLines()) {
       lines = lines.filter((line) => line.trim() !== "");
     }
     lines = this.removeBlankLinesAfterChapter(lines);
     while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
     return lines;
+  }
+  reprocessCurrentText(preservePosition) {
+    if (!this.fileBuffer) {
+      this.renderCurrentPage();
+      return;
+    }
+    const currentOffset = preservePosition ? this.positionToGlobalOffset(this.currentPageStart) : 0;
+    const { text } = this.decodeBuffer(this.fileBuffer, this.currentEncoding);
+    this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
+    this.parseChapters();
+    this.buildTocList();
+    this.currentPageStart = preservePosition ? this.globalOffsetToPosition(currentOffset) : { paraIndex: 0, charOffset: 0 };
+    this.currentPageEnd = this.currentPageStart;
+    this.pageBackStack = [];
+    if (this.searchQuery) {
+      this.performSearch(this.searchQuery);
+      return;
+    }
+    this.renderCurrentPage();
   }
   rebuildParagraphStartOffsets() {
     this.paragraphStartOffsets = [0];
@@ -1451,6 +1471,10 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.buildTocList();
       this.updatePageMeta();
     });
+    this.addToggleRow(p, "\u53BB\u9664\u591A\u4F59\u7A7A\u884C", this.getEffectiveRemoveExtraBlankLines(), (v) => {
+      this.updateBookSettings({ removeExtraBlankLines: v });
+      this.reprocessCurrentText(true);
+    });
     this.addTocIndentRows(p, bookSettings);
     const exportRow = p.createDiv({ cls: "puffs-typo-row" });
     exportRow.createSpan({ cls: "puffs-typo-label", text: "\u6807\u6CE8\u4E0E\u6279\u6CE8" });
@@ -1483,6 +1507,16 @@ var ReaderView = class extends import_obsidian.ItemView {
     const input = row.createEl("input", { cls: "puffs-typo-text-input", attr: { type: "text" } });
     input.value = value;
     input.addEventListener("change", () => onChange(input.value.trim()));
+  }
+  addToggleRow(parent, label, value, onChange) {
+    const row = parent.createDiv({ cls: "puffs-typo-row" });
+    row.createSpan({ cls: "puffs-typo-label", text: label });
+    const toggle = row.createEl("input", {
+      cls: "puffs-typo-toggle",
+      attr: { type: "checkbox" }
+    });
+    toggle.checked = value;
+    toggle.addEventListener("change", () => onChange(toggle.checked));
   }
   addTocIndentRows(parent, bookSettings) {
     var _a, _b, _c;
@@ -1600,6 +1634,10 @@ var ReaderView = class extends import_obsidian.ItemView {
   getEffectivePrologueTitleRegex() {
     var _a;
     return (_a = this.getBookSettings().prologueTitleRegex) != null ? _a : this.plugin.settings.prologueTitleRegex;
+  }
+  getEffectiveRemoveExtraBlankLines() {
+    var _a;
+    return (_a = this.getBookSettings().removeExtraBlankLines) != null ? _a : this.plugin.settings.removeExtraBlankLines;
   }
   getChapterMatchRegexes() {
     return [this.getEffectiveTocRegex(), this.getEffectivePrologueTitleRegex()].map((regexText) => regexText.trim()).filter((regexText) => regexText.length > 0).map((regexText) => new RegExp(regexText));
@@ -3817,6 +3855,9 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     }
     if (settings.prologueTitleRegex !== void 0 && settings.prologueTitleRegex !== "") {
       compact.prologueTitleRegex = settings.prologueTitleRegex;
+    }
+    if (settings.removeExtraBlankLines !== void 0) {
+      compact.removeExtraBlankLines = settings.removeExtraBlankLines;
     }
     if (settings.tocIndentEnabled) {
       compact.tocIndentEnabled = true;

@@ -1141,6 +1141,9 @@ export default class PuffsReaderPlugin extends Plugin {
     if (settings.prologueTitleRegex !== undefined && settings.prologueTitleRegex !== '') {
       compact.prologueTitleRegex = settings.prologueTitleRegex;
     }
+    if (settings.removeExtraBlankLines !== undefined) {
+      compact.removeExtraBlankLines = settings.removeExtraBlankLines;
+    }
     if (settings.tocIndentEnabled) {
       compact.tocIndentEnabled = true;
       compact.tocIndentLevel1Regex = settings.tocIndentLevel1Regex?.trim() || '\u5377';

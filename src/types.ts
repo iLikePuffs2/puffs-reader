@@ -120,6 +120,8 @@ export interface BookSettings {
   chapterTitleRegex?: string;
   /** 当前书的序章类标题匹配正则覆写 */
   prologueTitleRegex?: string;
+  /** 当前书是否去除多余空行；undefined 表示回退全局设置 */
+  removeExtraBlankLines?: boolean;
   /** Whether the current book uses nested TOC indentation. */
   tocIndentEnabled?: boolean;
   /** Regex for the level-1 chapter marker, e.g. "卷" or "部". */

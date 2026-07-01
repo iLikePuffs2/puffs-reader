@@ -215,7 +215,7 @@ export class ReaderView extends ItemView {
   refreshSettingsFromGlobal(): void {
     this.applyTypography();
     this.resetCursorIdleState();
-    this.renderCurrentPage();
+    this.reprocessCurrentText(true);
   }
 
   /** 供外部打开/切换书籍后调用，把键盘焦点稳定交给阅读区。 */
@@ -463,12 +463,37 @@ export class ReaderView extends ItemView {
 
   private processText(text: string): string[] {
     let lines = text.split(/\r?\n/);
-    if (this.plugin.settings.removeExtraBlankLines) {
+    if (this.getEffectiveRemoveExtraBlankLines()) {
       lines = lines.filter((line) => line.trim() !== '');
     }
     lines = this.removeBlankLinesAfterChapter(lines);
     while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
     return lines;
+  }
+
+  private reprocessCurrentText(preservePosition: boolean): void {
+    if (!this.fileBuffer) {
+      this.renderCurrentPage();
+      return;
+    }
+
+    const currentOffset = preservePosition ? this.positionToGlobalOffset(this.currentPageStart) : 0;
+    const { text } = this.decodeBuffer(this.fileBuffer, this.currentEncoding);
+    this.paragraphs = this.processText(text);
+    this.rebuildParagraphStartOffsets();
+    this.parseChapters();
+    this.buildTocList();
+    this.currentPageStart = preservePosition
+      ? this.globalOffsetToPosition(currentOffset)
+      : { paraIndex: 0, charOffset: 0 };
+    this.currentPageEnd = this.currentPageStart;
+    this.pageBackStack = [];
+
+    if (this.searchQuery) {
+      this.performSearch(this.searchQuery);
+      return;
+    }
+    this.renderCurrentPage();
   }
 
   private rebuildParagraphStartOffsets(): void {
@@ -1638,6 +1663,10 @@ export class ReaderView extends ItemView {
       this.buildTocList();
       this.updatePageMeta();
     });
+    this.addToggleRow(p, '去除多余空行', this.getEffectiveRemoveExtraBlankLines(), (v) => {
+      this.updateBookSettings({ removeExtraBlankLines: v });
+      this.reprocessCurrentText(true);
+    });
 
     this.addTocIndentRows(p, bookSettings);
 
@@ -1683,6 +1712,17 @@ export class ReaderView extends ItemView {
     const input = row.createEl('input', { cls: 'puffs-typo-text-input', attr: { type: 'text' } }) as HTMLInputElement;
     input.value = value;
     input.addEventListener('change', () => onChange(input.value.trim()));
+  }
+
+  private addToggleRow(parent: HTMLElement, label: string, value: boolean, onChange: (v: boolean) => void): void {
+    const row = parent.createDiv({ cls: 'puffs-typo-row' });
+    row.createSpan({ cls: 'puffs-typo-label', text: label });
+    const toggle = row.createEl('input', {
+      cls: 'puffs-typo-toggle',
+      attr: { type: 'checkbox' },
+    }) as HTMLInputElement;
+    toggle.checked = value;
+    toggle.addEventListener('change', () => onChange(toggle.checked));
   }
 
   private addTocIndentRows(parent: HTMLElement, bookSettings: BookSettings): void {
@@ -1809,6 +1849,10 @@ export class ReaderView extends ItemView {
 
   private getEffectivePrologueTitleRegex(): string {
     return this.getBookSettings().prologueTitleRegex ?? this.plugin.settings.prologueTitleRegex;
+  }
+
+  private getEffectiveRemoveExtraBlankLines(): boolean {
+    return this.getBookSettings().removeExtraBlankLines ?? this.plugin.settings.removeExtraBlankLines;
   }
 
   private getChapterMatchRegexes(): RegExp[] {
