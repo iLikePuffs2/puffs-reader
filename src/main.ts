@@ -253,7 +253,7 @@ class ReadingStatsView extends ItemView {
   }
 
   getDisplayText(): string {
-    return '阅读统计';
+    return '书架';
   }
 
   getIcon(): string {
@@ -1075,7 +1075,7 @@ export default class PuffsReaderPlugin extends Plugin {
     // ── 注册命令：唤出阅读器 ──
     this.addCommand({
       id: 'open-txt-in-reader',
-      name: '在阅读器中打开 TXT 文件',
+      name: '选择需要阅读的书籍',
       callback: () => {
         // 如果当前激活的文件恰好是 .txt，直接打开；否则弹出文件选择器
         const activeFile = this.app.workspace.getActiveFile();
@@ -1087,20 +1087,9 @@ export default class PuffsReaderPlugin extends Plugin {
       },
     });
 
-    // ── 注册命令：在当前阅读器中打开全文搜索 ──
-    this.addCommand({
-      id: 'search-current-reader-book',
-      name: 'Puffs Reader：全文搜索',
-      hotkeys: [{ modifiers: ['Ctrl'], key: 'f' }],
-      callback: () => {
-        const view = this.app.workspace.getActiveViewOfType(ReaderView);
-        if (view) view.toggleSearchFromHotkey();
-      },
-    });
-
     this.addCommand({
       id: 'show-reading-stats',
-      name: 'Puffs Reader：阅读统计',
+      name: '打开书架',
       callback: () => {
         this.openReadingStats();
       },
@@ -1160,7 +1149,7 @@ export default class PuffsReaderPlugin extends Plugin {
     if (!existing) {
       await leaf.setViewState({ type: READING_STATS_VIEW_TYPE, state: {} });
     }
-    await this.app.workspace.revealLeaf(leaf);
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
     if (leaf.view instanceof ReadingStatsView) {
       leaf.view.showGlobalDefault();
     }

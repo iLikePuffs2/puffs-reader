@@ -3294,7 +3294,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     return READING_STATS_VIEW_TYPE;
   }
   getDisplayText() {
-    return "\u9605\u8BFB\u7EDF\u8BA1";
+    return "\u4E66\u67B6";
   }
   getIcon() {
     return "bar-chart-3";
@@ -3992,7 +3992,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     this.registerView(READING_STATS_VIEW_TYPE, (leaf) => new ReadingStatsView(leaf, this));
     this.addCommand({
       id: "open-txt-in-reader",
-      name: "\u5728\u9605\u8BFB\u5668\u4E2D\u6253\u5F00 TXT \u6587\u4EF6",
+      name: "\u9009\u62E9\u9700\u8981\u9605\u8BFB\u7684\u4E66\u7C4D",
       callback: () => {
         const activeFile = this.app.workspace.getActiveFile();
         if (activeFile && activeFile.extension === "txt") {
@@ -4003,17 +4003,8 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       }
     });
     this.addCommand({
-      id: "search-current-reader-book",
-      name: "Puffs Reader\uFF1A\u5168\u6587\u641C\u7D22",
-      hotkeys: [{ modifiers: ["Ctrl"], key: "f" }],
-      callback: () => {
-        const view = this.app.workspace.getActiveViewOfType(ReaderView);
-        if (view) view.toggleSearchFromHotkey();
-      }
-    });
-    this.addCommand({
       id: "show-reading-stats",
-      name: "Puffs Reader\uFF1A\u9605\u8BFB\u7EDF\u8BA1",
+      name: "\u6253\u5F00\u4E66\u67B6",
       callback: () => {
         this.openReadingStats();
       }
@@ -4062,7 +4053,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     if (!existing) {
       await leaf.setViewState({ type: READING_STATS_VIEW_TYPE, state: {} });
     }
-    await this.app.workspace.revealLeaf(leaf);
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
     if (leaf.view instanceof ReadingStatsView) {
       leaf.view.showGlobalDefault();
     }
