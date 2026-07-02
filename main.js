@@ -45,6 +45,11 @@ var SUPPORTED_ENCODINGS = [
 var DEFAULT_TOC_REGEX = "^\\s*\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*$";
 var DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)$";
 var DEFAULT_PROLOGUE_TITLE_REGEX = "^\\s*(?:\u5E8F\u7AE0|\u524D\u8A00|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?$";
+var DEFAULT_TAG_CATALOG = {
+  genre: ["\u7384\u5E7B", "\u4ED9\u4FA0", "\u5386\u53F2", "\u90FD\u5E02", "\u8BF8\u5929"],
+  status: ["\u8FDE\u8F7D", "\u5B8C\u7ED3"],
+  feature: ["\u6587\u91C7", "\u7B11\u70B9", "\u60C5\u8282", "\u67B6\u6784", "\u4EBA\u7269", "\u611F\u60C5", "\u8C0B\u7565", "\u8BBE\u5B9A"]
+};
 var DEFAULT_SETTINGS = {
   fontSize: 18,
   lineHeight: 1.8,
@@ -257,6 +262,12 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.tocSidebar = this.bodyEl.createDiv({ cls: "puffs-toc-sidebar puffs-hidden" });
     const header = this.tocSidebar.createDiv({ cls: "puffs-toc-header" });
     this.tocTitleEl = header.createSpan({ cls: "puffs-toc-title", text: "\u76EE\u5F55" });
+    this.tagsBtn = header.createEl("button", {
+      cls: "puffs-icon-btn puffs-toc-search-btn",
+      attr: { "aria-label": "\u4E66\u7C4D\u6807\u7B7E" }
+    });
+    (0, import_obsidian.setIcon)(this.tagsBtn, "tags");
+    this.tagsBtn.addEventListener("click", () => this.openSidebar(this.sidebarMode === "tags" ? "toc" : "tags"));
     this.settingsBtn = header.createEl("button", {
       cls: "puffs-icon-btn puffs-toc-search-btn",
       attr: { "aria-label": "\u4E66\u7C4D\u8BBE\u7F6E" }
@@ -276,6 +287,7 @@ var ReaderView = class extends import_obsidian.ItemView {
     this.notesTabBtn.addEventListener("click", () => this.switchSidebarMode("notes"));
     this.tocListEl = this.tocSidebar.createDiv({ cls: "puffs-toc-list" });
     this.notesPaneEl = this.tocSidebar.createDiv({ cls: "puffs-notes-pane puffs-hidden" });
+    this.tagsPaneEl = this.tocSidebar.createDiv({ cls: "puffs-tags-pane puffs-hidden" });
     this.searchPaneEl = this.tocSidebar.createDiv({ cls: "puffs-sidebar-search puffs-hidden" });
     const searchHeader = this.searchPaneEl.createDiv({ cls: "puffs-search-header" });
     this.searchInput = searchHeader.createEl("input", {
@@ -1288,6 +1300,8 @@ var ReaderView = class extends import_obsidian.ItemView {
       });
     } else if (mode === "notes") {
       this.renderNotesPane();
+    } else if (mode === "tags") {
+      this.renderTagsPane();
     }
   }
   toggleSearchMode() {
@@ -1301,20 +1315,24 @@ var ReaderView = class extends import_obsidian.ItemView {
     var _a, _b;
     this.sidebarMode = mode;
     const inSearch = mode === "search";
-    this.tocTitleEl.textContent = inSearch ? "\u5168\u4E66\u641C\u7D22" : (_b = (_a = this.currentFile) == null ? void 0 : _a.basename) != null ? _b : "\u76EE\u5F55";
+    const inTags = mode === "tags";
+    this.tocTitleEl.textContent = inSearch ? "\u5168\u4E66\u641C\u7D22" : inTags ? "\u4E66\u7C4D\u6807\u7B7E" : (_b = (_a = this.currentFile) == null ? void 0 : _a.basename) != null ? _b : "\u76EE\u5F55";
     (0, import_obsidian.setIcon)(this.tocModeBtn, inSearch ? "list" : "search");
     this.tocModeBtn.setAttribute("aria-label", inSearch ? "\u8FD4\u56DE\u76EE\u5F55" : "\u5168\u4E66\u641C\u7D22");
     this.tocModeBtn.removeAttribute("title");
-    this.tocTabsEl.classList.toggle("puffs-hidden", inSearch);
+    this.tagsBtn.classList.toggle("is-active", inTags);
+    this.tagsBtn.setAttribute("aria-pressed", inTags ? "true" : "false");
+    this.tocTabsEl.classList.toggle("puffs-hidden", inSearch || inTags);
     this.tocTabBtn.classList.toggle("puffs-toc-tab-active", mode === "toc");
     this.notesTabBtn.classList.toggle("puffs-toc-tab-active", mode === "notes");
     this.tocListEl.classList.toggle("puffs-hidden", mode !== "toc");
     this.notesPaneEl.classList.toggle("puffs-hidden", mode !== "notes");
+    this.tagsPaneEl.classList.toggle("puffs-hidden", mode !== "tags");
     this.searchPaneEl.classList.toggle("puffs-hidden", mode !== "search");
   }
   updateSidebarTitle() {
     var _a, _b;
-    if (!this.tocTitleEl || this.sidebarMode === "search") return;
+    if (!this.tocTitleEl || this.sidebarMode === "search" || this.sidebarMode === "tags") return;
     this.tocTitleEl.textContent = (_b = (_a = this.currentFile) == null ? void 0 : _a.basename) != null ? _b : "\u76EE\u5F55";
   }
   scrollTocToActiveChapter() {
@@ -1703,6 +1721,230 @@ var ReaderView = class extends import_obsidian.ItemView {
       ...partial
     };
     this.plugin.saveBookSettings(this.currentFile.path, next);
+  }
+  // ═══════════════════════════ 书籍标签 ═══════════════════════════
+  getBookTags() {
+    if (!this.currentFile) return { genre: [], feature: [], accumulation: [] };
+    return this.plugin.getBookTags(this.currentFile.path);
+  }
+  async saveBookTags(tags) {
+    if (!this.currentFile) return;
+    await this.plugin.saveBookTags(this.currentFile.path, tags);
+    if (this.isTocOpen && this.sidebarMode === "tags") this.renderTagsPane();
+  }
+  renderTagsPane() {
+    if (!this.tagsPaneEl) return;
+    this.tagsPaneEl.empty();
+    if (!this.currentFile) {
+      this.tagsPaneEl.createDiv({ cls: "puffs-search-empty", text: "\u5F53\u524D\u6CA1\u6709\u6253\u5F00\u4E66\u7C4D" });
+      return;
+    }
+    const catalog = this.plugin.getTagCatalog();
+    const tags = this.getBookTags();
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      "\u9898\u6750",
+      this.mergeTagOptions(catalog.genre, tags.genre),
+      new Set(tags.genre),
+      (tag) => this.toggleBookTag("genre", tag),
+      "\u6DFB\u52A0\u9898\u6750",
+      (value) => this.addCustomTag("genre", value)
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      "\u72B6\u6001",
+      this.mergeTagOptions(catalog.status, tags.status ? [tags.status] : []),
+      new Set(tags.status ? [tags.status] : []),
+      (tag) => this.setBookStatusTag(tag),
+      "\u6DFB\u52A0\u72B6\u6001",
+      (value) => this.addCustomStatusTag(value)
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      "\u7279\u8272",
+      this.mergeTagOptions(catalog.feature, tags.feature),
+      new Set(tags.feature),
+      (tag) => this.toggleBookTag("feature", tag),
+      "\u6DFB\u52A0\u7279\u8272",
+      (value) => this.addCustomTag("feature", value)
+    );
+    this.renderAccumulationTagSection(this.tagsPaneEl, catalog.feature, tags);
+  }
+  renderTagChipSection(parent, title, options, selected, onToggle, placeholder, onAdd) {
+    const section = parent.createDiv({ cls: "puffs-tag-section" });
+    section.createDiv({ cls: "puffs-tag-section-title", text: title });
+    const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
+    for (const option of options) {
+      const chip = chips.createEl("button", {
+        cls: selected.has(option) ? "puffs-tag-chip is-active" : "puffs-tag-chip",
+        text: option
+      });
+      chip.addEventListener("click", () => {
+        Promise.resolve(onToggle(option)).catch((error) => console.error("[Puffs Reader] Failed to toggle tag:", error));
+      });
+    }
+    this.renderCustomTagInput(section, placeholder, onAdd);
+  }
+  renderAccumulationTagSection(parent, options, tags) {
+    const selected = new Set(tags.accumulation.map((tag) => tag.name));
+    const section = parent.createDiv({ cls: "puffs-tag-section" });
+    section.createDiv({ cls: "puffs-tag-section-title", text: "\u79EF\u7D2F\u60C5\u51B5" });
+    const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
+    for (const option of this.mergeTagOptions(options, tags.accumulation.map((tag) => tag.name))) {
+      const chip = chips.createEl("button", {
+        cls: selected.has(option) ? "puffs-tag-chip is-active" : "puffs-tag-chip",
+        text: option
+      });
+      chip.addEventListener("click", () => {
+        this.toggleAccumulationTag(option).catch((error) => console.error("[Puffs Reader] Failed to toggle accumulation tag:", error));
+      });
+    }
+    this.renderCustomTagInput(section, "\u6DFB\u52A0\u79EF\u7D2F\u9879", (value) => this.addCustomAccumulationTag(value));
+    if (tags.accumulation.length === 0) {
+      section.createDiv({ cls: "puffs-tag-empty", text: "\u672A\u9009\u62E9\u79EF\u7D2F\u9879" });
+      return;
+    }
+    const list = section.createDiv({ cls: "puffs-tag-accumulation-list" });
+    for (const item of tags.accumulation) {
+      const row = list.createDiv({ cls: "puffs-tag-accumulation-row" });
+      row.createSpan({ cls: "puffs-tag-accumulation-name", text: item.name });
+      const startInput = row.createEl("input", {
+        cls: "puffs-tag-range-input",
+        attr: { type: "number", min: "1", step: "1", placeholder: "\u8D77" }
+      });
+      startInput.value = item.startChapter ? String(item.startChapter) : "";
+      row.createSpan({ cls: "puffs-tag-range-separator", text: "-" });
+      const endInput = row.createEl("input", {
+        cls: "puffs-tag-range-input",
+        attr: { type: "number", min: "1", step: "1", placeholder: "\u6B62" }
+      });
+      endInput.value = item.endChapter ? String(item.endChapter) : "";
+      const saveRange = () => {
+        this.updateAccumulationRange(item.name, startInput.value, endInput.value).catch((error) => console.error("[Puffs Reader] Failed to update accumulation range:", error));
+      };
+      startInput.addEventListener("change", saveRange);
+      endInput.addEventListener("change", saveRange);
+    }
+  }
+  renderCustomTagInput(parent, placeholder, onAdd) {
+    const row = parent.createDiv({ cls: "puffs-tag-custom-row" });
+    const input = row.createEl("input", {
+      cls: "puffs-tag-custom-input",
+      attr: { type: "text", placeholder }
+    });
+    const addBtn = row.createEl("button", { cls: "puffs-tag-add-btn", text: "\u6DFB\u52A0" });
+    const submit = () => {
+      const value = input.value.trim();
+      if (!value) return;
+      input.value = "";
+      Promise.resolve(onAdd(value)).catch((error) => console.error("[Puffs Reader] Failed to add tag:", error));
+    };
+    addBtn.addEventListener("click", submit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      submit();
+    });
+  }
+  mergeTagOptions(base, extra) {
+    const result = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const value of [...base, ...extra]) {
+      const tag = this.normalizeTagName(value);
+      if (!tag || seen.has(tag)) continue;
+      seen.add(tag);
+      result.push(tag);
+    }
+    return result;
+  }
+  normalizeTagName(value) {
+    return value.trim();
+  }
+  normalizeAccumulationTagName(value) {
+    return this.normalizeTagName(value).replace(/^已积累/, "").trim();
+  }
+  async addCustomTag(group, rawValue) {
+    const value = await this.plugin.addTagCatalogItem(group, rawValue);
+    if (!value) return;
+    await this.addBookTag(group, value);
+  }
+  async addCustomStatusTag(rawValue) {
+    const value = await this.plugin.addTagCatalogItem("status", rawValue);
+    if (!value) return;
+    await this.setBookStatusTag(value);
+  }
+  async addCustomAccumulationTag(rawValue) {
+    const value = await this.plugin.addTagCatalogItem("feature", this.normalizeAccumulationTagName(rawValue));
+    if (!value) return;
+    const tags = this.getBookTags();
+    if (!tags.accumulation.some((tag) => tag.name === value)) {
+      await this.saveBookTags({
+        ...tags,
+        accumulation: [...tags.accumulation, { name: value }]
+      });
+    } else {
+      this.renderTagsPane();
+    }
+  }
+  async addBookTag(group, tag) {
+    const tags = this.getBookTags();
+    const current = tags[group];
+    if (current.includes(tag)) {
+      this.renderTagsPane();
+      return;
+    }
+    await this.saveBookTags({ ...tags, [group]: [...current, tag] });
+  }
+  async toggleBookTag(group, tag) {
+    const tags = this.getBookTags();
+    const selected = new Set(tags[group]);
+    if (selected.has(tag)) selected.delete(tag);
+    else selected.add(tag);
+    await this.saveBookTags({ ...tags, [group]: Array.from(selected) });
+  }
+  async setBookStatusTag(tag) {
+    const tags = this.getBookTags();
+    await this.saveBookTags({
+      ...tags,
+      status: tags.status === tag ? void 0 : tag
+    });
+  }
+  async toggleAccumulationTag(tag) {
+    const tags = this.getBookTags();
+    const exists = tags.accumulation.some((item) => item.name === tag);
+    await this.saveBookTags({
+      ...tags,
+      accumulation: exists ? tags.accumulation.filter((item) => item.name !== tag) : [...tags.accumulation, { name: tag }]
+    });
+  }
+  async updateAccumulationRange(name, rawStart, rawEnd) {
+    const startChapter = this.parseOptionalChapter(rawStart);
+    const endChapter = this.parseOptionalChapter(rawEnd);
+    if (startChapter === null || endChapter === null) {
+      new import_obsidian.Notice("\u7AE0\u8282\u8303\u56F4\u5FC5\u987B\u662F\u6B63\u6574\u6570");
+      this.renderTagsPane();
+      return;
+    }
+    if (startChapter !== void 0 && endChapter !== void 0 && endChapter < startChapter) {
+      new import_obsidian.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u5C0F\u4E8E\u8D77\u59CB\u7AE0\u8282");
+      this.renderTagsPane();
+      return;
+    }
+    const tags = this.getBookTags();
+    await this.saveBookTags({
+      ...tags,
+      accumulation: tags.accumulation.map((item) => item.name === name ? {
+        name: item.name,
+        ...startChapter !== void 0 ? { startChapter } : {},
+        ...endChapter !== void 0 ? { endChapter } : {}
+      } : item)
+    });
+  }
+  parseOptionalChapter(value) {
+    const trimmed = value.trim();
+    if (!trimmed) return void 0;
+    const n = Number(trimmed);
+    return Number.isInteger(n) && n > 0 ? n : null;
   }
   bindGlobalKeys() {
     this.boundGlobalKeydown = (e) => {
@@ -2922,6 +3164,78 @@ var LEGACY_PROLOGUE_TOC_REGEX = "^\\s*(?:\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u
 var LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = "^\\s*(?:\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)|((?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?))$";
 var SUMMARY_BOOK_SUFFIX = "-\u6982\u62EC\u7248";
 var UNRECOGNIZED_CHAPTER_TITLE = "\u672A\u8BC6\u522B\u7AE0\u8282";
+function createEmptyBookTags() {
+  return { genre: [], feature: [], accumulation: [] };
+}
+function normalizeTagName(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function normalizeAccumulationTagName(value) {
+  return normalizeTagName(value).replace(/^已积累/, "").trim();
+}
+function uniqueNormalizedTags(values, normalize = normalizeTagName) {
+  const result = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const value of values) {
+    const tag = normalize(value);
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+  return result;
+}
+function normalizePositiveChapter(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return void 0;
+  return n;
+}
+function normalizeBookTags(input) {
+  const raw = input != null ? input : {};
+  const status = normalizeTagName(raw.status);
+  const accumulation = Array.isArray(raw.accumulation) ? raw.accumulation.map((item) => {
+    const record = item;
+    const name = normalizeAccumulationTagName(record == null ? void 0 : record.name);
+    if (!name) return null;
+    const startChapter = normalizePositiveChapter(record == null ? void 0 : record.startChapter);
+    const normalizedEnd = normalizePositiveChapter(record == null ? void 0 : record.endChapter);
+    const endChapter = startChapter !== void 0 && normalizedEnd !== void 0 && normalizedEnd < startChapter ? void 0 : normalizedEnd;
+    return {
+      name,
+      ...startChapter !== void 0 ? { startChapter } : {},
+      ...endChapter !== void 0 ? { endChapter } : {}
+    };
+  }).filter((item) => item !== null) : [];
+  const byName = /* @__PURE__ */ new Map();
+  for (const item of accumulation) {
+    if (!byName.has(item.name)) byName.set(item.name, item);
+  }
+  return {
+    genre: uniqueNormalizedTags(Array.isArray(raw.genre) ? raw.genre : []),
+    ...status ? { status } : {},
+    feature: uniqueNormalizedTags(Array.isArray(raw.feature) ? raw.feature : []),
+    accumulation: Array.from(byName.values())
+  };
+}
+function hasAnyBookTags(tags) {
+  const normalized = normalizeBookTags(tags);
+  return normalized.genre.length > 0 || !!normalized.status || normalized.feature.length > 0 || normalized.accumulation.length > 0;
+}
+function normalizeTagCatalog(input) {
+  var _a, _b, _c, _d, _e, _f;
+  return {
+    genre: uniqueNormalizedTags([...(_a = DEFAULT_TAG_CATALOG.genre) != null ? _a : [], ...(_b = input == null ? void 0 : input.genre) != null ? _b : []]),
+    status: uniqueNormalizedTags([...(_c = DEFAULT_TAG_CATALOG.status) != null ? _c : [], ...(_d = input == null ? void 0 : input.status) != null ? _d : []]),
+    feature: uniqueNormalizedTags([...(_e = DEFAULT_TAG_CATALOG.feature) != null ? _e : [], ...(_f = input == null ? void 0 : input.feature) != null ? _f : []])
+  };
+}
+function formatAccumulationTagLabel(tag) {
+  if (tag.startChapter !== void 0 && tag.endChapter !== void 0) {
+    return `${tag.name} ${tag.startChapter}-${tag.endChapter}\u7AE0`;
+  }
+  if (tag.startChapter !== void 0) return `${tag.name} \u7B2C${tag.startChapter}\u7AE0\u8D77`;
+  if (tag.endChapter !== void 0) return `${tag.name} \u81F3\u7B2C${tag.endChapter}\u7AE0`;
+  return tag.name;
+}
 function getReadingStatsDisplayTitle(filePath, title) {
   var _a;
   const trimmedTitle = (title != null ? title : "").trim();
@@ -2968,6 +3282,12 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.globalMetric = null;
     this.bookMetric = null;
     this.speedUnit = "hour";
+    this.tagFilters = {
+      genre: /* @__PURE__ */ new Set(),
+      status: /* @__PURE__ */ new Set(),
+      feature: /* @__PURE__ */ new Set(),
+      accumulation: /* @__PURE__ */ new Set()
+    };
     this.plugin = plugin;
   }
   getViewType() {
@@ -3009,13 +3329,14 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
   }
   renderGlobal(parent) {
-    const stats = this.plugin.getReadingStats();
-    const books = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
-    const dailyEntries = Object.entries(stats.daily).sort((a, b) => a[0].localeCompare(b[0]));
+    const allBooks = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const books = allBooks.filter((book) => this.matchesTagFilters(book));
+    const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
     this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1");
+    this.renderTagFilters(parent, allBooks);
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-global");
     this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
@@ -3033,7 +3354,10 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.createSectionTitle(parent, "\u6700\u8FD1\u9605\u8BFB");
     const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
     if (books.length === 0) {
-      list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002" });
+      list.createDiv({
+        cls: "puffs-reading-stats-empty",
+        text: allBooks.length > 0 && this.hasActiveTagFilters() ? "\u6CA1\u6709\u5339\u914D\u5F53\u524D\u6807\u7B7E\u7B5B\u9009\u7684\u9605\u8BFB\u7EDF\u8BA1\u3002" : "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002"
+      });
       return;
     }
     for (const book of books) {
@@ -3053,6 +3377,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: "puffs-reading-stats-book-main" });
       main.createDiv({ cls: "puffs-reading-stats-book-title", text: book.title });
+      this.renderBookTagBadges(main, book.tags);
       const meta = main.createDiv({ cls: "puffs-reading-stats-book-meta" });
       meta.createSpan({
         text: [
@@ -3077,6 +3402,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
     this.selectedBookPath = book.groupKey;
     this.renderHeader(parent, book.title, true);
+    this.renderBookTagBadges(parent, book.tags, "puffs-reading-stats-detail-tags");
     const dailyEntries = Object.entries((_b = book.daily) != null ? _b : {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
@@ -3153,6 +3479,116 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   createSectionTitle(parent, title) {
     parent.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
   }
+  renderTagFilters(parent, books) {
+    const options = this.getTagFilterOptions(books);
+    const hasOptions = options.genre.length > 0 || options.status.length > 0 || options.feature.length > 0 || options.accumulation.length > 0;
+    if (!hasOptions && !this.hasActiveTagFilters()) return;
+    const panel = parent.createDiv({ cls: "puffs-reading-stats-tag-filter" });
+    const header = panel.createDiv({ cls: "puffs-reading-stats-tag-filter-head" });
+    header.createDiv({ cls: "puffs-reading-stats-tag-filter-title", text: "\u6807\u7B7E\u7B5B\u9009" });
+    if (this.hasActiveTagFilters()) {
+      const clearBtn = header.createEl("button", { cls: "puffs-reading-stats-tag-clear", text: "\u6E05\u9664" });
+      clearBtn.addEventListener("click", () => {
+        this.clearTagFilters();
+        this.render();
+      });
+    }
+    this.renderTagFilterGroup(panel, "\u9898\u6750", "genre", options.genre);
+    this.renderTagFilterGroup(panel, "\u72B6\u6001", "status", options.status);
+    this.renderTagFilterGroup(panel, "\u7279\u8272", "feature", options.feature);
+    this.renderTagFilterGroup(panel, "\u79EF\u7D2F", "accumulation", options.accumulation);
+  }
+  renderTagFilterGroup(parent, label, group, options) {
+    if (options.length === 0) return;
+    const row = parent.createDiv({ cls: "puffs-reading-stats-tag-filter-row" });
+    row.createSpan({ cls: "puffs-reading-stats-tag-filter-label", text: label });
+    const chips = row.createDiv({ cls: "puffs-reading-stats-tag-filter-chips" });
+    for (const option of options) {
+      const active = this.tagFilters[group].has(option);
+      const chip = chips.createEl("button", {
+        cls: active ? "puffs-tag-chip is-active" : "puffs-tag-chip",
+        text: option
+      });
+      chip.addEventListener("click", () => {
+        this.toggleTagFilter(group, option);
+        this.render();
+      });
+    }
+  }
+  getTagFilterOptions(books) {
+    const catalog = this.plugin.getTagCatalog();
+    return {
+      genre: uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)]),
+      status: uniqueNormalizedTags([...catalog.status, ...books.map((book) => {
+        var _a;
+        return (_a = book.tags.status) != null ? _a : "";
+      })]),
+      feature: uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)]),
+      accumulation: uniqueNormalizedTags([
+        ...catalog.feature,
+        ...books.flatMap((book) => book.tags.accumulation.map((tag) => tag.name))
+      ])
+    };
+  }
+  toggleTagFilter(group, value) {
+    const filters = this.tagFilters[group];
+    if (filters.has(value)) filters.delete(value);
+    else filters.add(value);
+    this.globalMetric = null;
+  }
+  clearTagFilters() {
+    for (const filters of Object.values(this.tagFilters)) filters.clear();
+    this.globalMetric = null;
+  }
+  hasActiveTagFilters() {
+    return Object.values(this.tagFilters).some((filters) => filters.size > 0);
+  }
+  matchesTagFilters(book) {
+    const tags = normalizeBookTags(book.tags);
+    return this.matchesTagFilterGroup(this.tagFilters.genre, tags.genre) && this.matchesTagFilterGroup(this.tagFilters.status, tags.status ? [tags.status] : []) && this.matchesTagFilterGroup(this.tagFilters.feature, tags.feature) && this.matchesTagFilterGroup(this.tagFilters.accumulation, tags.accumulation.map((tag) => tag.name));
+  }
+  matchesTagFilterGroup(filters, values) {
+    return filters.size === 0 || values.some((value) => filters.has(value));
+  }
+  getDailyEntriesForBooks(books) {
+    var _a, _b, _c;
+    const dailyByDate = {};
+    for (const book of books) {
+      for (const [date, daily] of Object.entries((_a = book.daily) != null ? _a : {})) {
+        const aggregate = (_b = dailyByDate[date]) != null ? _b : { readingMs: 0, readWords: 0, readChapterRanges: [] };
+        aggregate.readingMs += daily.readingMs;
+        aggregate.readWords += daily.readWords;
+        aggregate.readChapterRanges = this.mergeDisplayableChapterRanges([
+          ...aggregate.readChapterRanges,
+          ...(_c = daily.readChapterRanges) != null ? _c : []
+        ]);
+        dailyByDate[date] = aggregate;
+      }
+    }
+    return Object.entries(dailyByDate);
+  }
+  renderBookTagBadges(parent, tags, extraClass = "") {
+    const items = this.getBookTagBadgeLabels(tags);
+    if (items.length === 0) return;
+    const row = parent.createDiv({
+      cls: ["puffs-reading-stats-tags", extraClass].filter(Boolean).join(" ")
+    });
+    for (const item of items) {
+      row.createSpan({ cls: `puffs-reading-stats-tag is-${item.group}`, text: item.label });
+    }
+  }
+  getBookTagBadgeLabels(tags) {
+    const normalized = normalizeBookTags(tags);
+    return [
+      ...normalized.genre.map((label) => ({ group: "genre", label })),
+      ...normalized.status ? [{ group: "status", label: normalized.status }] : [],
+      ...normalized.feature.map((label) => ({ group: "feature", label })),
+      ...normalized.accumulation.map((tag) => ({
+        group: "accumulation",
+        label: formatAccumulationTagLabel(tag)
+      }))
+    ];
+  }
   getAggregatedBooks() {
     var _a, _b, _c, _d;
     const stats = this.plugin.getReadingStats();
@@ -3161,6 +3597,8 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       const sourceTitle = getReadingStatsDisplayTitle(filePath, book.title);
       const groupKey = getReadingStatsGroupKey(filePath, book.title);
       const isSummary = isSummaryReadingStatsBook(filePath, book.title);
+      const fileTags = this.plugin.getBookTags(filePath);
+      const fileHasTags = hasAnyBookTags(fileTags);
       let group = groups.get(groupKey);
       if (!group) {
         group = {
@@ -3168,6 +3606,8 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
           title: stripSummaryBookSuffix(sourceTitle),
           filePaths: [],
           hasOriginalSource: false,
+          hasOriginalTags: false,
+          tags: createEmptyBookTags(),
           totalReadingMs: 0,
           totalReadWords: 0,
           readChapterRanges: [],
@@ -3179,6 +3619,12 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       if (!isSummary && !group.hasOriginalSource) {
         group.title = sourceTitle;
         group.hasOriginalSource = true;
+      }
+      if (!isSummary && fileHasTags && !group.hasOriginalTags) {
+        group.tags = fileTags;
+        group.hasOriginalTags = true;
+      } else if (isSummary && fileHasTags && !group.hasOriginalTags && !hasAnyBookTags(group.tags)) {
+        group.tags = fileTags;
       }
       group.filePaths.push(filePath);
       group.totalReadingMs += book.totalReadingMs;
@@ -3442,6 +3888,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     this.settings = DEFAULT_SETTINGS;
     this.progress = {};
     this.bookSettings = {};
+    this.tagCatalog = normalizeTagCatalog(void 0);
     this.readingStats = { schemaVersion: 2, books: {}, daily: {} };
     this.lastDataBackupAt = 0;
     this.knownBooks = [];
@@ -3545,6 +3992,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     }
     this.progress = (_a = data == null ? void 0 : data.progress) != null ? _a : {};
     this.bookSettings = (_b = data == null ? void 0 : data.bookSettings) != null ? _b : {};
+    this.tagCatalog = normalizeTagCatalog(data == null ? void 0 : data.tagCatalog);
     this.readingStats = this.normalizeReadingStats(data == null ? void 0 : data.readingStats);
     this.lastDataBackupAt = (_c = data == null ? void 0 : data.lastDataBackupAt) != null ? _c : 0;
     this.knownBooks = (_d = data == null ? void 0 : data.knownBooks) != null ? _d : [];
@@ -3570,6 +4018,7 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
       settings: this.settings,
       progress: this.progress,
       bookSettings: this.bookSettings,
+      tagCatalog: this.tagCatalog,
       readingStats: this.readingStats,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks
@@ -3975,6 +4424,28 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     var _a;
     return (_a = this.bookSettings[filePath]) != null ? _a : {};
   }
+  getBookTags(filePath) {
+    var _a;
+    return normalizeBookTags((_a = this.bookSettings[filePath]) == null ? void 0 : _a.tags);
+  }
+  getTagCatalog() {
+    return normalizeTagCatalog(this.tagCatalog);
+  }
+  async addTagCatalogItem(group, rawValue) {
+    const value = group === "feature" ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
+    if (!value) return null;
+    const next = normalizeTagCatalog(this.tagCatalog);
+    next[group] = uniqueNormalizedTags([...next[group], value]);
+    this.tagCatalog = next;
+    await this.savePluginData();
+    return value;
+  }
+  async saveBookTags(filePath, tags) {
+    await this.saveBookSettings(filePath, {
+      ...this.getBookSettings(filePath),
+      tags: normalizeBookTags(tags)
+    });
+  }
   async saveBookSettings(filePath, settings) {
     var _a, _b, _c;
     const compact = {};
@@ -3998,6 +4469,10 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;
+    }
+    const tags = normalizeBookTags(settings.tags);
+    if (hasAnyBookTags(tags)) {
+      compact.tags = tags;
     }
     this.bookSettings[filePath] = compact;
     await this.savePluginData();

@@ -82,6 +82,11 @@
   border-color: transparent;
 }
 
+.puffs-icon-btn.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent) !important;
+  color: var(--text-normal);
+}
+
 /* ── 目录 / 搜索共用侧边栏 ── */
 .puffs-toc-sidebar {
   width: var(--puffs-sidebar-width);
@@ -154,7 +159,8 @@
   color: var(--text-normal);
 }
 
-.puffs-notes-pane {
+.puffs-notes-pane,
+.puffs-tags-pane {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -519,6 +525,125 @@
   border-color: var(--interactive-accent);
 }
 
+/* ── 书籍标签 ── */
+.puffs-tag-section {
+  margin-bottom: 16px;
+}
+
+.puffs-tag-section-title {
+  margin-bottom: 8px;
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.puffs-tag-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.puffs-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-muted) 5%, transparent);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.puffs-tag-chip:hover,
+.puffs-tag-chip:focus-visible,
+.puffs-tag-chip.is-active {
+  border-color: color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 13%, var(--background-primary));
+  color: var(--text-normal);
+  outline: none;
+}
+
+.puffs-tag-custom-row {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.puffs-tag-custom-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 3px 7px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.puffs-tag-add-btn {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.puffs-tag-empty {
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.puffs-tag-accumulation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.puffs-tag-accumulation-row {
+  display: grid;
+  grid-template-columns: minmax(52px, 1fr) 54px 12px 54px;
+  align-items: center;
+  gap: 6px;
+}
+
+.puffs-tag-accumulation-name {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.puffs-tag-range-input {
+  width: 54px;
+  height: 26px;
+  padding: 2px 5px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
+.puffs-tag-range-separator {
+  color: var(--text-faint);
+  text-align: center;
+}
+
 /* ── 阅读统计标签页 ── */
 .workspace-leaf-content[data-type='puffs-reading-stats-view'] .view-content {
   padding: 0;
@@ -561,6 +686,93 @@
 
 .puffs-reading-stats-back {
   flex: 0 0 auto;
+}
+
+.puffs-reading-stats-tag-filter {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text-muted) 4%, transparent);
+}
+
+.puffs-reading-stats-tag-filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.puffs-reading-stats-tag-filter-title {
+  color: var(--text-normal);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.puffs-reading-stats-tag-clear {
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-reading-stats-tag-filter-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin-top: 7px;
+}
+
+.puffs-reading-stats-tag-filter-label {
+  padding-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.puffs-reading-stats-tag-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.puffs-reading-stats-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 4px 0 6px;
+}
+
+.puffs-reading-stats-detail-tags {
+  margin: -6px 0 14px;
+}
+
+.puffs-reading-stats-tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 22px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.puffs-reading-stats-tag.is-status {
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  color: var(--text-normal);
+}
+
+.puffs-reading-stats-tag.is-accumulation {
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 28%, transparent);
 }
 
 .puffs-reading-stats-summary {
@@ -1055,6 +1267,7 @@
 .puffs-toc-list::-webkit-scrollbar,
 .puffs-search-results::-webkit-scrollbar,
 .puffs-notes-pane::-webkit-scrollbar,
+.puffs-tags-pane::-webkit-scrollbar,
 .puffs-typo-panel::-webkit-scrollbar {
   width: 5px;
 }
@@ -1062,6 +1275,7 @@
 .puffs-toc-list::-webkit-scrollbar-thumb,
 .puffs-search-results::-webkit-scrollbar-thumb,
 .puffs-notes-pane::-webkit-scrollbar-thumb,
+.puffs-tags-pane::-webkit-scrollbar-thumb,
 .puffs-typo-panel::-webkit-scrollbar-thumb {
   border-radius: 3px;
   background: color-mix(in srgb, var(--text-muted) 28%, transparent);

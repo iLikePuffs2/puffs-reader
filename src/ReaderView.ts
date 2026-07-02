@@ -16,6 +16,7 @@ import PuffsReaderPlugin from './main';
 import {
   Annotation,
   BookSettings,
+  BookTags,
   Chapter,
   CountedRange,
   DEFAULT_SETTINGS,
@@ -47,6 +48,9 @@ interface ReadingStatsPageRange {
   endOffset: number;
 }
 
+type ReaderSidebarMode = 'toc' | 'search' | 'notes' | 'tags';
+type EditableTagArrayGroup = 'genre' | 'feature';
+
 const DEFAULT_READING_STATS_PAGE_MIN_MS = 100;
 const DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1000;
 
@@ -76,6 +80,7 @@ export class ReaderView extends ItemView {
   private searchResultsEl!: HTMLElement;
   private readingArea!: HTMLElement;
   private contentContainer!: HTMLElement;
+  private tagsBtn!: HTMLElement;
   private settingsBtn!: HTMLElement;
   private typographyPanel!: HTMLElement;
   private encodingBtn!: HTMLElement;
@@ -97,10 +102,11 @@ export class ReaderView extends ItemView {
   private searchJumpPageTurns = 0;
 
   private isTocOpen = false;
-  private sidebarMode: 'toc' | 'search' | 'notes' = 'toc';
+  private sidebarMode: ReaderSidebarMode = 'toc';
   private isTypographyOpen = false;
   private isRenderingPage = false;
   private notesPaneEl!: HTMLElement;
+  private tagsPaneEl!: HTMLElement;
   private tocTabsEl!: HTMLElement;
   private tocTabBtn!: HTMLElement;
   private notesTabBtn!: HTMLElement;
@@ -264,6 +270,13 @@ export class ReaderView extends ItemView {
 
     const header = this.tocSidebar.createDiv({ cls: 'puffs-toc-header' });
     this.tocTitleEl = header.createSpan({ cls: 'puffs-toc-title', text: '目录' });
+    this.tagsBtn = header.createEl('button', {
+      cls: 'puffs-icon-btn puffs-toc-search-btn',
+      attr: { 'aria-label': '书籍标签' },
+    });
+    setIcon(this.tagsBtn, 'tags');
+    this.tagsBtn.addEventListener('click', () => this.openSidebar(this.sidebarMode === 'tags' ? 'toc' : 'tags'));
+
     this.settingsBtn = header.createEl('button', {
       cls: 'puffs-icon-btn puffs-toc-search-btn',
       attr: { 'aria-label': '书籍设置' },
@@ -286,6 +299,7 @@ export class ReaderView extends ItemView {
 
     this.tocListEl = this.tocSidebar.createDiv({ cls: 'puffs-toc-list' });
     this.notesPaneEl = this.tocSidebar.createDiv({ cls: 'puffs-notes-pane puffs-hidden' });
+    this.tagsPaneEl = this.tocSidebar.createDiv({ cls: 'puffs-tags-pane puffs-hidden' });
 
     this.searchPaneEl = this.tocSidebar.createDiv({ cls: 'puffs-sidebar-search puffs-hidden' });
     const searchHeader = this.searchPaneEl.createDiv({ cls: 'puffs-search-header' });
@@ -1437,7 +1451,7 @@ export class ReaderView extends ItemView {
     this.readingArea.focus();
   }
 
-  private openSidebar(mode: 'toc' | 'search' | 'notes', searchQuery?: string): void {
+  private openSidebar(mode: ReaderSidebarMode, searchQuery?: string): void {
     this.isTocOpen = true;
     this.tocSidebar.classList.remove('puffs-hidden');
     this.applySidebarMode(mode);
@@ -1455,6 +1469,8 @@ export class ReaderView extends ItemView {
       });
     } else if (mode === 'notes') {
       this.renderNotesPane();
+    } else if (mode === 'tags') {
+      this.renderTagsPane();
     }
   }
 
@@ -1467,25 +1483,29 @@ export class ReaderView extends ItemView {
     this.openSidebar(mode);
   }
 
-  private applySidebarMode(mode: 'toc' | 'search' | 'notes'): void {
+  private applySidebarMode(mode: ReaderSidebarMode): void {
     this.sidebarMode = mode;
     const inSearch = mode === 'search';
-    this.tocTitleEl.textContent = inSearch ? '全书搜索' : (this.currentFile?.basename ?? '目录');
+    const inTags = mode === 'tags';
+    this.tocTitleEl.textContent = inSearch ? '全书搜索' : inTags ? '书籍标签' : (this.currentFile?.basename ?? '目录');
     setIcon(this.tocModeBtn, inSearch ? 'list' : 'search');
     this.tocModeBtn.setAttribute('aria-label', inSearch ? '返回目录' : '全书搜索');
     this.tocModeBtn.removeAttribute('title');
+    this.tagsBtn.classList.toggle('is-active', inTags);
+    this.tagsBtn.setAttribute('aria-pressed', inTags ? 'true' : 'false');
 
-    this.tocTabsEl.classList.toggle('puffs-hidden', inSearch);
+    this.tocTabsEl.classList.toggle('puffs-hidden', inSearch || inTags);
     this.tocTabBtn.classList.toggle('puffs-toc-tab-active', mode === 'toc');
     this.notesTabBtn.classList.toggle('puffs-toc-tab-active', mode === 'notes');
 
     this.tocListEl.classList.toggle('puffs-hidden', mode !== 'toc');
     this.notesPaneEl.classList.toggle('puffs-hidden', mode !== 'notes');
+    this.tagsPaneEl.classList.toggle('puffs-hidden', mode !== 'tags');
     this.searchPaneEl.classList.toggle('puffs-hidden', mode !== 'search');
   }
 
   private updateSidebarTitle(): void {
-    if (!this.tocTitleEl || this.sidebarMode === 'search') return;
+    if (!this.tocTitleEl || this.sidebarMode === 'search' || this.sidebarMode === 'tags') return;
     this.tocTitleEl.textContent = this.currentFile?.basename ?? '目录';
   }
 
@@ -1930,6 +1950,266 @@ export class ReaderView extends ItemView {
       ...partial,
     };
     this.plugin.saveBookSettings(this.currentFile.path, next);
+  }
+
+  // ═══════════════════════════ 书籍标签 ═══════════════════════════
+
+  private getBookTags(): BookTags {
+    if (!this.currentFile) return { genre: [], feature: [], accumulation: [] };
+    return this.plugin.getBookTags(this.currentFile.path);
+  }
+
+  private async saveBookTags(tags: BookTags): Promise<void> {
+    if (!this.currentFile) return;
+    await this.plugin.saveBookTags(this.currentFile.path, tags);
+    if (this.isTocOpen && this.sidebarMode === 'tags') this.renderTagsPane();
+  }
+
+  private renderTagsPane(): void {
+    if (!this.tagsPaneEl) return;
+    this.tagsPaneEl.empty();
+    if (!this.currentFile) {
+      this.tagsPaneEl.createDiv({ cls: 'puffs-search-empty', text: '当前没有打开书籍' });
+      return;
+    }
+
+    const catalog = this.plugin.getTagCatalog();
+    const tags = this.getBookTags();
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      '题材',
+      this.mergeTagOptions(catalog.genre, tags.genre),
+      new Set(tags.genre),
+      (tag) => this.toggleBookTag('genre', tag),
+      '添加题材',
+      (value) => this.addCustomTag('genre', value),
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      '状态',
+      this.mergeTagOptions(catalog.status, tags.status ? [tags.status] : []),
+      new Set(tags.status ? [tags.status] : []),
+      (tag) => this.setBookStatusTag(tag),
+      '添加状态',
+      (value) => this.addCustomStatusTag(value),
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      '特色',
+      this.mergeTagOptions(catalog.feature, tags.feature),
+      new Set(tags.feature),
+      (tag) => this.toggleBookTag('feature', tag),
+      '添加特色',
+      (value) => this.addCustomTag('feature', value),
+    );
+    this.renderAccumulationTagSection(this.tagsPaneEl, catalog.feature, tags);
+  }
+
+  private renderTagChipSection(
+    parent: HTMLElement,
+    title: string,
+    options: string[],
+    selected: Set<string>,
+    onToggle: (tag: string) => void | Promise<void>,
+    placeholder: string,
+    onAdd: (value: string) => void | Promise<void>,
+  ): void {
+    const section = parent.createDiv({ cls: 'puffs-tag-section' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: title });
+    const chips = section.createDiv({ cls: 'puffs-tag-chip-row' });
+    for (const option of options) {
+      const chip = chips.createEl('button', {
+        cls: selected.has(option) ? 'puffs-tag-chip is-active' : 'puffs-tag-chip',
+        text: option,
+      });
+      chip.addEventListener('click', () => {
+        Promise.resolve(onToggle(option)).catch((error) => console.error('[Puffs Reader] Failed to toggle tag:', error));
+      });
+    }
+    this.renderCustomTagInput(section, placeholder, onAdd);
+  }
+
+  private renderAccumulationTagSection(parent: HTMLElement, options: string[], tags: BookTags): void {
+    const selected = new Set(tags.accumulation.map((tag) => tag.name));
+    const section = parent.createDiv({ cls: 'puffs-tag-section' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: '积累情况' });
+    const chips = section.createDiv({ cls: 'puffs-tag-chip-row' });
+    for (const option of this.mergeTagOptions(options, tags.accumulation.map((tag) => tag.name))) {
+      const chip = chips.createEl('button', {
+        cls: selected.has(option) ? 'puffs-tag-chip is-active' : 'puffs-tag-chip',
+        text: option,
+      });
+      chip.addEventListener('click', () => {
+        this.toggleAccumulationTag(option)
+          .catch((error) => console.error('[Puffs Reader] Failed to toggle accumulation tag:', error));
+      });
+    }
+    this.renderCustomTagInput(section, '添加积累项', (value) => this.addCustomAccumulationTag(value));
+
+    if (tags.accumulation.length === 0) {
+      section.createDiv({ cls: 'puffs-tag-empty', text: '未选择积累项' });
+      return;
+    }
+
+    const list = section.createDiv({ cls: 'puffs-tag-accumulation-list' });
+    for (const item of tags.accumulation) {
+      const row = list.createDiv({ cls: 'puffs-tag-accumulation-row' });
+      row.createSpan({ cls: 'puffs-tag-accumulation-name', text: item.name });
+      const startInput = row.createEl('input', {
+        cls: 'puffs-tag-range-input',
+        attr: { type: 'number', min: '1', step: '1', placeholder: '起' },
+      }) as HTMLInputElement;
+      startInput.value = item.startChapter ? String(item.startChapter) : '';
+      row.createSpan({ cls: 'puffs-tag-range-separator', text: '-' });
+      const endInput = row.createEl('input', {
+        cls: 'puffs-tag-range-input',
+        attr: { type: 'number', min: '1', step: '1', placeholder: '止' },
+      }) as HTMLInputElement;
+      endInput.value = item.endChapter ? String(item.endChapter) : '';
+      const saveRange = () => {
+        this.updateAccumulationRange(item.name, startInput.value, endInput.value)
+          .catch((error) => console.error('[Puffs Reader] Failed to update accumulation range:', error));
+      };
+      startInput.addEventListener('change', saveRange);
+      endInput.addEventListener('change', saveRange);
+    }
+  }
+
+  private renderCustomTagInput(parent: HTMLElement, placeholder: string, onAdd: (value: string) => void | Promise<void>): void {
+    const row = parent.createDiv({ cls: 'puffs-tag-custom-row' });
+    const input = row.createEl('input', {
+      cls: 'puffs-tag-custom-input',
+      attr: { type: 'text', placeholder },
+    }) as HTMLInputElement;
+    const addBtn = row.createEl('button', { cls: 'puffs-tag-add-btn', text: '添加' });
+    const submit = () => {
+      const value = input.value.trim();
+      if (!value) return;
+      input.value = '';
+      Promise.resolve(onAdd(value)).catch((error) => console.error('[Puffs Reader] Failed to add tag:', error));
+    };
+    addBtn.addEventListener('click', submit);
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      submit();
+    });
+  }
+
+  private mergeTagOptions(base: string[], extra: string[]): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const value of [...base, ...extra]) {
+      const tag = this.normalizeTagName(value);
+      if (!tag || seen.has(tag)) continue;
+      seen.add(tag);
+      result.push(tag);
+    }
+    return result;
+  }
+
+  private normalizeTagName(value: string): string {
+    return value.trim();
+  }
+
+  private normalizeAccumulationTagName(value: string): string {
+    return this.normalizeTagName(value).replace(/^已积累/, '').trim();
+  }
+
+  private async addCustomTag(group: EditableTagArrayGroup, rawValue: string): Promise<void> {
+    const value = await this.plugin.addTagCatalogItem(group, rawValue);
+    if (!value) return;
+    await this.addBookTag(group, value);
+  }
+
+  private async addCustomStatusTag(rawValue: string): Promise<void> {
+    const value = await this.plugin.addTagCatalogItem('status', rawValue);
+    if (!value) return;
+    await this.setBookStatusTag(value);
+  }
+
+  private async addCustomAccumulationTag(rawValue: string): Promise<void> {
+    const value = await this.plugin.addTagCatalogItem('feature', this.normalizeAccumulationTagName(rawValue));
+    if (!value) return;
+    const tags = this.getBookTags();
+    if (!tags.accumulation.some((tag) => tag.name === value)) {
+      await this.saveBookTags({
+        ...tags,
+        accumulation: [...tags.accumulation, { name: value }],
+      });
+    } else {
+      this.renderTagsPane();
+    }
+  }
+
+  private async addBookTag(group: EditableTagArrayGroup, tag: string): Promise<void> {
+    const tags = this.getBookTags();
+    const current = tags[group];
+    if (current.includes(tag)) {
+      this.renderTagsPane();
+      return;
+    }
+    await this.saveBookTags({ ...tags, [group]: [...current, tag] });
+  }
+
+  private async toggleBookTag(group: EditableTagArrayGroup, tag: string): Promise<void> {
+    const tags = this.getBookTags();
+    const selected = new Set(tags[group]);
+    if (selected.has(tag)) selected.delete(tag);
+    else selected.add(tag);
+    await this.saveBookTags({ ...tags, [group]: Array.from(selected) });
+  }
+
+  private async setBookStatusTag(tag: string): Promise<void> {
+    const tags = this.getBookTags();
+    await this.saveBookTags({
+      ...tags,
+      status: tags.status === tag ? undefined : tag,
+    });
+  }
+
+  private async toggleAccumulationTag(tag: string): Promise<void> {
+    const tags = this.getBookTags();
+    const exists = tags.accumulation.some((item) => item.name === tag);
+    await this.saveBookTags({
+      ...tags,
+      accumulation: exists
+        ? tags.accumulation.filter((item) => item.name !== tag)
+        : [...tags.accumulation, { name: tag }],
+    });
+  }
+
+  private async updateAccumulationRange(name: string, rawStart: string, rawEnd: string): Promise<void> {
+    const startChapter = this.parseOptionalChapter(rawStart);
+    const endChapter = this.parseOptionalChapter(rawEnd);
+    if (startChapter === null || endChapter === null) {
+      new Notice('章节范围必须是正整数');
+      this.renderTagsPane();
+      return;
+    }
+    if (startChapter !== undefined && endChapter !== undefined && endChapter < startChapter) {
+      new Notice('结束章节不能小于起始章节');
+      this.renderTagsPane();
+      return;
+    }
+    const tags = this.getBookTags();
+    await this.saveBookTags({
+      ...tags,
+      accumulation: tags.accumulation.map((item) => item.name === name
+        ? {
+            name: item.name,
+            ...(startChapter !== undefined ? { startChapter } : {}),
+            ...(endChapter !== undefined ? { endChapter } : {}),
+          }
+        : item),
+    });
+  }
+
+  private parseOptionalChapter(value: string): number | undefined | null {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const n = Number(trimmed);
+    return Number.isInteger(n) && n > 0 ? n : null;
   }
 
   private bindGlobalKeys(): void {

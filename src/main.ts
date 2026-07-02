@@ -11,11 +11,14 @@ import {
   ReaderSettings,
   BookProgress,
   BookSettings,
+  BookTags,
   BookDailyReadingStats,
   CountedRange,
+  DEFAULT_TAG_CATALOG,
   DEFAULT_SETTINGS,
   ReadChapterRange,
   ReadingStatsData,
+  TagCatalog,
 } from './types';
 
 const READING_STATS_VIEW_TYPE = 'puffs-reading-stats-view';
@@ -25,6 +28,105 @@ const LEGACY_PROLOGUE_TOC_REGEX = '^\\s*(?:第[零〇一二三四五六七八九
 const LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = '^\\s*(?:第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)|((?:序章|楔子|引子)(?:\\s+.*)?))$';
 const SUMMARY_BOOK_SUFFIX = '-概括版';
 const UNRECOGNIZED_CHAPTER_TITLE = '未识别章节';
+
+type TagCatalogGroup = keyof TagCatalog;
+type ReadingStatsTagFilterGroup = TagCatalogGroup | 'accumulation';
+
+interface ReadingStatsTagFilters {
+  genre: Set<string>;
+  status: Set<string>;
+  feature: Set<string>;
+  accumulation: Set<string>;
+}
+
+function createEmptyBookTags(): BookTags {
+  return { genre: [], feature: [], accumulation: [] };
+}
+
+function normalizeTagName(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeAccumulationTagName(value: unknown): string {
+  return normalizeTagName(value).replace(/^已积累/, '').trim();
+}
+
+function uniqueNormalizedTags(values: unknown[], normalize: (value: unknown) => string = normalizeTagName): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const tag = normalize(value);
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+    result.push(tag);
+  }
+  return result;
+}
+
+function normalizePositiveChapter(value: unknown): number | undefined {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) return undefined;
+  return n;
+}
+
+function normalizeBookTags(input: BookTags | undefined): BookTags {
+  const raw = (input ?? {}) as Partial<BookTags>;
+  const status = normalizeTagName(raw.status);
+  const accumulation = Array.isArray(raw.accumulation)
+    ? raw.accumulation
+      .map((item) => {
+        const record = item as Partial<BookTags['accumulation'][number]> | null | undefined;
+        const name = normalizeAccumulationTagName(record?.name);
+        if (!name) return null;
+        const startChapter = normalizePositiveChapter(record?.startChapter);
+        const normalizedEnd = normalizePositiveChapter(record?.endChapter);
+        const endChapter = startChapter !== undefined && normalizedEnd !== undefined && normalizedEnd < startChapter
+          ? undefined
+          : normalizedEnd;
+        return {
+          name,
+          ...(startChapter !== undefined ? { startChapter } : {}),
+          ...(endChapter !== undefined ? { endChapter } : {}),
+        };
+      })
+      .filter((item): item is BookTags['accumulation'][number] => item !== null)
+    : [];
+  const byName = new Map<string, BookTags['accumulation'][number]>();
+  for (const item of accumulation) {
+    if (!byName.has(item.name)) byName.set(item.name, item);
+  }
+  return {
+    genre: uniqueNormalizedTags(Array.isArray(raw.genre) ? raw.genre : []),
+    ...(status ? { status } : {}),
+    feature: uniqueNormalizedTags(Array.isArray(raw.feature) ? raw.feature : []),
+    accumulation: Array.from(byName.values()),
+  };
+}
+
+function hasAnyBookTags(tags: BookTags | undefined): boolean {
+  const normalized = normalizeBookTags(tags);
+  return normalized.genre.length > 0
+    || !!normalized.status
+    || normalized.feature.length > 0
+    || normalized.accumulation.length > 0;
+}
+
+function normalizeTagCatalog(input: TagCatalog | undefined): TagCatalog {
+  return {
+    genre: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.genre ?? []), ...((input?.genre ?? []) as unknown[])]),
+    status: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.status ?? []), ...((input?.status ?? []) as unknown[])]),
+    feature: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.feature ?? []), ...((input?.feature ?? []) as unknown[])]),
+  };
+}
+
+function formatAccumulationTagLabel(tag: BookTags['accumulation'][number]): string {
+  if (tag.startChapter !== undefined && tag.endChapter !== undefined) {
+    return `${tag.name} ${tag.startChapter}-${tag.endChapter}章`;
+  }
+  if (tag.startChapter !== undefined) return `${tag.name} 第${tag.startChapter}章起`;
+  if (tag.endChapter !== undefined) return `${tag.name} 至第${tag.endChapter}章`;
+  return tag.name;
+}
 
 function getReadingStatsDisplayTitle(filePath: string, title?: string): string {
   const trimmedTitle = (title ?? '').trim();
@@ -52,6 +154,7 @@ interface PluginData {
   settings: ReaderSettings;
   progress: Record<string, BookProgress>;
   bookSettings?: Record<string, BookSettings>;
+  tagCatalog?: TagCatalog;
   readingStats?: ReadingStatsData;
   lastDataBackupAt?: number;
   knownBooks?: string[];
@@ -87,6 +190,8 @@ interface AggregatedBookStats {
   title: string;
   filePaths: string[];
   hasOriginalSource: boolean;
+  hasOriginalTags: boolean;
+  tags: BookTags;
   totalReadingMs: number;
   totalReadWords: number;
   readChapterRanges: ReadChapterRange[];
@@ -130,6 +235,12 @@ class ReadingStatsView extends ItemView {
   private globalMetric: ReadingStatsMetric | null = null;
   private bookMetric: ReadingStatsMetric | null = null;
   private speedUnit: ReadingStatsSpeedUnit = 'hour';
+  private tagFilters: ReadingStatsTagFilters = {
+    genre: new Set<string>(),
+    status: new Set<string>(),
+    feature: new Set<string>(),
+    accumulation: new Set<string>(),
+  };
 
   constructor(leaf: WorkspaceLeaf, plugin: PuffsReaderPlugin) {
     super(leaf);
@@ -183,14 +294,15 @@ class ReadingStatsView extends ItemView {
   }
 
   private renderGlobal(parent: HTMLElement): void {
-    const stats = this.plugin.getReadingStats();
-    const books = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
-    const dailyEntries = Object.entries(stats.daily).sort((a, b) => a[0].localeCompare(b[0]));
+    const allBooks = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const books = allBooks.filter((book) => this.matchesTagFilters(book));
+    const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
     this.renderHeader(parent, '阅读统计');
+    this.renderTagFilters(parent, allBooks);
     const summary = parent.createDiv({ cls: 'puffs-reading-stats-summary' });
     summary.addClass('is-global');
     this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
@@ -210,7 +322,12 @@ class ReadingStatsView extends ItemView {
     this.createSectionTitle(parent, '最近阅读');
     const list = parent.createDiv({ cls: 'puffs-reading-stats-list' });
     if (books.length === 0) {
-      list.createDiv({ cls: 'puffs-reading-stats-empty', text: '暂无阅读统计。打开一本书并停留阅读后开始记录。' });
+      list.createDiv({
+        cls: 'puffs-reading-stats-empty',
+        text: allBooks.length > 0 && this.hasActiveTagFilters()
+          ? '没有匹配当前标签筛选的阅读统计。'
+          : '暂无阅读统计。打开一本书并停留阅读后开始记录。',
+      });
       return;
     }
 
@@ -231,6 +348,7 @@ class ReadingStatsView extends ItemView {
       this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: 'puffs-reading-stats-book-main' });
       main.createDiv({ cls: 'puffs-reading-stats-book-title', text: book.title });
+      this.renderBookTagBadges(main, book.tags);
       const meta = main.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
         text: [
@@ -256,6 +374,7 @@ class ReadingStatsView extends ItemView {
     this.selectedBookPath = book.groupKey;
 
     this.renderHeader(parent, book.title, true);
+    this.renderBookTagBadges(parent, book.tags, 'puffs-reading-stats-detail-tags');
     const dailyEntries = Object.entries(book.daily ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
@@ -346,6 +465,136 @@ class ReadingStatsView extends ItemView {
     parent.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
   }
 
+  private renderTagFilters(parent: HTMLElement, books: AggregatedBookStats[]): void {
+    const options = this.getTagFilterOptions(books);
+    const hasOptions = options.genre.length > 0
+      || options.status.length > 0
+      || options.feature.length > 0
+      || options.accumulation.length > 0;
+    if (!hasOptions && !this.hasActiveTagFilters()) return;
+
+    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
+    const header = panel.createDiv({ cls: 'puffs-reading-stats-tag-filter-head' });
+    header.createDiv({ cls: 'puffs-reading-stats-tag-filter-title', text: '标签筛选' });
+    if (this.hasActiveTagFilters()) {
+      const clearBtn = header.createEl('button', { cls: 'puffs-reading-stats-tag-clear', text: '清除' });
+      clearBtn.addEventListener('click', () => {
+        this.clearTagFilters();
+        this.render();
+      });
+    }
+
+    this.renderTagFilterGroup(panel, '题材', 'genre', options.genre);
+    this.renderTagFilterGroup(panel, '状态', 'status', options.status);
+    this.renderTagFilterGroup(panel, '特色', 'feature', options.feature);
+    this.renderTagFilterGroup(panel, '积累', 'accumulation', options.accumulation);
+  }
+
+  private renderTagFilterGroup(
+    parent: HTMLElement,
+    label: string,
+    group: ReadingStatsTagFilterGroup,
+    options: string[],
+  ): void {
+    if (options.length === 0) return;
+    const row = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter-row' });
+    row.createSpan({ cls: 'puffs-reading-stats-tag-filter-label', text: label });
+    const chips = row.createDiv({ cls: 'puffs-reading-stats-tag-filter-chips' });
+    for (const option of options) {
+      const active = this.tagFilters[group].has(option);
+      const chip = chips.createEl('button', {
+        cls: active ? 'puffs-tag-chip is-active' : 'puffs-tag-chip',
+        text: option,
+      });
+      chip.addEventListener('click', () => {
+        this.toggleTagFilter(group, option);
+        this.render();
+      });
+    }
+  }
+
+  private getTagFilterOptions(books: AggregatedBookStats[]): Record<ReadingStatsTagFilterGroup, string[]> {
+    const catalog = this.plugin.getTagCatalog();
+    return {
+      genre: uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)]),
+      status: uniqueNormalizedTags([...catalog.status, ...books.map((book) => book.tags.status ?? '')]),
+      feature: uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)]),
+      accumulation: uniqueNormalizedTags([
+        ...catalog.feature,
+        ...books.flatMap((book) => book.tags.accumulation.map((tag) => tag.name)),
+      ]),
+    };
+  }
+
+  private toggleTagFilter(group: ReadingStatsTagFilterGroup, value: string): void {
+    const filters = this.tagFilters[group];
+    if (filters.has(value)) filters.delete(value);
+    else filters.add(value);
+    this.globalMetric = null;
+  }
+
+  private clearTagFilters(): void {
+    for (const filters of Object.values(this.tagFilters)) filters.clear();
+    this.globalMetric = null;
+  }
+
+  private hasActiveTagFilters(): boolean {
+    return Object.values(this.tagFilters).some((filters) => filters.size > 0);
+  }
+
+  private matchesTagFilters(book: AggregatedBookStats): boolean {
+    const tags = normalizeBookTags(book.tags);
+    return this.matchesTagFilterGroup(this.tagFilters.genre, tags.genre)
+      && this.matchesTagFilterGroup(this.tagFilters.status, tags.status ? [tags.status] : [])
+      && this.matchesTagFilterGroup(this.tagFilters.feature, tags.feature)
+      && this.matchesTagFilterGroup(this.tagFilters.accumulation, tags.accumulation.map((tag) => tag.name));
+  }
+
+  private matchesTagFilterGroup(filters: Set<string>, values: string[]): boolean {
+    return filters.size === 0 || values.some((value) => filters.has(value));
+  }
+
+  private getDailyEntriesForBooks(books: AggregatedBookStats[]): Array<[string, AggregatedDailyReadingStats]> {
+    const dailyByDate: Record<string, AggregatedDailyReadingStats> = {};
+    for (const book of books) {
+      for (const [date, daily] of Object.entries(book.daily ?? {})) {
+        const aggregate = dailyByDate[date] ?? { readingMs: 0, readWords: 0, readChapterRanges: [] };
+        aggregate.readingMs += daily.readingMs;
+        aggregate.readWords += daily.readWords;
+        aggregate.readChapterRanges = this.mergeDisplayableChapterRanges([
+          ...aggregate.readChapterRanges,
+          ...(daily.readChapterRanges ?? []),
+        ]);
+        dailyByDate[date] = aggregate;
+      }
+    }
+    return Object.entries(dailyByDate);
+  }
+
+  private renderBookTagBadges(parent: HTMLElement, tags: BookTags, extraClass = ''): void {
+    const items = this.getBookTagBadgeLabels(tags);
+    if (items.length === 0) return;
+    const row = parent.createDiv({
+      cls: ['puffs-reading-stats-tags', extraClass].filter(Boolean).join(' '),
+    });
+    for (const item of items) {
+      row.createSpan({ cls: `puffs-reading-stats-tag is-${item.group}`, text: item.label });
+    }
+  }
+
+  private getBookTagBadgeLabels(tags: BookTags): Array<{ group: ReadingStatsTagFilterGroup; label: string }> {
+    const normalized = normalizeBookTags(tags);
+    return [
+      ...normalized.genre.map((label) => ({ group: 'genre' as const, label })),
+      ...(normalized.status ? [{ group: 'status' as const, label: normalized.status }] : []),
+      ...normalized.feature.map((label) => ({ group: 'feature' as const, label })),
+      ...normalized.accumulation.map((tag) => ({
+        group: 'accumulation' as const,
+        label: formatAccumulationTagLabel(tag),
+      })),
+    ];
+  }
+
   private getAggregatedBooks(): AggregatedBookStats[] {
     const stats = this.plugin.getReadingStats();
     const groups = new Map<string, AggregatedBookStats>();
@@ -353,6 +602,8 @@ class ReadingStatsView extends ItemView {
       const sourceTitle = getReadingStatsDisplayTitle(filePath, book.title);
       const groupKey = getReadingStatsGroupKey(filePath, book.title);
       const isSummary = isSummaryReadingStatsBook(filePath, book.title);
+      const fileTags = this.plugin.getBookTags(filePath);
+      const fileHasTags = hasAnyBookTags(fileTags);
       let group = groups.get(groupKey);
       if (!group) {
         group = {
@@ -360,6 +611,8 @@ class ReadingStatsView extends ItemView {
           title: stripSummaryBookSuffix(sourceTitle),
           filePaths: [],
           hasOriginalSource: false,
+          hasOriginalTags: false,
+          tags: createEmptyBookTags(),
           totalReadingMs: 0,
           totalReadWords: 0,
           readChapterRanges: [],
@@ -372,6 +625,12 @@ class ReadingStatsView extends ItemView {
       if (!isSummary && !group.hasOriginalSource) {
         group.title = sourceTitle;
         group.hasOriginalSource = true;
+      }
+      if (!isSummary && fileHasTags && !group.hasOriginalTags) {
+        group.tags = fileTags;
+        group.hasOriginalTags = true;
+      } else if (isSummary && fileHasTags && !group.hasOriginalTags && !hasAnyBookTags(group.tags)) {
+        group.tags = fileTags;
       }
       group.filePaths.push(filePath);
       group.totalReadingMs += book.totalReadingMs;
@@ -689,6 +948,7 @@ export default class PuffsReaderPlugin extends Plugin {
   settings: ReaderSettings = DEFAULT_SETTINGS;
   progress: Record<string, BookProgress> = {};
   bookSettings: Record<string, BookSettings> = {};
+  tagCatalog: TagCatalog = normalizeTagCatalog(undefined);
   readingStats: ReadingStatsData = { schemaVersion: 2, books: {}, daily: {} };
   lastDataBackupAt = 0;
   knownBooks: string[] = [];
@@ -815,6 +1075,7 @@ export default class PuffsReaderPlugin extends Plugin {
     }
     this.progress = data?.progress ?? {};
     this.bookSettings = data?.bookSettings ?? {};
+    this.tagCatalog = normalizeTagCatalog(data?.tagCatalog);
     this.readingStats = this.normalizeReadingStats(data?.readingStats);
     this.lastDataBackupAt = data?.lastDataBackupAt ?? 0;
     this.knownBooks = data?.knownBooks ?? [];
@@ -845,6 +1106,7 @@ export default class PuffsReaderPlugin extends Plugin {
       settings: this.settings,
       progress: this.progress,
       bookSettings: this.bookSettings,
+      tagCatalog: this.tagCatalog,
       readingStats: this.readingStats,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks,
@@ -1301,6 +1563,31 @@ export default class PuffsReaderPlugin extends Plugin {
     return this.bookSettings[filePath] ?? {};
   }
 
+  getBookTags(filePath: string): BookTags {
+    return normalizeBookTags(this.bookSettings[filePath]?.tags);
+  }
+
+  getTagCatalog(): TagCatalog {
+    return normalizeTagCatalog(this.tagCatalog);
+  }
+
+  async addTagCatalogItem(group: TagCatalogGroup, rawValue: string): Promise<string | null> {
+    const value = group === 'feature' ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
+    if (!value) return null;
+    const next = normalizeTagCatalog(this.tagCatalog);
+    next[group] = uniqueNormalizedTags([...next[group], value]);
+    this.tagCatalog = next;
+    await this.savePluginData();
+    return value;
+  }
+
+  async saveBookTags(filePath: string, tags: BookTags): Promise<void> {
+    await this.saveBookSettings(filePath, {
+      ...this.getBookSettings(filePath),
+      tags: normalizeBookTags(tags),
+    });
+  }
+
   async saveBookSettings(filePath: string, settings: BookSettings): Promise<void> {
     const compact: BookSettings = {};
     if (settings.encoding) compact.encoding = settings.encoding;
@@ -1323,6 +1610,10 @@ export default class PuffsReaderPlugin extends Plugin {
     }
     if (settings.annotations && settings.annotations.length > 0) {
       compact.annotations = settings.annotations;
+    }
+    const tags = normalizeBookTags(settings.tags);
+    if (hasAnyBookTags(tags)) {
+      compact.tags = tags;
     }
     this.bookSettings[filePath] = compact;
     await this.savePluginData();

@@ -108,6 +108,35 @@ export interface Annotation {
   createdAt: number;
 }
 
+/** 已积累标签的章节范围 */
+export interface BookAccumulationTag {
+  /** 标签基础名，如“情节”“文采”，不保存“已积累”前缀 */
+  name: string;
+  /** 起始章节号 */
+  startChapter?: number;
+  /** 结束章节号 */
+  endChapter?: number;
+}
+
+/** 每本书的标签 */
+export interface BookTags {
+  /** 题材标签 */
+  genre: string[];
+  /** 状态标签，单选 */
+  status?: string;
+  /** 特色标签 */
+  feature: string[];
+  /** 已积累情况，标签名与特色标签共用基础词库 */
+  accumulation: BookAccumulationTag[];
+}
+
+/** 全局标签词库 */
+export interface TagCatalog {
+  genre: string[];
+  status: string[];
+  feature: string[];
+}
+
 /** 每本书的专用设置；undefined 表示回退全局设置 */
 export interface BookSettings {
   /** 当前书的编码覆写 */
@@ -132,6 +161,8 @@ export interface BookSettings {
   tocIndentLevel3Regex?: string;
   /** 当前书的标注/批注列表 */
   annotations?: Annotation[];
+  /** 当前书的标签 */
+  tags?: BookTags;
 }
 
 /** 每本书的阅读进度 */
@@ -229,6 +260,13 @@ export const SUPPORTED_ENCODINGS = [
 export const DEFAULT_TOC_REGEX = '^\\s*第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*$';
 export const DEFAULT_CHAPTER_TITLE_REGEX = '^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)$';
 export const DEFAULT_PROLOGUE_TITLE_REGEX = '^\\s*(?:序章|前言|楔子|引子)(?:\\s+.*)?$';
+
+/** 默认标签词库 */
+export const DEFAULT_TAG_CATALOG: TagCatalog = {
+  genre: ['玄幻', '仙侠', '历史', '都市', '诸天'],
+  status: ['连载', '完结'],
+  feature: ['文采', '笑点', '情节', '架构', '人物', '感情', '谋略', '设定'],
+};
 
 /** 默认设置 */
 export const DEFAULT_SETTINGS: ReaderSettings = {
