@@ -1747,7 +1747,6 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.mergeTagOptions(catalog.genre, tags.genre),
       new Set(tags.genre),
       (tag) => this.toggleBookTag("genre", tag),
-      "\u6DFB\u52A0\u9898\u6750",
       (value) => this.addCustomTag("genre", value)
     );
     this.renderTagChipSection(
@@ -1756,7 +1755,6 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.mergeTagOptions(catalog.status, tags.status ? [tags.status] : []),
       new Set(tags.status ? [tags.status] : []),
       (tag) => this.setBookStatusTag(tag),
-      "\u6DFB\u52A0\u72B6\u6001",
       (value) => this.addCustomStatusTag(value)
     );
     this.renderTagChipSection(
@@ -1765,12 +1763,11 @@ var ReaderView = class extends import_obsidian.ItemView {
       this.mergeTagOptions(catalog.feature, tags.feature),
       new Set(tags.feature),
       (tag) => this.toggleBookTag("feature", tag),
-      "\u6DFB\u52A0\u7279\u8272",
       (value) => this.addCustomTag("feature", value)
     );
     this.renderAccumulationTagSection(this.tagsPaneEl, catalog.feature, tags);
   }
-  renderTagChipSection(parent, title, options, selected, onToggle, placeholder, onAdd) {
+  renderTagChipSection(parent, title, options, selected, onToggle, onAdd) {
     const section = parent.createDiv({ cls: "puffs-tag-section" });
     section.createDiv({ cls: "puffs-tag-section-title", text: title });
     const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
@@ -1783,12 +1780,12 @@ var ReaderView = class extends import_obsidian.ItemView {
         Promise.resolve(onToggle(option)).catch((error) => console.error("[Puffs Reader] Failed to toggle tag:", error));
       });
     }
-    this.renderCustomTagInput(section, placeholder, onAdd);
+    this.renderCustomTagInput(section, onAdd);
   }
   renderAccumulationTagSection(parent, options, tags) {
     const selected = new Set(tags.accumulation.map((tag) => tag.name));
     const section = parent.createDiv({ cls: "puffs-tag-section" });
-    section.createDiv({ cls: "puffs-tag-section-title", text: "\u79EF\u7D2F\u60C5\u51B5" });
+    section.createDiv({ cls: "puffs-tag-section-title", text: "\u5DF2\u79EF\u7D2F" });
     const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
     for (const option of this.mergeTagOptions(options, tags.accumulation.map((tag) => tag.name))) {
       const chip = chips.createEl("button", {
@@ -1799,11 +1796,8 @@ var ReaderView = class extends import_obsidian.ItemView {
         this.toggleAccumulationTag(option).catch((error) => console.error("[Puffs Reader] Failed to toggle accumulation tag:", error));
       });
     }
-    this.renderCustomTagInput(section, "\u6DFB\u52A0\u79EF\u7D2F\u9879", (value) => this.addCustomAccumulationTag(value));
-    if (tags.accumulation.length === 0) {
-      section.createDiv({ cls: "puffs-tag-empty", text: "\u672A\u9009\u62E9\u79EF\u7D2F\u9879" });
-      return;
-    }
+    this.renderCustomTagInput(section, (value) => this.addCustomAccumulationTag(value));
+    if (tags.accumulation.length === 0) return;
     const list = section.createDiv({ cls: "puffs-tag-accumulation-list" });
     for (const item of tags.accumulation) {
       const row = list.createDiv({ cls: "puffs-tag-accumulation-row" });
@@ -1826,20 +1820,18 @@ var ReaderView = class extends import_obsidian.ItemView {
       endInput.addEventListener("change", saveRange);
     }
   }
-  renderCustomTagInput(parent, placeholder, onAdd) {
+  renderCustomTagInput(parent, onAdd) {
     const row = parent.createDiv({ cls: "puffs-tag-custom-row" });
     const input = row.createEl("input", {
       cls: "puffs-tag-custom-input",
-      attr: { type: "text", placeholder }
+      attr: { type: "text", "aria-label": "\u6DFB\u52A0\u6807\u7B7E" }
     });
-    const addBtn = row.createEl("button", { cls: "puffs-tag-add-btn", text: "\u6DFB\u52A0" });
     const submit = () => {
       const value = input.value.trim();
       if (!value) return;
       input.value = "";
       Promise.resolve(onAdd(value)).catch((error) => console.error("[Puffs Reader] Failed to add tag:", error));
     };
-    addBtn.addEventListener("click", submit);
     input.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       event.preventDefault();
@@ -3274,6 +3266,286 @@ var TxtFileSuggestModal = class extends import_obsidian3.FuzzySuggestModal {
     this.plugin.openInReader(item);
   }
 };
+var BookTagsModal = class extends import_obsidian3.Modal {
+  constructor(plugin, filePath, initialTags, onSaved) {
+    super(plugin.app);
+    this.rangeDraftValues = /* @__PURE__ */ new Map();
+    this.plugin = plugin;
+    this.filePath = filePath;
+    this.draft = normalizeBookTags(initialTags);
+    this.onSaved = onSaved;
+    for (const item of this.draft.accumulation) {
+      this.rangeDraftValues.set(item.name, {
+        start: item.startChapter !== void 0 ? String(item.startChapter) : "",
+        end: item.endChapter !== void 0 ? String(item.endChapter) : ""
+      });
+    }
+  }
+  onOpen() {
+    this.modalEl.addClass("puffs-tag-modal");
+    this.render();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+  render() {
+    const catalog = this.plugin.getTagCatalog();
+    this.contentEl.empty();
+    this.contentEl.createEl("h3", { cls: "puffs-tag-modal-title", text: "\u7F16\u8F91\u76F8\u5173\u6807\u7B7E" });
+    const body = this.contentEl.createDiv({ cls: "puffs-tag-modal-body" });
+    this.renderTagChipSection(
+      body,
+      "\u9898\u6750",
+      this.mergeTagOptions(catalog.genre, this.draft.genre),
+      new Set(this.draft.genre),
+      (tag) => this.toggleArrayTag("genre", tag),
+      (value) => this.addCustomArrayTag("genre", value)
+    );
+    this.renderTagChipSection(
+      body,
+      "\u72B6\u6001",
+      this.mergeTagOptions(catalog.status, this.draft.status ? [this.draft.status] : []),
+      new Set(this.draft.status ? [this.draft.status] : []),
+      (tag) => this.toggleStatusTag(tag),
+      (value) => this.addCustomStatusTag(value)
+    );
+    this.renderTagChipSection(
+      body,
+      "\u7279\u8272",
+      this.mergeTagOptions(catalog.feature, this.draft.feature),
+      new Set(this.draft.feature),
+      (tag) => this.toggleArrayTag("feature", tag),
+      (value) => this.addCustomArrayTag("feature", value)
+    );
+    this.renderAccumulationTagSection(body, catalog.feature);
+  }
+  renderTagChipSection(parent, title, options, selected, onToggle, onAdd) {
+    const section = parent.createDiv({ cls: "puffs-tag-section" });
+    section.createDiv({ cls: "puffs-tag-section-title", text: title });
+    const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
+    for (const option of options) {
+      const chip = chips.createEl("button", {
+        cls: selected.has(option) ? "puffs-tag-chip is-active" : "puffs-tag-chip",
+        text: option,
+        attr: {
+          type: "button",
+          "aria-pressed": selected.has(option) ? "true" : "false"
+        }
+      });
+      chip.addEventListener("click", () => {
+        Promise.resolve(onToggle(option)).catch((error) => {
+          console.error("[Puffs Reader] Failed to update tag:", error);
+          new import_obsidian3.Notice("\u4FDD\u5B58\u6807\u7B7E\u5931\u8D25");
+        });
+      });
+    }
+    this.renderCustomTagInput(section, onAdd);
+  }
+  renderAccumulationTagSection(parent, options) {
+    var _a, _b;
+    const selected = new Set(this.draft.accumulation.map((tag) => tag.name));
+    const section = parent.createDiv({ cls: "puffs-tag-section" });
+    section.createDiv({ cls: "puffs-tag-section-title", text: "\u5DF2\u79EF\u7D2F" });
+    const chips = section.createDiv({ cls: "puffs-tag-chip-row" });
+    for (const option of this.mergeTagOptions(options, this.draft.accumulation.map((tag) => tag.name))) {
+      const chip = chips.createEl("button", {
+        cls: selected.has(option) ? "puffs-tag-chip is-active" : "puffs-tag-chip",
+        text: option,
+        attr: {
+          type: "button",
+          "aria-pressed": selected.has(option) ? "true" : "false"
+        }
+      });
+      chip.addEventListener("click", () => {
+        this.toggleAccumulationTag(option).catch((error) => {
+          console.error("[Puffs Reader] Failed to update accumulation tag:", error);
+          new import_obsidian3.Notice("\u4FDD\u5B58\u6807\u7B7E\u5931\u8D25");
+        });
+      });
+    }
+    this.renderCustomTagInput(section, (value) => this.addCustomAccumulationTag(value));
+    if (this.draft.accumulation.length === 0) return;
+    const list = section.createDiv({ cls: "puffs-tag-accumulation-list" });
+    for (const item of this.draft.accumulation) {
+      const row = list.createDiv({ cls: "puffs-tag-accumulation-row" });
+      row.createSpan({ cls: "puffs-tag-accumulation-name", text: item.name });
+      const range = this.rangeDraftValues.get(item.name);
+      const startInput = row.createEl("input", {
+        cls: "puffs-tag-range-input",
+        attr: { type: "number", min: "1", step: "1", "aria-label": `${item.name}\u8D77\u59CB\u7AE0\u8282` }
+      });
+      startInput.value = (_a = range == null ? void 0 : range.start) != null ? _a : item.startChapter !== void 0 ? String(item.startChapter) : "";
+      row.createSpan({ cls: "puffs-tag-range-separator", text: "-" });
+      const endInput = row.createEl("input", {
+        cls: "puffs-tag-range-input",
+        attr: { type: "number", min: "1", step: "1", "aria-label": `${item.name}\u7ED3\u675F\u7AE0\u8282` }
+      });
+      endInput.value = (_b = range == null ? void 0 : range.end) != null ? _b : item.endChapter !== void 0 ? String(item.endChapter) : "";
+      const rememberRange = () => {
+        this.rangeDraftValues.set(item.name, { start: startInput.value, end: endInput.value });
+      };
+      const saveRange = () => {
+        this.updateAccumulationRange(item.name, startInput.value, endInput.value).catch((error) => {
+          console.error("[Puffs Reader] Failed to update accumulation range:", error);
+          new import_obsidian3.Notice("\u4FDD\u5B58\u6807\u7B7E\u5931\u8D25");
+        });
+      };
+      startInput.addEventListener("input", rememberRange);
+      endInput.addEventListener("input", rememberRange);
+      startInput.addEventListener("change", saveRange);
+      endInput.addEventListener("change", saveRange);
+      for (const input of [startInput, endInput]) {
+        input.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          saveRange();
+        });
+      }
+    }
+  }
+  renderCustomTagInput(parent, onAdd) {
+    const row = parent.createDiv({ cls: "puffs-tag-custom-row" });
+    const input = row.createEl("input", {
+      cls: "puffs-tag-custom-input",
+      attr: { type: "text", "aria-label": "\u6DFB\u52A0\u6807\u7B7E" }
+    });
+    const submit = () => {
+      const value = input.value.trim();
+      if (!value) return;
+      input.value = "";
+      Promise.resolve(onAdd(value)).catch((error) => {
+        console.error("[Puffs Reader] Failed to add tag:", error);
+        new import_obsidian3.Notice("\u4FDD\u5B58\u6807\u7B7E\u5931\u8D25");
+      });
+    };
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      submit();
+    });
+  }
+  mergeTagOptions(base, extra) {
+    return uniqueNormalizedTags([...base, ...extra]);
+  }
+  async addCustomArrayTag(group, rawValue) {
+    const value = await this.plugin.addTagCatalogItem(group, rawValue);
+    if (!value) return;
+    const current = new Set(this.draft[group]);
+    current.add(value);
+    if (group === "genre") this.draft = { ...this.draft, genre: Array.from(current) };
+    else this.draft = { ...this.draft, feature: Array.from(current) };
+    await this.persistDraft();
+  }
+  async addCustomStatusTag(rawValue) {
+    const value = await this.plugin.addTagCatalogItem("status", rawValue);
+    if (!value) return;
+    this.draft = { ...this.draft, status: value };
+    await this.persistDraft();
+  }
+  async addCustomAccumulationTag(rawValue) {
+    const value = await this.plugin.addTagCatalogItem("feature", rawValue);
+    if (!value) return;
+    if (!this.draft.accumulation.some((tag) => tag.name === value)) {
+      this.draft = { ...this.draft, accumulation: [...this.draft.accumulation, { name: value }] };
+    }
+    await this.persistDraft();
+  }
+  async toggleArrayTag(group, tag) {
+    const selected = new Set(this.draft[group]);
+    if (selected.has(tag)) selected.delete(tag);
+    else selected.add(tag);
+    if (group === "genre") this.draft = { ...this.draft, genre: Array.from(selected) };
+    else this.draft = { ...this.draft, feature: Array.from(selected) };
+    await this.persistDraft();
+  }
+  async toggleStatusTag(tag) {
+    this.draft = {
+      ...this.draft,
+      status: this.draft.status === tag ? void 0 : tag
+    };
+    await this.persistDraft();
+  }
+  async toggleAccumulationTag(tag) {
+    const exists = this.draft.accumulation.some((item) => item.name === tag);
+    if (exists) {
+      this.rangeDraftValues.delete(tag);
+      this.draft = {
+        ...this.draft,
+        accumulation: this.draft.accumulation.filter((item) => item.name !== tag)
+      };
+    } else {
+      this.draft = {
+        ...this.draft,
+        accumulation: [...this.draft.accumulation, { name: tag }]
+      };
+    }
+    await this.persistDraft();
+  }
+  async updateAccumulationRange(name, rawStart, rawEnd) {
+    const startChapter = this.parseOptionalChapter(rawStart);
+    const endChapter = this.parseOptionalChapter(rawEnd);
+    if (startChapter === null || endChapter === null) {
+      new import_obsidian3.Notice("\u7AE0\u8282\u8303\u56F4\u5FC5\u987B\u662F\u6B63\u6574\u6570");
+      this.render();
+      return;
+    }
+    if (startChapter !== void 0 && endChapter !== void 0 && endChapter < startChapter) {
+      new import_obsidian3.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u5C0F\u4E8E\u8D77\u59CB\u7AE0\u8282");
+      this.render();
+      return;
+    }
+    this.rangeDraftValues.set(name, { start: rawStart, end: rawEnd });
+    this.draft = {
+      ...this.draft,
+      accumulation: this.draft.accumulation.map((item) => item.name === name ? {
+        name: item.name,
+        ...startChapter !== void 0 ? { startChapter } : {},
+        ...endChapter !== void 0 ? { endChapter } : {}
+      } : item)
+    };
+    await this.persistDraft();
+  }
+  collectDraftTags() {
+    var _a;
+    const accumulation = [];
+    for (const item of this.draft.accumulation) {
+      const range = (_a = this.rangeDraftValues.get(item.name)) != null ? _a : {
+        start: item.startChapter !== void 0 ? String(item.startChapter) : "",
+        end: item.endChapter !== void 0 ? String(item.endChapter) : ""
+      };
+      const startChapter = this.parseOptionalChapter(range.start);
+      const endChapter = this.parseOptionalChapter(range.end);
+      if (startChapter === null || endChapter === null) {
+        new import_obsidian3.Notice("\u7AE0\u8282\u8303\u56F4\u5FC5\u987B\u662F\u6B63\u6574\u6570");
+        return null;
+      }
+      if (startChapter !== void 0 && endChapter !== void 0 && endChapter < startChapter) {
+        new import_obsidian3.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u5C0F\u4E8E\u8D77\u59CB\u7AE0\u8282");
+        return null;
+      }
+      accumulation.push({
+        name: item.name,
+        ...startChapter !== void 0 ? { startChapter } : {},
+        ...endChapter !== void 0 ? { endChapter } : {}
+      });
+    }
+    return normalizeBookTags({ ...this.draft, accumulation });
+  }
+  parseOptionalChapter(value) {
+    const trimmed = value.trim();
+    if (!trimmed) return void 0;
+    const n = Number(trimmed);
+    return Number.isInteger(n) && n > 0 ? n : null;
+  }
+  async persistDraft() {
+    const tags = this.collectDraftTags();
+    if (!tags) return;
+    await this.plugin.saveBookTags(this.filePath, tags);
+    this.draft = tags;
+    this.onSaved();
+    this.render();
+  }
+};
 var ReadingStatsView = class extends import_obsidian3.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -3337,7 +3609,9 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
   }
   renderGlobal(parent) {
-    const allBooks = this.getAggregatedBooks(this.untaggedOnly).sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const hasFilters = this.hasActiveTagFilters();
+    const filterOptionBooks = this.getAggregatedBooks(true).sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const allBooks = (hasFilters ? filterOptionBooks : this.getAggregatedBooks(false)).sort((a, b) => b.lastReadAt - a.lastReadAt);
     const books = allBooks.filter((book) => this.matchesTagFilters(book));
     const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
@@ -3351,7 +3625,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(totalReadingMs), "time", this.globalMetric === "time", () => this.toggleGlobalMetric("time"));
     this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(totalReadWords, totalReadingMs, "hour"), "speed", this.globalMetric === "speed", () => this.toggleGlobalMetric("speed"));
     this.createSummaryItem(summary, "\u7EDF\u8BA1\u4E66\u7C4D", `${books.length} \u672C`);
-    this.renderTagFilters(parent, allBooks);
+    this.renderTagFilters(parent, filterOptionBooks);
     if (this.globalMetric) {
       this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
         date,
@@ -3359,12 +3633,12 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
         readingMs: item.readingMs
       })));
     }
-    this.createSectionTitle(parent, "\u6700\u8FD1\u9605\u8BFB");
+    this.createSectionTitle(parent, hasFilters ? "\u4E66\u7C4D\u5217\u8868" : "\u6700\u8FD1\u9605\u8BFB");
     const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
     if (books.length === 0) {
       list.createDiv({
         cls: "puffs-reading-stats-empty",
-        text: allBooks.length > 0 && this.hasActiveTagFilters() ? "\u6CA1\u6709\u5339\u914D\u5F53\u524D\u6807\u7B7E\u7B5B\u9009\u7684\u9605\u8BFB\u7EDF\u8BA1\u3002" : this.untaggedOnly ? "\u4E66\u5E93\u91CC\u6CA1\u6709\u672A\u6253\u6807\u7B7E\u7684\u4E66\u7C4D\u3002" : "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002"
+        text: hasFilters ? this.untaggedOnly ? "\u4E66\u5E93\u91CC\u6CA1\u6709\u672A\u6253\u6807\u7B7E\u7684\u4E66\u7C4D\u3002" : "\u6CA1\u6709\u5339\u914D\u5F53\u524D\u6807\u7B7E\u7B5B\u9009\u7684\u4E66\u7C4D\u3002" : "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002"
       });
       return;
     }
@@ -3421,7 +3695,9 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(book.totalReadWords), "words", this.bookMetric === "words", () => this.toggleBookMetric("words"));
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(book.totalReadingMs), "time", this.bookMetric === "time", () => this.toggleBookMetric("time"));
     this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour"), "speed", this.bookMetric === "speed", () => this.toggleBookMetric("speed"));
-    this.createSectionTitle(parent, "\u76F8\u5173\u6807\u7B7E");
+    this.createSectionTitle(parent, "\u76F8\u5173\u6807\u7B7E", (actions) => {
+      this.renderEditBookTagsButton(actions, book);
+    });
     this.renderReadonlyTagRows(parent, book.tags);
     if (this.bookMetric) {
       this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
@@ -3504,6 +3780,37 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
     await this.plugin.openInReader(file);
   }
+  renderEditBookTagsButton(parent, book) {
+    const button = parent.createEl("button", {
+      cls: "puffs-icon-btn puffs-reading-stats-section-action",
+      attr: { "aria-label": "\u7F16\u8F91\u76F8\u5173\u6807\u7B7E" }
+    });
+    (0, import_obsidian3.setIcon)(button, "pencil");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.openBookTagsModal(book);
+    });
+  }
+  openBookTagsModal(book) {
+    const file = this.getEditableBookTagFile(book);
+    if (!file) {
+      new import_obsidian3.Notice("\u672A\u627E\u5230\u53EF\u7F16\u8F91\u7684\u539F\u4E66\u6587\u4EF6");
+      return;
+    }
+    new BookTagsModal(this.plugin, file.path, book.tags, () => this.render()).open();
+  }
+  getEditableBookTagFile(book) {
+    const candidates = [book.originalFilePath, ...book.filePaths].filter((path) => !!path);
+    const seen = /* @__PURE__ */ new Set();
+    for (const filePath of candidates) {
+      if (seen.has(filePath)) continue;
+      seen.add(filePath);
+      const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+      if (file instanceof import_obsidian3.TFile) return file;
+    }
+    return null;
+  }
   handleBookDetailBackHotkey(event) {
     if (!this.selectedBookPath) return;
     if (!event.altKey || event.key !== "ArrowLeft" || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -3515,6 +3822,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   goBackToGlobal() {
     this.selectedBookPath = null;
     this.globalMetric = null;
+    this.bookMetric = null;
     this.render();
   }
   createSummaryItem(parent, label, value, metric, active = false, onClick) {
@@ -3538,8 +3846,15 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       });
     }
   }
-  createSectionTitle(parent, title) {
-    parent.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
+  createSectionTitle(parent, title, renderActions) {
+    if (!renderActions) {
+      parent.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
+      return;
+    }
+    const row = parent.createDiv({ cls: "puffs-reading-stats-section-title-row" });
+    row.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
+    const actions = row.createDiv({ cls: "puffs-reading-stats-section-actions" });
+    renderActions(actions);
   }
   renderTagFilters(parent, books) {
     const options = this.getTagFilterOptions(books);

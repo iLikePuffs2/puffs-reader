@@ -1981,7 +1981,6 @@ export class ReaderView extends ItemView {
       this.mergeTagOptions(catalog.genre, tags.genre),
       new Set(tags.genre),
       (tag) => this.toggleBookTag('genre', tag),
-      '添加题材',
       (value) => this.addCustomTag('genre', value),
     );
     this.renderTagChipSection(
@@ -1990,7 +1989,6 @@ export class ReaderView extends ItemView {
       this.mergeTagOptions(catalog.status, tags.status ? [tags.status] : []),
       new Set(tags.status ? [tags.status] : []),
       (tag) => this.setBookStatusTag(tag),
-      '添加状态',
       (value) => this.addCustomStatusTag(value),
     );
     this.renderTagChipSection(
@@ -1999,7 +1997,6 @@ export class ReaderView extends ItemView {
       this.mergeTagOptions(catalog.feature, tags.feature),
       new Set(tags.feature),
       (tag) => this.toggleBookTag('feature', tag),
-      '添加特色',
       (value) => this.addCustomTag('feature', value),
     );
     this.renderAccumulationTagSection(this.tagsPaneEl, catalog.feature, tags);
@@ -2011,7 +2008,6 @@ export class ReaderView extends ItemView {
     options: string[],
     selected: Set<string>,
     onToggle: (tag: string) => void | Promise<void>,
-    placeholder: string,
     onAdd: (value: string) => void | Promise<void>,
   ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
@@ -2026,13 +2022,13 @@ export class ReaderView extends ItemView {
         Promise.resolve(onToggle(option)).catch((error) => console.error('[Puffs Reader] Failed to toggle tag:', error));
       });
     }
-    this.renderCustomTagInput(section, placeholder, onAdd);
+    this.renderCustomTagInput(section, onAdd);
   }
 
   private renderAccumulationTagSection(parent: HTMLElement, options: string[], tags: BookTags): void {
     const selected = new Set(tags.accumulation.map((tag) => tag.name));
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
-    section.createDiv({ cls: 'puffs-tag-section-title', text: '积累情况' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: '已积累' });
     const chips = section.createDiv({ cls: 'puffs-tag-chip-row' });
     for (const option of this.mergeTagOptions(options, tags.accumulation.map((tag) => tag.name))) {
       const chip = chips.createEl('button', {
@@ -2044,12 +2040,9 @@ export class ReaderView extends ItemView {
           .catch((error) => console.error('[Puffs Reader] Failed to toggle accumulation tag:', error));
       });
     }
-    this.renderCustomTagInput(section, '添加积累项', (value) => this.addCustomAccumulationTag(value));
+    this.renderCustomTagInput(section, (value) => this.addCustomAccumulationTag(value));
 
-    if (tags.accumulation.length === 0) {
-      section.createDiv({ cls: 'puffs-tag-empty', text: '未选择积累项' });
-      return;
-    }
+    if (tags.accumulation.length === 0) return;
 
     const list = section.createDiv({ cls: 'puffs-tag-accumulation-list' });
     for (const item of tags.accumulation) {
@@ -2075,20 +2068,18 @@ export class ReaderView extends ItemView {
     }
   }
 
-  private renderCustomTagInput(parent: HTMLElement, placeholder: string, onAdd: (value: string) => void | Promise<void>): void {
+  private renderCustomTagInput(parent: HTMLElement, onAdd: (value: string) => void | Promise<void>): void {
     const row = parent.createDiv({ cls: 'puffs-tag-custom-row' });
     const input = row.createEl('input', {
       cls: 'puffs-tag-custom-input',
-      attr: { type: 'text', placeholder },
+      attr: { type: 'text', 'aria-label': '添加标签' },
     }) as HTMLInputElement;
-    const addBtn = row.createEl('button', { cls: 'puffs-tag-add-btn', text: '添加' });
     const submit = () => {
       const value = input.value.trim();
       if (!value) return;
       input.value = '';
       Promise.resolve(onAdd(value)).catch((error) => console.error('[Puffs Reader] Failed to add tag:', error));
     };
-    addBtn.addEventListener('click', submit);
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
