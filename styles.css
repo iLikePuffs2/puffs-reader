@@ -725,6 +725,31 @@
   margin: 0;
 }
 
+.puffs-reading-stats-filter-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.puffs-reading-stats-filter-action {
+  width: auto;
+  padding: 0 7px;
+}
+
+.puffs-reading-stats-filter-action:hover,
+.puffs-reading-stats-filter-action:focus-visible,
+.puffs-reading-stats-filter-action.is-active {
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent) !important;
+  color: var(--text-normal);
+  outline: none;
+}
+
+.puffs-reading-stats-filter-action svg {
+  width: 16px;
+  height: 16px;
+}
+
 .puffs-reading-stats-tag-filter {
   margin-bottom: 14px;
   padding: 12px;

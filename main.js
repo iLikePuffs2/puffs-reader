@@ -3282,6 +3282,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.globalMetric = null;
     this.bookMetric = null;
     this.speedUnit = "hour";
+    this.untaggedOnly = false;
     this.tagFilters = {
       genre: /* @__PURE__ */ new Set(),
       status: /* @__PURE__ */ new Set(),
@@ -3336,7 +3337,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
   }
   renderGlobal(parent) {
-    const allBooks = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const allBooks = this.getAggregatedBooks(this.untaggedOnly).sort((a, b) => b.lastReadAt - a.lastReadAt);
     const books = allBooks.filter((book) => this.matchesTagFilters(book));
     const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
@@ -3363,7 +3364,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     if (books.length === 0) {
       list.createDiv({
         cls: "puffs-reading-stats-empty",
-        text: allBooks.length > 0 && this.hasActiveTagFilters() ? "\u6CA1\u6709\u5339\u914D\u5F53\u524D\u6807\u7B7E\u7B5B\u9009\u7684\u9605\u8BFB\u7EDF\u8BA1\u3002" : "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002"
+        text: allBooks.length > 0 && this.hasActiveTagFilters() ? "\u6CA1\u6709\u5339\u914D\u5F53\u524D\u6807\u7B7E\u7B5B\u9009\u7684\u9605\u8BFB\u7EDF\u8BA1\u3002" : this.untaggedOnly ? "\u4E66\u5E93\u91CC\u6CA1\u6709\u672A\u6253\u6807\u7B7E\u7684\u4E66\u7C4D\u3002" : "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002"
       });
       return;
     }
@@ -3400,7 +3401,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   }
   renderBookDetail(parent, groupKey) {
     var _a, _b;
-    const books = this.getAggregatedBooks();
+    const books = this.getAggregatedBooks(true);
     const book = (_a = books.find((item) => item.groupKey === groupKey)) != null ? _a : books.find((item) => item.filePaths.includes(groupKey));
     if (!book) {
       this.selectedBookPath = null;
@@ -3545,7 +3546,21 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     const hasOptions = options.genre.length > 0 || options.status.length > 0 || options.feature.length > 0 || options.accumulation.length > 0;
     if (!hasOptions && !this.hasActiveTagFilters()) return;
     const titleRow = parent.createDiv({ cls: "puffs-reading-stats-filter-title-row" });
-    titleRow.createDiv({ cls: "puffs-reading-stats-title puffs-reading-stats-filter-title", text: "\u6807\u7B7E\u7B5B\u9009" });
+    const titleActions = titleRow.createDiv({ cls: "puffs-reading-stats-filter-title-actions" });
+    titleActions.createDiv({ cls: "puffs-reading-stats-title puffs-reading-stats-filter-title", text: "\u6807\u7B7E\u7B5B\u9009" });
+    const untaggedBtn = titleActions.createEl("button", {
+      cls: this.untaggedOnly ? "puffs-icon-btn puffs-reading-stats-filter-action is-active" : "puffs-icon-btn puffs-reading-stats-filter-action",
+      attr: {
+        type: "button",
+        "aria-label": "\u7B5B\u9009\u4E66\u5E93\u91CC\u6240\u6709\u672A\u6253\u6807\u7B7E\u7684\u4E66\u7C4D",
+        "aria-pressed": this.untaggedOnly ? "true" : "false"
+      }
+    });
+    (0, import_obsidian3.setIcon)(untaggedBtn, "tags");
+    untaggedBtn.addEventListener("click", () => {
+      this.toggleUntaggedOnly();
+      this.render();
+    });
     const clearBtn = titleRow.createEl("button", {
       cls: "puffs-reading-stats-tag-clear",
       text: "\u6E05\u9664",
@@ -3597,6 +3612,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     };
   }
   toggleTagFilter(group, value) {
+    this.untaggedOnly = false;
     const filters = this.tagFilters[group];
     if (filters.has(value)) filters.delete(value);
     else filters.add(value);
@@ -3604,17 +3620,24 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   }
   clearTagFilters() {
     for (const filters of Object.values(this.tagFilters)) filters.clear();
+    this.untaggedOnly = false;
     this.globalMetric = null;
   }
   hasActiveTagFilters() {
-    return Object.values(this.tagFilters).some((filters) => filters.size > 0);
+    return this.untaggedOnly || Object.values(this.tagFilters).some((filters) => filters.size > 0);
   }
   matchesTagFilters(book) {
+    if (this.untaggedOnly) return !hasAnyBookTags(book.tags);
     const tags = normalizeBookTags(book.tags);
     return this.matchesTagFilterGroup(this.tagFilters.genre, tags.genre) && this.matchesTagFilterGroup(this.tagFilters.status, tags.status ? [tags.status] : []) && this.matchesTagFilterGroup(this.tagFilters.feature, tags.feature) && this.matchesTagFilterGroup(this.tagFilters.accumulation, tags.accumulation.map((tag) => tag.name));
   }
   matchesTagFilterGroup(filters, values) {
     return filters.size === 0 || values.some((value) => filters.has(value));
+  }
+  toggleUntaggedOnly() {
+    const next = !this.untaggedOnly;
+    this.clearTagFilters();
+    this.untaggedOnly = next;
   }
   getDailyEntriesForBooks(books) {
     var _a, _b, _c;
@@ -3678,8 +3701,8 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       }
     ];
   }
-  getAggregatedBooks() {
-    var _a, _b, _c, _d;
+  getAggregatedBooks(includeLibraryBooks = false) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const stats = this.plugin.getReadingStats();
     const groups = /* @__PURE__ */ new Map();
     for (const [filePath, book] of Object.entries(stats.books)) {
@@ -3738,6 +3761,42 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
           ]);
         }
         group.daily[date] = groupDaily;
+      }
+    }
+    if (includeLibraryBooks) {
+      for (const file of this.plugin.getSelectableBookFiles()) {
+        const groupKey = getReadingStatsGroupKey(file.path, file.basename);
+        const fileTags = this.plugin.getBookTags(file.path);
+        const fileHasTags = hasAnyBookTags(fileTags);
+        const group = groups.get(groupKey);
+        if (group) {
+          if (!group.originalFilePath) group.originalFilePath = file.path;
+          if (!group.hasOriginalSource) {
+            group.title = file.basename;
+            group.filePaths.push(file.path);
+            group.hasOriginalSource = true;
+          }
+          group.lastReadAt = Math.max(group.lastReadAt, (_f = (_e = this.plugin.getProgress(file.path)) == null ? void 0 : _e.lastRead) != null ? _f : 0);
+          if (fileHasTags && !group.hasOriginalTags) {
+            group.tags = fileTags;
+            group.hasOriginalTags = true;
+          }
+          continue;
+        }
+        groups.set(groupKey, {
+          groupKey,
+          title: file.basename,
+          filePaths: [file.path],
+          originalFilePath: file.path,
+          hasOriginalSource: true,
+          hasOriginalTags: fileHasTags,
+          tags: fileTags,
+          totalReadingMs: 0,
+          totalReadWords: 0,
+          readChapterRanges: [],
+          daily: {},
+          lastReadAt: (_h = (_g = this.plugin.getProgress(file.path)) == null ? void 0 : _g.lastRead) != null ? _h : 0
+        });
       }
     }
     return Array.from(groups.values());

@@ -236,6 +236,7 @@ class ReadingStatsView extends ItemView {
   private globalMetric: ReadingStatsMetric | null = null;
   private bookMetric: ReadingStatsMetric | null = null;
   private speedUnit: ReadingStatsSpeedUnit = 'hour';
+  private untaggedOnly = false;
   private tagFilters: ReadingStatsTagFilters = {
     genre: new Set<string>(),
     status: new Set<string>(),
@@ -302,7 +303,7 @@ class ReadingStatsView extends ItemView {
   }
 
   private renderGlobal(parent: HTMLElement): void {
-    const allBooks = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const allBooks = this.getAggregatedBooks(this.untaggedOnly).sort((a, b) => b.lastReadAt - a.lastReadAt);
     const books = allBooks.filter((book) => this.matchesTagFilters(book));
     const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
@@ -335,7 +336,9 @@ class ReadingStatsView extends ItemView {
         cls: 'puffs-reading-stats-empty',
         text: allBooks.length > 0 && this.hasActiveTagFilters()
           ? '没有匹配当前标签筛选的阅读统计。'
-          : '暂无阅读统计。打开一本书并停留阅读后开始记录。',
+          : this.untaggedOnly
+            ? '书库里没有未打标签的书籍。'
+            : '暂无阅读统计。打开一本书并停留阅读后开始记录。',
       });
       return;
     }
@@ -373,7 +376,7 @@ class ReadingStatsView extends ItemView {
   }
 
   private renderBookDetail(parent: HTMLElement, groupKey: string): void {
-    const books = this.getAggregatedBooks();
+    const books = this.getAggregatedBooks(true);
     const book = books.find((item) => item.groupKey === groupKey) ?? books.find((item) => item.filePaths.includes(groupKey));
     if (!book) {
       this.selectedBookPath = null;
@@ -548,7 +551,23 @@ class ReadingStatsView extends ItemView {
     if (!hasOptions && !this.hasActiveTagFilters()) return;
 
     const titleRow = parent.createDiv({ cls: 'puffs-reading-stats-filter-title-row' });
-    titleRow.createDiv({ cls: 'puffs-reading-stats-title puffs-reading-stats-filter-title', text: '标签筛选' });
+    const titleActions = titleRow.createDiv({ cls: 'puffs-reading-stats-filter-title-actions' });
+    titleActions.createDiv({ cls: 'puffs-reading-stats-title puffs-reading-stats-filter-title', text: '标签筛选' });
+    const untaggedBtn = titleActions.createEl('button', {
+      cls: this.untaggedOnly
+        ? 'puffs-icon-btn puffs-reading-stats-filter-action is-active'
+        : 'puffs-icon-btn puffs-reading-stats-filter-action',
+      attr: {
+        type: 'button',
+        'aria-label': '筛选书库里所有未打标签的书籍',
+        'aria-pressed': this.untaggedOnly ? 'true' : 'false',
+      },
+    });
+    setIcon(untaggedBtn, 'tags');
+    untaggedBtn.addEventListener('click', () => {
+      this.toggleUntaggedOnly();
+      this.render();
+    });
     const clearBtn = titleRow.createEl('button', {
       cls: 'puffs-reading-stats-tag-clear',
       text: '清除',
@@ -606,6 +625,7 @@ class ReadingStatsView extends ItemView {
   }
 
   private toggleTagFilter(group: ReadingStatsTagFilterGroup, value: string): void {
+    this.untaggedOnly = false;
     const filters = this.tagFilters[group];
     if (filters.has(value)) filters.delete(value);
     else filters.add(value);
@@ -614,14 +634,16 @@ class ReadingStatsView extends ItemView {
 
   private clearTagFilters(): void {
     for (const filters of Object.values(this.tagFilters)) filters.clear();
+    this.untaggedOnly = false;
     this.globalMetric = null;
   }
 
   private hasActiveTagFilters(): boolean {
-    return Object.values(this.tagFilters).some((filters) => filters.size > 0);
+    return this.untaggedOnly || Object.values(this.tagFilters).some((filters) => filters.size > 0);
   }
 
   private matchesTagFilters(book: AggregatedBookStats): boolean {
+    if (this.untaggedOnly) return !hasAnyBookTags(book.tags);
     const tags = normalizeBookTags(book.tags);
     return this.matchesTagFilterGroup(this.tagFilters.genre, tags.genre)
       && this.matchesTagFilterGroup(this.tagFilters.status, tags.status ? [tags.status] : [])
@@ -631,6 +653,12 @@ class ReadingStatsView extends ItemView {
 
   private matchesTagFilterGroup(filters: Set<string>, values: string[]): boolean {
     return filters.size === 0 || values.some((value) => filters.has(value));
+  }
+
+  private toggleUntaggedOnly(): void {
+    const next = !this.untaggedOnly;
+    this.clearTagFilters();
+    this.untaggedOnly = next;
   }
 
   private getDailyEntriesForBooks(books: AggregatedBookStats[]): Array<[string, AggregatedDailyReadingStats]> {
@@ -703,7 +731,7 @@ class ReadingStatsView extends ItemView {
     ];
   }
 
-  private getAggregatedBooks(): AggregatedBookStats[] {
+  private getAggregatedBooks(includeLibraryBooks = false): AggregatedBookStats[] {
     const stats = this.plugin.getReadingStats();
     const groups = new Map<string, AggregatedBookStats>();
     for (const [filePath, book] of Object.entries(stats.books)) {
@@ -765,6 +793,42 @@ class ReadingStatsView extends ItemView {
           ]);
         }
         group.daily[date] = groupDaily;
+      }
+    }
+    if (includeLibraryBooks) {
+      for (const file of this.plugin.getSelectableBookFiles()) {
+        const groupKey = getReadingStatsGroupKey(file.path, file.basename);
+        const fileTags = this.plugin.getBookTags(file.path);
+        const fileHasTags = hasAnyBookTags(fileTags);
+        const group = groups.get(groupKey);
+        if (group) {
+          if (!group.originalFilePath) group.originalFilePath = file.path;
+          if (!group.hasOriginalSource) {
+            group.title = file.basename;
+            group.filePaths.push(file.path);
+            group.hasOriginalSource = true;
+          }
+          group.lastReadAt = Math.max(group.lastReadAt, this.plugin.getProgress(file.path)?.lastRead ?? 0);
+          if (fileHasTags && !group.hasOriginalTags) {
+            group.tags = fileTags;
+            group.hasOriginalTags = true;
+          }
+          continue;
+        }
+        groups.set(groupKey, {
+          groupKey,
+          title: file.basename,
+          filePaths: [file.path],
+          originalFilePath: file.path,
+          hasOriginalSource: true,
+          hasOriginalTags: fileHasTags,
+          tags: fileTags,
+          totalReadingMs: 0,
+          totalReadWords: 0,
+          readChapterRanges: [],
+          daily: {},
+          lastReadAt: this.plugin.getProgress(file.path)?.lastRead ?? 0,
+        });
       }
     }
     return Array.from(groups.values());
