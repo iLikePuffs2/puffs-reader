@@ -189,6 +189,7 @@ interface AggregatedBookStats {
   groupKey: string;
   title: string;
   filePaths: string[];
+  originalFilePath?: string;
   hasOriginalSource: boolean;
   hasOriginalTags: boolean;
   tags: BookTags;
@@ -260,6 +261,13 @@ class ReadingStatsView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    const handleBackHotkey = (event: KeyboardEvent) => this.handleBookDetailBackHotkey(event);
+    window.addEventListener('keydown', handleBackHotkey, true);
+    document.addEventListener('keydown', handleBackHotkey, true);
+    this.register(() => {
+      window.removeEventListener('keydown', handleBackHotkey, true);
+      document.removeEventListener('keydown', handleBackHotkey, true);
+    });
     this.render();
   }
 
@@ -301,8 +309,7 @@ class ReadingStatsView extends ItemView {
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
-    this.renderHeader(parent, '阅读统计');
-    this.renderTagFilters(parent, allBooks);
+    this.renderHeader(parent, '阅读统计', false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: 'puffs-reading-stats-summary' });
     summary.addClass('is-global');
     this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
@@ -310,6 +317,8 @@ class ReadingStatsView extends ItemView {
     this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(totalReadingMs), 'time', this.globalMetric === 'time', () => this.toggleGlobalMetric('time'));
     this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(totalReadWords, totalReadingMs, 'hour'), 'speed', this.globalMetric === 'speed', () => this.toggleGlobalMetric('speed'));
     this.createSummaryItem(summary, '统计书籍', `${books.length} 本`);
+
+    this.renderTagFilters(parent, allBooks);
 
     if (this.globalMetric) {
       this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
@@ -348,7 +357,7 @@ class ReadingStatsView extends ItemView {
       this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: 'puffs-reading-stats-book-main' });
       main.createDiv({ cls: 'puffs-reading-stats-book-title', text: book.title });
-      this.renderBookTagBadges(main, book.tags);
+      this.renderBookTagBadges(main, book.tags, ['genre', 'status', 'feature']);
       const meta = main.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
         text: [
@@ -373,8 +382,10 @@ class ReadingStatsView extends ItemView {
     }
     this.selectedBookPath = book.groupKey;
 
-    this.renderHeader(parent, book.title, true);
-    this.renderBookTagBadges(parent, book.tags, 'puffs-reading-stats-detail-tags');
+    this.renderHeader(parent, book.title, true, (actions) => {
+      this.renderOpenBookButton(actions, book);
+      this.renderRefreshButton(actions);
+    });
     const dailyEntries = Object.entries(book.daily ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
@@ -384,6 +395,9 @@ class ReadingStatsView extends ItemView {
     this.createSummaryItem(summary, '累计字数', this.formatCompactNumber(book.totalReadWords), 'words', this.bookMetric === 'words', () => this.toggleBookMetric('words'));
     this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(book.totalReadingMs), 'time', this.bookMetric === 'time', () => this.toggleBookMetric('time'));
     this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(book.totalReadWords, book.totalReadingMs, 'hour'), 'speed', this.bookMetric === 'speed', () => this.toggleBookMetric('speed'));
+
+    this.createSectionTitle(parent, '相关标签');
+    this.renderReadonlyTagRows(parent, book.tags);
 
     if (this.bookMetric) {
       this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
@@ -395,11 +409,12 @@ class ReadingStatsView extends ItemView {
 
     this.createSectionTitle(parent, '每日明细');
     const list = parent.createDiv({ cls: 'puffs-reading-stats-list' });
-    if (dailyEntries.length === 0) {
+    const visibleDailyEntries = dailyEntries.filter(([, item]) => Math.round(item.readingMs / 60000) > 0 && item.readWords > 0);
+    if (visibleDailyEntries.length === 0) {
       list.createDiv({ cls: 'puffs-reading-stats-empty', text: '这本书暂无每日明细。' });
       return;
     }
-    for (const [date, item] of dailyEntries) {
+    for (const [date, item] of visibleDailyEntries) {
       const card = list.createDiv({ cls: 'puffs-reading-stats-day' });
       this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
       card.createDiv({ cls: 'puffs-reading-stats-day-title', text: date });
@@ -418,18 +433,77 @@ class ReadingStatsView extends ItemView {
     }
   }
 
-  private renderHeader(parent: HTMLElement, title: string, withBack = false): void {
+  private renderHeader(
+    parent: HTMLElement,
+    title: string,
+    withBack = false,
+    renderActions?: (parent: HTMLElement) => void,
+  ): void {
     const header = parent.createDiv({ cls: 'puffs-reading-stats-header' });
     if (withBack) {
       const back = header.createEl('button', { cls: 'puffs-icon-btn puffs-reading-stats-back', attr: { 'aria-label': '返回阅读统计' } });
       setIcon(back, 'arrow-left');
       back.addEventListener('click', () => {
-        this.selectedBookPath = null;
-        this.globalMetric = null;
-        this.render();
+        this.goBackToGlobal();
       });
     }
     header.createEl('h3', { cls: 'puffs-reading-stats-title', text: title });
+    const actions = header.createDiv({ cls: 'puffs-reading-stats-header-actions' });
+    if (renderActions) renderActions(actions);
+  }
+
+  private renderRefreshButton(parent: HTMLElement): void {
+    const button = parent.createEl('button', {
+      cls: 'puffs-icon-btn puffs-reading-stats-action',
+      attr: { 'aria-label': '刷新阅读统计' },
+    });
+    setIcon(button, 'refresh-cw');
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.render();
+    });
+  }
+
+  private renderOpenBookButton(parent: HTMLElement, book: AggregatedBookStats): void {
+    const button = parent.createEl('button', {
+      cls: 'puffs-icon-btn puffs-reading-stats-action',
+      attr: { 'aria-label': '打开原书' },
+    });
+    setIcon(button, 'book-open');
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.openOriginalBook(book).catch((error) => console.error('[Puffs Reader] Failed to open original book:', error));
+    });
+  }
+
+  private async openOriginalBook(book: AggregatedBookStats): Promise<void> {
+    if (!book.originalFilePath) {
+      new Notice('未找到这本书的原版文件');
+      return;
+    }
+    const file = this.plugin.app.vault.getAbstractFileByPath(book.originalFilePath);
+    if (!(file instanceof TFile)) {
+      new Notice('原版文件不存在，无法打开');
+      return;
+    }
+    await this.plugin.openInReader(file);
+  }
+
+  private handleBookDetailBackHotkey(event: KeyboardEvent): void {
+    if (!this.selectedBookPath) return;
+    if (!event.altKey || event.key !== 'ArrowLeft' || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!this.contentEl.closest('.workspace-leaf.mod-active') && !this.contentEl.contains(document.activeElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.goBackToGlobal();
+  }
+
+  private goBackToGlobal(): void {
+    this.selectedBookPath = null;
+    this.globalMetric = null;
+    this.render();
   }
 
   private createSummaryItem(
@@ -473,21 +547,26 @@ class ReadingStatsView extends ItemView {
       || options.accumulation.length > 0;
     if (!hasOptions && !this.hasActiveTagFilters()) return;
 
-    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
-    const header = panel.createDiv({ cls: 'puffs-reading-stats-tag-filter-head' });
-    header.createDiv({ cls: 'puffs-reading-stats-tag-filter-title', text: '标签筛选' });
-    if (this.hasActiveTagFilters()) {
-      const clearBtn = header.createEl('button', { cls: 'puffs-reading-stats-tag-clear', text: '清除' });
-      clearBtn.addEventListener('click', () => {
-        this.clearTagFilters();
-        this.render();
-      });
-    }
+    const titleRow = parent.createDiv({ cls: 'puffs-reading-stats-filter-title-row' });
+    titleRow.createDiv({ cls: 'puffs-reading-stats-title puffs-reading-stats-filter-title', text: '标签筛选' });
+    const clearBtn = titleRow.createEl('button', {
+      cls: 'puffs-reading-stats-tag-clear',
+      text: '清除',
+      attr: { 'aria-label': '清除标签筛选' },
+    });
+    const hasFilters = this.hasActiveTagFilters();
+    clearBtn.classList.toggle('is-hidden', !hasFilters);
+    clearBtn.disabled = !hasFilters;
+    clearBtn.addEventListener('click', () => {
+      this.clearTagFilters();
+      this.render();
+    });
 
+    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
     this.renderTagFilterGroup(panel, '题材', 'genre', options.genre);
     this.renderTagFilterGroup(panel, '状态', 'status', options.status);
     this.renderTagFilterGroup(panel, '特色', 'feature', options.feature);
-    this.renderTagFilterGroup(panel, '积累', 'accumulation', options.accumulation);
+    this.renderTagFilterGroup(panel, '已积累', 'accumulation', options.accumulation);
   }
 
   private renderTagFilterGroup(
@@ -571,27 +650,56 @@ class ReadingStatsView extends ItemView {
     return Object.entries(dailyByDate);
   }
 
-  private renderBookTagBadges(parent: HTMLElement, tags: BookTags, extraClass = ''): void {
-    const items = this.getBookTagBadgeLabels(tags);
-    if (items.length === 0) return;
+  private renderBookTagBadges(
+    parent: HTMLElement,
+    tags: BookTags,
+    groups: ReadingStatsTagFilterGroup[] = ['genre', 'status', 'feature', 'accumulation'],
+    extraClass = '',
+  ): void {
+    const tagGroups = this.getBookTagGroups(tags).filter((group) => groups.includes(group.group) && group.labels.length > 0);
+    if (tagGroups.length === 0) return;
     const row = parent.createDiv({
       cls: ['puffs-reading-stats-tags', extraClass].filter(Boolean).join(' '),
     });
-    for (const item of items) {
-      row.createSpan({ cls: `puffs-reading-stats-tag is-${item.group}`, text: item.label });
+    for (const group of tagGroups) {
+      const groupEl = row.createSpan({ cls: `puffs-reading-stats-tag-group is-${group.group}` });
+      for (const label of group.labels) {
+        groupEl.createSpan({ cls: `puffs-reading-stats-tag is-${group.group}`, text: label });
+      }
     }
   }
 
-  private getBookTagBadgeLabels(tags: BookTags): Array<{ group: ReadingStatsTagFilterGroup; label: string }> {
+  private renderReadonlyTagRows(parent: HTMLElement, tags: BookTags): void {
+    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter puffs-reading-stats-tag-readonly' });
+    for (const group of this.getBookTagGroups(tags)) {
+      const row = panel.createDiv({ cls: 'puffs-reading-stats-tag-filter-row' });
+      row.createSpan({ cls: 'puffs-reading-stats-tag-filter-label', text: group.label });
+      const chips = row.createDiv({ cls: 'puffs-reading-stats-tag-filter-chips' });
+      const labels = group.labels.length > 0 ? group.labels : ['无'];
+      for (const label of labels) {
+        chips.createEl('button', {
+          cls: label === '无' ? 'puffs-tag-chip is-readonly is-empty' : `puffs-tag-chip is-readonly is-${group.group}`,
+          text: label,
+          attr: {
+            type: 'button',
+            tabindex: '-1',
+          },
+        });
+      }
+    }
+  }
+
+  private getBookTagGroups(tags: BookTags): Array<{ group: ReadingStatsTagFilterGroup; label: string; labels: string[] }> {
     const normalized = normalizeBookTags(tags);
     return [
-      ...normalized.genre.map((label) => ({ group: 'genre' as const, label })),
-      ...(normalized.status ? [{ group: 'status' as const, label: normalized.status }] : []),
-      ...normalized.feature.map((label) => ({ group: 'feature' as const, label })),
-      ...normalized.accumulation.map((tag) => ({
+      { group: 'genre' as const, label: '题材', labels: normalized.genre },
+      { group: 'status' as const, label: '状态', labels: normalized.status ? [normalized.status] : [] },
+      { group: 'feature' as const, label: '特色', labels: normalized.feature },
+      {
         group: 'accumulation' as const,
-        label: formatAccumulationTagLabel(tag),
-      })),
+        label: '已积累',
+        labels: normalized.accumulation.map((tag) => formatAccumulationTagLabel(tag)),
+      },
     ];
   }
 
@@ -610,6 +718,7 @@ class ReadingStatsView extends ItemView {
           groupKey,
           title: stripSummaryBookSuffix(sourceTitle),
           filePaths: [],
+          originalFilePath: undefined,
           hasOriginalSource: false,
           hasOriginalTags: false,
           tags: createEmptyBookTags(),
@@ -624,6 +733,7 @@ class ReadingStatsView extends ItemView {
 
       if (!isSummary && !group.hasOriginalSource) {
         group.title = sourceTitle;
+        group.originalFilePath = filePath;
         group.hasOriginalSource = true;
       }
       if (!isSummary && fileHasTags && !group.hasOriginalTags) {

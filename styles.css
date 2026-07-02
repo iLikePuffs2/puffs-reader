@@ -649,6 +649,7 @@
   padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .puffs-reading-stats-view {
@@ -658,6 +659,7 @@
   padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   background: var(--background-primary);
 }
 
@@ -684,8 +686,43 @@
   margin-bottom: 14px;
 }
 
+.puffs-reading-stats-header .puffs-reading-stats-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 96px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .puffs-reading-stats-back {
   flex: 0 0 auto;
+}
+
+.puffs-reading-stats-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: 2px;
+}
+
+.puffs-reading-stats-action svg {
+  width: 16px;
+  height: 16px;
+}
+
+.puffs-reading-stats-filter-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  margin: 2px 0 10px;
+}
+
+.puffs-reading-stats-filter-title {
+  margin: 0;
 }
 
 .puffs-reading-stats-tag-filter {
@@ -712,6 +749,7 @@
 
 .puffs-reading-stats-tag-clear {
   height: 24px;
+  min-width: 44px;
   padding: 0 9px;
   border: 1px solid color-mix(in srgb, var(--text-muted) 18%, transparent);
   border-radius: 4px;
@@ -720,18 +758,24 @@
   font-size: 12px;
 }
 
+.puffs-reading-stats-tag-clear.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .puffs-reading-stats-tag-filter-row {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+  align-items: center;
   margin-top: 7px;
 }
 
 .puffs-reading-stats-tag-filter-label {
-  padding-top: 3px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 24px;
 }
 
 .puffs-reading-stats-tag-filter-chips {
@@ -741,11 +785,52 @@
   min-width: 0;
 }
 
+.puffs-reading-stats-tag-filter .puffs-tag-chip {
+  border-color: color-mix(in srgb, var(--text-normal) 22%, transparent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: none !important;
+}
+
+.puffs-reading-stats-tag-filter:not(.puffs-reading-stats-tag-readonly) .puffs-tag-chip:hover,
+.puffs-reading-stats-tag-filter:not(.puffs-reading-stats-tag-readonly) .puffs-tag-chip:focus-visible,
+.puffs-reading-stats-tag-filter:not(.puffs-reading-stats-tag-readonly) .puffs-tag-chip.is-active {
+  border-color: color-mix(in srgb, var(--interactive-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 13%, var(--background-primary));
+  color: var(--text-normal);
+  outline: none;
+}
+
+.puffs-reading-stats-tag-readonly .puffs-tag-chip {
+  cursor: default;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.puffs-reading-stats-tag-readonly .puffs-tag-chip:hover,
+.puffs-reading-stats-tag-readonly .puffs-tag-chip:focus-visible {
+  border-color: color-mix(in srgb, var(--text-normal) 22%, transparent);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  outline: none;
+}
+
+.puffs-reading-stats-tag-readonly .puffs-tag-chip.is-empty {
+  color: var(--text-normal);
+}
+
 .puffs-reading-stats-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 5px 14px;
   margin: 4px 0 6px;
+}
+
+.puffs-reading-stats-tag-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
 }
 
 .puffs-reading-stats-detail-tags {
@@ -766,13 +851,12 @@
   word-break: break-word;
 }
 
-.puffs-reading-stats-tag.is-status {
-  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
-  color: var(--text-normal);
-}
-
 .puffs-reading-stats-tag.is-accumulation {
   border: 1px solid color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+}
+
+.puffs-reading-stats-tag.is-empty {
+  color: var(--text-faint);
 }
 
 .puffs-reading-stats-summary {
@@ -851,6 +935,15 @@
 
 .puffs-reading-stats-book-main {
   min-width: 0;
+}
+
+.puffs-reading-stats-book .puffs-reading-stats-tags {
+  margin-top: 12px;
+}
+
+.puffs-reading-stats-book .puffs-reading-stats-tag {
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  color: var(--text-normal);
 }
 
 .puffs-reading-stats-book-title {

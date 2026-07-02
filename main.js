@@ -3300,6 +3300,13 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     return "bar-chart-3";
   }
   async onOpen() {
+    const handleBackHotkey = (event) => this.handleBookDetailBackHotkey(event);
+    window.addEventListener("keydown", handleBackHotkey, true);
+    document.addEventListener("keydown", handleBackHotkey, true);
+    this.register(() => {
+      window.removeEventListener("keydown", handleBackHotkey, true);
+      document.removeEventListener("keydown", handleBackHotkey, true);
+    });
     this.render();
   }
   showGlobalDefault() {
@@ -3335,8 +3342,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
-    this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1");
-    this.renderTagFilters(parent, allBooks);
+    this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1", false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-global");
     this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
@@ -3344,6 +3350,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(totalReadingMs), "time", this.globalMetric === "time", () => this.toggleGlobalMetric("time"));
     this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(totalReadWords, totalReadingMs, "hour"), "speed", this.globalMetric === "speed", () => this.toggleGlobalMetric("speed"));
     this.createSummaryItem(summary, "\u7EDF\u8BA1\u4E66\u7C4D", `${books.length} \u672C`);
+    this.renderTagFilters(parent, allBooks);
     if (this.globalMetric) {
       this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
         date,
@@ -3377,7 +3384,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: "puffs-reading-stats-book-main" });
       main.createDiv({ cls: "puffs-reading-stats-book-title", text: book.title });
-      this.renderBookTagBadges(main, book.tags);
+      this.renderBookTagBadges(main, book.tags, ["genre", "status", "feature"]);
       const meta = main.createDiv({ cls: "puffs-reading-stats-book-meta" });
       meta.createSpan({
         text: [
@@ -3401,8 +3408,10 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       return;
     }
     this.selectedBookPath = book.groupKey;
-    this.renderHeader(parent, book.title, true);
-    this.renderBookTagBadges(parent, book.tags, "puffs-reading-stats-detail-tags");
+    this.renderHeader(parent, book.title, true, (actions) => {
+      this.renderOpenBookButton(actions, book);
+      this.renderRefreshButton(actions);
+    });
     const dailyEntries = Object.entries((_b = book.daily) != null ? _b : {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
@@ -3411,6 +3420,8 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(book.totalReadWords), "words", this.bookMetric === "words", () => this.toggleBookMetric("words"));
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(book.totalReadingMs), "time", this.bookMetric === "time", () => this.toggleBookMetric("time"));
     this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour"), "speed", this.bookMetric === "speed", () => this.toggleBookMetric("speed"));
+    this.createSectionTitle(parent, "\u76F8\u5173\u6807\u7B7E");
+    this.renderReadonlyTagRows(parent, book.tags);
     if (this.bookMetric) {
       this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
         date,
@@ -3420,11 +3431,12 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
     this.createSectionTitle(parent, "\u6BCF\u65E5\u660E\u7EC6");
     const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
-    if (dailyEntries.length === 0) {
+    const visibleDailyEntries = dailyEntries.filter(([, item]) => Math.round(item.readingMs / 6e4) > 0 && item.readWords > 0);
+    if (visibleDailyEntries.length === 0) {
       list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u8FD9\u672C\u4E66\u6682\u65E0\u6BCF\u65E5\u660E\u7EC6\u3002" });
       return;
     }
-    for (const [date, item] of dailyEntries) {
+    for (const [date, item] of visibleDailyEntries) {
       const card = list.createDiv({ cls: "puffs-reading-stats-day" });
       this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
       card.createDiv({ cls: "puffs-reading-stats-day-title", text: date });
@@ -3442,18 +3454,67 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       }
     }
   }
-  renderHeader(parent, title, withBack = false) {
+  renderHeader(parent, title, withBack = false, renderActions) {
     const header = parent.createDiv({ cls: "puffs-reading-stats-header" });
     if (withBack) {
       const back = header.createEl("button", { cls: "puffs-icon-btn puffs-reading-stats-back", attr: { "aria-label": "\u8FD4\u56DE\u9605\u8BFB\u7EDF\u8BA1" } });
       (0, import_obsidian3.setIcon)(back, "arrow-left");
       back.addEventListener("click", () => {
-        this.selectedBookPath = null;
-        this.globalMetric = null;
-        this.render();
+        this.goBackToGlobal();
       });
     }
     header.createEl("h3", { cls: "puffs-reading-stats-title", text: title });
+    const actions = header.createDiv({ cls: "puffs-reading-stats-header-actions" });
+    if (renderActions) renderActions(actions);
+  }
+  renderRefreshButton(parent) {
+    const button = parent.createEl("button", {
+      cls: "puffs-icon-btn puffs-reading-stats-action",
+      attr: { "aria-label": "\u5237\u65B0\u9605\u8BFB\u7EDF\u8BA1" }
+    });
+    (0, import_obsidian3.setIcon)(button, "refresh-cw");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.render();
+    });
+  }
+  renderOpenBookButton(parent, book) {
+    const button = parent.createEl("button", {
+      cls: "puffs-icon-btn puffs-reading-stats-action",
+      attr: { "aria-label": "\u6253\u5F00\u539F\u4E66" }
+    });
+    (0, import_obsidian3.setIcon)(button, "book-open");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.openOriginalBook(book).catch((error) => console.error("[Puffs Reader] Failed to open original book:", error));
+    });
+  }
+  async openOriginalBook(book) {
+    if (!book.originalFilePath) {
+      new import_obsidian3.Notice("\u672A\u627E\u5230\u8FD9\u672C\u4E66\u7684\u539F\u7248\u6587\u4EF6");
+      return;
+    }
+    const file = this.plugin.app.vault.getAbstractFileByPath(book.originalFilePath);
+    if (!(file instanceof import_obsidian3.TFile)) {
+      new import_obsidian3.Notice("\u539F\u7248\u6587\u4EF6\u4E0D\u5B58\u5728\uFF0C\u65E0\u6CD5\u6253\u5F00");
+      return;
+    }
+    await this.plugin.openInReader(file);
+  }
+  handleBookDetailBackHotkey(event) {
+    if (!this.selectedBookPath) return;
+    if (!event.altKey || event.key !== "ArrowLeft" || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!this.contentEl.closest(".workspace-leaf.mod-active") && !this.contentEl.contains(document.activeElement)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.goBackToGlobal();
+  }
+  goBackToGlobal() {
+    this.selectedBookPath = null;
+    this.globalMetric = null;
+    this.render();
   }
   createSummaryItem(parent, label, value, metric, active = false, onClick) {
     const item = parent.createDiv({ cls: "puffs-reading-stats-summary-item" });
@@ -3483,20 +3544,25 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     const options = this.getTagFilterOptions(books);
     const hasOptions = options.genre.length > 0 || options.status.length > 0 || options.feature.length > 0 || options.accumulation.length > 0;
     if (!hasOptions && !this.hasActiveTagFilters()) return;
+    const titleRow = parent.createDiv({ cls: "puffs-reading-stats-filter-title-row" });
+    titleRow.createDiv({ cls: "puffs-reading-stats-title puffs-reading-stats-filter-title", text: "\u6807\u7B7E\u7B5B\u9009" });
+    const clearBtn = titleRow.createEl("button", {
+      cls: "puffs-reading-stats-tag-clear",
+      text: "\u6E05\u9664",
+      attr: { "aria-label": "\u6E05\u9664\u6807\u7B7E\u7B5B\u9009" }
+    });
+    const hasFilters = this.hasActiveTagFilters();
+    clearBtn.classList.toggle("is-hidden", !hasFilters);
+    clearBtn.disabled = !hasFilters;
+    clearBtn.addEventListener("click", () => {
+      this.clearTagFilters();
+      this.render();
+    });
     const panel = parent.createDiv({ cls: "puffs-reading-stats-tag-filter" });
-    const header = panel.createDiv({ cls: "puffs-reading-stats-tag-filter-head" });
-    header.createDiv({ cls: "puffs-reading-stats-tag-filter-title", text: "\u6807\u7B7E\u7B5B\u9009" });
-    if (this.hasActiveTagFilters()) {
-      const clearBtn = header.createEl("button", { cls: "puffs-reading-stats-tag-clear", text: "\u6E05\u9664" });
-      clearBtn.addEventListener("click", () => {
-        this.clearTagFilters();
-        this.render();
-      });
-    }
     this.renderTagFilterGroup(panel, "\u9898\u6750", "genre", options.genre);
     this.renderTagFilterGroup(panel, "\u72B6\u6001", "status", options.status);
     this.renderTagFilterGroup(panel, "\u7279\u8272", "feature", options.feature);
-    this.renderTagFilterGroup(panel, "\u79EF\u7D2F", "accumulation", options.accumulation);
+    this.renderTagFilterGroup(panel, "\u5DF2\u79EF\u7D2F", "accumulation", options.accumulation);
   }
   renderTagFilterGroup(parent, label, group, options) {
     if (options.length === 0) return;
@@ -3567,26 +3633,49 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
     return Object.entries(dailyByDate);
   }
-  renderBookTagBadges(parent, tags, extraClass = "") {
-    const items = this.getBookTagBadgeLabels(tags);
-    if (items.length === 0) return;
+  renderBookTagBadges(parent, tags, groups = ["genre", "status", "feature", "accumulation"], extraClass = "") {
+    const tagGroups = this.getBookTagGroups(tags).filter((group) => groups.includes(group.group) && group.labels.length > 0);
+    if (tagGroups.length === 0) return;
     const row = parent.createDiv({
       cls: ["puffs-reading-stats-tags", extraClass].filter(Boolean).join(" ")
     });
-    for (const item of items) {
-      row.createSpan({ cls: `puffs-reading-stats-tag is-${item.group}`, text: item.label });
+    for (const group of tagGroups) {
+      const groupEl = row.createSpan({ cls: `puffs-reading-stats-tag-group is-${group.group}` });
+      for (const label of group.labels) {
+        groupEl.createSpan({ cls: `puffs-reading-stats-tag is-${group.group}`, text: label });
+      }
     }
   }
-  getBookTagBadgeLabels(tags) {
+  renderReadonlyTagRows(parent, tags) {
+    const panel = parent.createDiv({ cls: "puffs-reading-stats-tag-filter puffs-reading-stats-tag-readonly" });
+    for (const group of this.getBookTagGroups(tags)) {
+      const row = panel.createDiv({ cls: "puffs-reading-stats-tag-filter-row" });
+      row.createSpan({ cls: "puffs-reading-stats-tag-filter-label", text: group.label });
+      const chips = row.createDiv({ cls: "puffs-reading-stats-tag-filter-chips" });
+      const labels = group.labels.length > 0 ? group.labels : ["\u65E0"];
+      for (const label of labels) {
+        chips.createEl("button", {
+          cls: label === "\u65E0" ? "puffs-tag-chip is-readonly is-empty" : `puffs-tag-chip is-readonly is-${group.group}`,
+          text: label,
+          attr: {
+            type: "button",
+            tabindex: "-1"
+          }
+        });
+      }
+    }
+  }
+  getBookTagGroups(tags) {
     const normalized = normalizeBookTags(tags);
     return [
-      ...normalized.genre.map((label) => ({ group: "genre", label })),
-      ...normalized.status ? [{ group: "status", label: normalized.status }] : [],
-      ...normalized.feature.map((label) => ({ group: "feature", label })),
-      ...normalized.accumulation.map((tag) => ({
+      { group: "genre", label: "\u9898\u6750", labels: normalized.genre },
+      { group: "status", label: "\u72B6\u6001", labels: normalized.status ? [normalized.status] : [] },
+      { group: "feature", label: "\u7279\u8272", labels: normalized.feature },
+      {
         group: "accumulation",
-        label: formatAccumulationTagLabel(tag)
-      }))
+        label: "\u5DF2\u79EF\u7D2F",
+        labels: normalized.accumulation.map((tag) => formatAccumulationTagLabel(tag))
+      }
     ];
   }
   getAggregatedBooks() {
@@ -3605,6 +3694,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
           groupKey,
           title: stripSummaryBookSuffix(sourceTitle),
           filePaths: [],
+          originalFilePath: void 0,
           hasOriginalSource: false,
           hasOriginalTags: false,
           tags: createEmptyBookTags(),
@@ -3618,6 +3708,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       }
       if (!isSummary && !group.hasOriginalSource) {
         group.title = sourceTitle;
+        group.originalFilePath = filePath;
         group.hasOriginalSource = true;
       }
       if (!isSummary && fileHasTags && !group.hasOriginalTags) {
