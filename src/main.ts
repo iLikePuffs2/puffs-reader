@@ -23,6 +23,29 @@ const LEGACY_DEFAULT_TOC_REGEX = '^\\s*第[零〇一二三四五六七八九十�
 const LEGACY_DEFAULT_CHAPTER_TITLE_REGEX = '^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)$';
 const LEGACY_PROLOGUE_TOC_REGEX = '^\\s*(?:第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*|(?:序章|楔子|引子)(?:\\s+.*)?)$';
 const LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = '^\\s*(?:第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)|((?:序章|楔子|引子)(?:\\s+.*)?))$';
+const SUMMARY_BOOK_SUFFIX = '-概括版';
+const UNRECOGNIZED_CHAPTER_TITLE = '未识别章节';
+
+function getReadingStatsDisplayTitle(filePath: string, title?: string): string {
+  const trimmedTitle = (title ?? '').trim();
+  if (trimmedTitle) return trimmedTitle;
+  const baseName = filePath.split(/[\\/]/).pop() ?? filePath;
+  return baseName.replace(/\.[^.]+$/, '') || filePath;
+}
+
+function stripSummaryBookSuffix(title: string): string {
+  return title.endsWith(SUMMARY_BOOK_SUFFIX) ? title.slice(0, -SUMMARY_BOOK_SUFFIX.length) : title;
+}
+
+function getReadingStatsGroupKey(filePath: string, title?: string): string {
+  return stripSummaryBookSuffix(getReadingStatsDisplayTitle(filePath, title));
+}
+
+function isSummaryReadingStatsBook(filePath: string, title?: string): boolean {
+  const displayTitle = (title ?? '').trim();
+  const baseName = (filePath.split(/[\\/]/).pop() ?? filePath).replace(/\.[^.]+$/, '');
+  return displayTitle.endsWith(SUMMARY_BOOK_SUFFIX) || baseName.endsWith(SUMMARY_BOOK_SUFFIX);
+}
 
 /** 插件持久化数据结构 */
 interface PluginData {
@@ -51,6 +74,24 @@ interface ReadingStatsChartPoint {
   label: string;
   value: number;
   title: string;
+}
+
+interface AggregatedDailyReadingStats {
+  readingMs: number;
+  readWords: number;
+  readChapterRanges: ReadChapterRange[];
+}
+
+interface AggregatedBookStats {
+  groupKey: string;
+  title: string;
+  filePaths: string[];
+  hasOriginalSource: boolean;
+  totalReadingMs: number;
+  totalReadWords: number;
+  readChapterRanges: ReadChapterRange[];
+  daily: Record<string, AggregatedDailyReadingStats>;
+  lastReadAt: number;
 }
 
 /**
@@ -143,9 +184,7 @@ class ReadingStatsView extends ItemView {
 
   private renderGlobal(parent: HTMLElement): void {
     const stats = this.plugin.getReadingStats();
-    const books = Object.entries(stats.books)
-      .map(([filePath, book]) => ({ filePath, book }))
-      .sort((a, b) => b.book.lastReadAt - a.book.lastReadAt);
+    const books = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
     const dailyEntries = Object.entries(stats.daily).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
@@ -175,10 +214,10 @@ class ReadingStatsView extends ItemView {
       return;
     }
 
-    for (const { filePath, book } of books) {
+    for (const book of books) {
       const card = list.createDiv({ cls: 'puffs-reading-stats-book' });
       const openBook = () => {
-        this.selectedBookPath = filePath;
+        this.selectedBookPath = book.groupKey;
         this.render();
       };
       card.setAttr('tabindex', '0');
@@ -189,9 +228,9 @@ class ReadingStatsView extends ItemView {
           openBook();
         }
       });
-      this.registerBookStatsContextMenu(card, filePath);
+      this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: 'puffs-reading-stats-book-main' });
-      main.createDiv({ cls: 'puffs-reading-stats-book-title', text: book.title || filePath });
+      main.createDiv({ cls: 'puffs-reading-stats-book-title', text: book.title });
       const meta = main.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
         text: [
@@ -206,16 +245,17 @@ class ReadingStatsView extends ItemView {
     }
   }
 
-  private renderBookDetail(parent: HTMLElement, filePath: string): void {
-    const stats = this.plugin.getReadingStats();
-    const book = stats.books[filePath];
+  private renderBookDetail(parent: HTMLElement, groupKey: string): void {
+    const books = this.getAggregatedBooks();
+    const book = books.find((item) => item.groupKey === groupKey) ?? books.find((item) => item.filePaths.includes(groupKey));
     if (!book) {
       this.selectedBookPath = null;
       this.renderGlobal(parent);
       return;
     }
+    this.selectedBookPath = book.groupKey;
 
-    this.renderHeader(parent, book.title || filePath, true);
+    this.renderHeader(parent, book.title, true);
     const dailyEntries = Object.entries(book.daily ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
 
@@ -242,7 +282,7 @@ class ReadingStatsView extends ItemView {
     }
     for (const [date, item] of dailyEntries) {
       const card = list.createDiv({ cls: 'puffs-reading-stats-day' });
-      this.registerBookDailyStatsContextMenu(card, filePath, date);
+      this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
       card.createDiv({ cls: 'puffs-reading-stats-day-title', text: date });
       const meta = card.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
@@ -252,7 +292,10 @@ class ReadingStatsView extends ItemView {
           `平均阅读速度 ${this.formatSpeed(item.readWords, item.readingMs, 'hour')}`,
         ].join('；'),
       });
-      card.createDiv({ cls: 'puffs-reading-stats-chapters puffs-reading-stats-day-chapters', text: this.formatChapterRanges(item.readChapterRanges, '阅读章节') });
+      const chapterText = this.formatChapterRanges(item.readChapterRanges, '阅读章节');
+      if (chapterText) {
+        card.createDiv({ cls: 'puffs-reading-stats-chapters puffs-reading-stats-day-chapters', text: chapterText });
+      }
     }
   }
 
@@ -303,7 +346,62 @@ class ReadingStatsView extends ItemView {
     parent.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
   }
 
-  private registerBookStatsContextMenu(card: HTMLElement, filePath: string): void {
+  private getAggregatedBooks(): AggregatedBookStats[] {
+    const stats = this.plugin.getReadingStats();
+    const groups = new Map<string, AggregatedBookStats>();
+    for (const [filePath, book] of Object.entries(stats.books)) {
+      const sourceTitle = getReadingStatsDisplayTitle(filePath, book.title);
+      const groupKey = getReadingStatsGroupKey(filePath, book.title);
+      const isSummary = isSummaryReadingStatsBook(filePath, book.title);
+      let group = groups.get(groupKey);
+      if (!group) {
+        group = {
+          groupKey,
+          title: stripSummaryBookSuffix(sourceTitle),
+          filePaths: [],
+          hasOriginalSource: false,
+          totalReadingMs: 0,
+          totalReadWords: 0,
+          readChapterRanges: [],
+          daily: {},
+          lastReadAt: 0,
+        };
+        groups.set(groupKey, group);
+      }
+
+      if (!isSummary && !group.hasOriginalSource) {
+        group.title = sourceTitle;
+        group.hasOriginalSource = true;
+      }
+      group.filePaths.push(filePath);
+      group.totalReadingMs += book.totalReadingMs;
+      group.totalReadWords += book.totalReadWords;
+      group.lastReadAt = Math.max(group.lastReadAt, book.lastReadAt);
+
+      if (!isSummary) {
+        group.readChapterRanges = this.mergeDisplayableChapterRanges([
+          ...group.readChapterRanges,
+          ...(book.readChapterRanges ?? []),
+        ]);
+      }
+
+      for (const [date, daily] of Object.entries(book.daily ?? {})) {
+        const groupDaily = group.daily[date] ?? { readingMs: 0, readWords: 0, readChapterRanges: [] };
+        groupDaily.readingMs += daily.readingMs;
+        groupDaily.readWords += daily.readWords;
+        if (!isSummary) {
+          groupDaily.readChapterRanges = this.mergeDisplayableChapterRanges([
+            ...groupDaily.readChapterRanges,
+            ...(daily.readChapterRanges ?? []),
+          ]);
+        }
+        group.daily[date] = groupDaily;
+      }
+    }
+    return Array.from(groups.values());
+  }
+
+  private registerBookStatsContextMenu(card: HTMLElement, groupKey: string): void {
     card.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       const menu = new Menu();
@@ -312,10 +410,10 @@ class ReadingStatsView extends ItemView {
           .setTitle('删除数据')
           .setIcon('trash')
           .onClick(() => {
-            this.plugin.deleteBookReadingStats(filePath)
+            this.plugin.deleteReadingStatsGroup(groupKey)
               .then(() => {
-                new Notice('已删除这本书的阅读统计');
-                if (this.selectedBookPath === filePath) this.selectedBookPath = null;
+                new Notice('已删除这组书的阅读统计');
+                if (this.selectedBookPath === groupKey) this.selectedBookPath = null;
                 this.globalMetric = null;
                 this.bookMetric = null;
                 this.render();
@@ -327,7 +425,7 @@ class ReadingStatsView extends ItemView {
     });
   }
 
-  private registerBookDailyStatsContextMenu(card: HTMLElement, filePath: string, date: string): void {
+  private registerBookDailyStatsContextMenu(card: HTMLElement, groupKey: string, date: string): void {
     card.addEventListener('contextmenu', (event) => {
       event.preventDefault();
       const menu = new Menu();
@@ -336,7 +434,7 @@ class ReadingStatsView extends ItemView {
           .setTitle('删除数据')
           .setIcon('trash')
           .onClick(() => {
-            this.plugin.deleteBookDailyReadingStats(filePath, date)
+            this.plugin.deleteReadingStatsGroupDaily(groupKey, date)
               .then(() => {
                 new Notice('已删除当天阅读统计');
                 this.bookMetric = null;
@@ -483,11 +581,45 @@ class ReadingStatsView extends ItemView {
   }
 
   private formatChapterRanges(ranges: ReadChapterRange[], label = '已读章节'): string {
-    if (ranges.length === 0) return `${label}：未识别章节`;
-    return `${label}：${ranges.map((range) => {
+    const displayRanges = this.mergeDisplayableChapterRanges(ranges);
+    if (displayRanges.length === 0) return '';
+    const labels = displayRanges.map((range) => {
       if (range.start === range.end || range.startTitle === range.endTitle) return range.startTitle;
       return `${range.startTitle} - ${range.endTitle}`;
-    }).join('、')}`;
+    });
+    return `${label}：${[...new Set(labels)].join('、')}`;
+  }
+
+  private mergeDisplayableChapterRanges(ranges: ReadChapterRange[]): ReadChapterRange[] {
+    const sorted = ranges
+      .filter((range) =>
+        Number.isFinite(range.start)
+        && Number.isFinite(range.end)
+        && range.start >= 0
+        && range.end >= range.start
+        && range.startTitle
+        && range.endTitle
+        && range.startTitle !== UNRECOGNIZED_CHAPTER_TITLE
+        && range.endTitle !== UNRECOGNIZED_CHAPTER_TITLE
+      )
+      .map((range) => ({
+        start: Math.floor(range.start),
+        end: Math.floor(range.end),
+        startTitle: range.startTitle,
+        endTitle: range.endTitle,
+      }))
+      .sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged: ReadChapterRange[] = [];
+    for (const range of sorted) {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end + 1) {
+        merged.push({ ...range });
+      } else if (range.end > last.end) {
+        last.end = range.end;
+        last.endTitle = range.endTitle;
+      }
+    }
+    return merged;
   }
 
   private formatCompactDuration(ms: number): string {
@@ -964,20 +1096,50 @@ export default class PuffsReaderPlugin extends Plugin {
     await this.savePluginData();
   }
 
+  async deleteReadingStatsGroup(groupKey: string): Promise<void> {
+    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
+    if (filePaths.length === 0) return;
+    let changed = false;
+    for (const filePath of filePaths) {
+      changed = this.deleteBookReadingStatsInMemory(filePath) || changed;
+    }
+    if (changed) await this.savePluginData();
+  }
+
+  async deleteReadingStatsGroupDaily(groupKey: string, date: string): Promise<void> {
+    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
+    if (filePaths.length === 0) return;
+    let changed = false;
+    for (const filePath of filePaths) {
+      changed = this.deleteBookDailyReadingStatsInMemory(filePath, date) || changed;
+    }
+    if (changed) await this.savePluginData();
+  }
+
   async deleteBookReadingStats(filePath: string): Promise<void> {
+    if (!this.deleteBookReadingStatsInMemory(filePath)) return;
+    await this.savePluginData();
+  }
+
+  private deleteBookReadingStatsInMemory(filePath: string): boolean {
     const book = this.readingStats.books[filePath];
-    if (!book) return;
+    if (!book) return false;
     for (const [date, item] of Object.entries(book.daily ?? {})) {
       this.removeBookContributionFromDaily(date, filePath, item.readingMs, item.readWords);
     }
     delete this.readingStats.books[filePath];
-    await this.savePluginData();
+    return true;
   }
 
   async deleteBookDailyReadingStats(filePath: string, date: string): Promise<void> {
+    if (!this.deleteBookDailyReadingStatsInMemory(filePath, date)) return;
+    await this.savePluginData();
+  }
+
+  private deleteBookDailyReadingStatsInMemory(filePath: string, date: string): boolean {
     const book = this.readingStats.books[filePath];
     const daily = book?.daily?.[date];
-    if (!book || !daily) return;
+    if (!book || !daily) return false;
 
     this.removeBookContributionFromDaily(date, filePath, daily.readingMs, daily.readWords);
     delete book.daily[date];
@@ -985,8 +1147,7 @@ export default class PuffsReaderPlugin extends Plugin {
     const remainingDaily = Object.entries(book.daily ?? {});
     if (remainingDaily.length === 0) {
       delete this.readingStats.books[filePath];
-      await this.savePluginData();
-      return;
+      return true;
     }
 
     book.totalReadingMs = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readingMs), 0);
@@ -994,7 +1155,17 @@ export default class PuffsReaderPlugin extends Plugin {
     book.readChapterRanges = this.mergeChapterRanges(remainingDaily.flatMap(([, item]) => item.readChapterRanges ?? []));
     book.lastReadAt = Math.max(...remainingDaily.map(([day]) => this.getEndOfLocalDayTimestamp(day)), 0);
     this.readingStats.books[filePath] = book;
-    await this.savePluginData();
+    return true;
+  }
+
+  private getReadingStatsGroupFilePaths(groupKey: string): string[] {
+    const normalizedGroupKey = stripSummaryBookSuffix(groupKey.trim());
+    return Object.entries(this.readingStats.books)
+      .filter(([filePath, book]) =>
+        filePath === groupKey
+        || getReadingStatsGroupKey(filePath, book.title) === normalizedGroupKey
+      )
+      .map(([filePath]) => filePath);
   }
 
   async recordReadingStat(record: ReadingStatRecord): Promise<void> {

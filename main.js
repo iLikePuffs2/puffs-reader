@@ -2920,6 +2920,27 @@ var LEGACY_DEFAULT_TOC_REGEX = "^\\s*\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB
 var LEGACY_DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)$";
 var LEGACY_PROLOGUE_TOC_REGEX = "^\\s*(?:\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*|(?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?)$";
 var LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = "^\\s*(?:\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)|((?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?))$";
+var SUMMARY_BOOK_SUFFIX = "-\u6982\u62EC\u7248";
+var UNRECOGNIZED_CHAPTER_TITLE = "\u672A\u8BC6\u522B\u7AE0\u8282";
+function getReadingStatsDisplayTitle(filePath, title) {
+  var _a;
+  const trimmedTitle = (title != null ? title : "").trim();
+  if (trimmedTitle) return trimmedTitle;
+  const baseName = (_a = filePath.split(/[\\/]/).pop()) != null ? _a : filePath;
+  return baseName.replace(/\.[^.]+$/, "") || filePath;
+}
+function stripSummaryBookSuffix(title) {
+  return title.endsWith(SUMMARY_BOOK_SUFFIX) ? title.slice(0, -SUMMARY_BOOK_SUFFIX.length) : title;
+}
+function getReadingStatsGroupKey(filePath, title) {
+  return stripSummaryBookSuffix(getReadingStatsDisplayTitle(filePath, title));
+}
+function isSummaryReadingStatsBook(filePath, title) {
+  var _a;
+  const displayTitle = (title != null ? title : "").trim();
+  const baseName = ((_a = filePath.split(/[\\/]/).pop()) != null ? _a : filePath).replace(/\.[^.]+$/, "");
+  return displayTitle.endsWith(SUMMARY_BOOK_SUFFIX) || baseName.endsWith(SUMMARY_BOOK_SUFFIX);
+}
 var TxtFileSuggestModal = class extends import_obsidian3.FuzzySuggestModal {
   constructor(plugin) {
     super(plugin.app);
@@ -2989,7 +3010,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   }
   renderGlobal(parent) {
     const stats = this.plugin.getReadingStats();
-    const books = Object.entries(stats.books).map(([filePath, book]) => ({ filePath, book })).sort((a, b) => b.book.lastReadAt - a.book.lastReadAt);
+    const books = this.getAggregatedBooks().sort((a, b) => b.lastReadAt - a.lastReadAt);
     const dailyEntries = Object.entries(stats.daily).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
@@ -3015,10 +3036,10 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6682\u65E0\u9605\u8BFB\u7EDF\u8BA1\u3002\u6253\u5F00\u4E00\u672C\u4E66\u5E76\u505C\u7559\u9605\u8BFB\u540E\u5F00\u59CB\u8BB0\u5F55\u3002" });
       return;
     }
-    for (const { filePath, book } of books) {
+    for (const book of books) {
       const card = list.createDiv({ cls: "puffs-reading-stats-book" });
       const openBook = () => {
-        this.selectedBookPath = filePath;
+        this.selectedBookPath = book.groupKey;
         this.render();
       };
       card.setAttr("tabindex", "0");
@@ -3029,9 +3050,9 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
           openBook();
         }
       });
-      this.registerBookStatsContextMenu(card, filePath);
+      this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: "puffs-reading-stats-book-main" });
-      main.createDiv({ cls: "puffs-reading-stats-book-title", text: book.title || filePath });
+      main.createDiv({ cls: "puffs-reading-stats-book-title", text: book.title });
       const meta = main.createDiv({ cls: "puffs-reading-stats-book-meta" });
       meta.createSpan({
         text: [
@@ -3045,17 +3066,18 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       (0, import_obsidian3.setIcon)(arrow, "chevron-right");
     }
   }
-  renderBookDetail(parent, filePath) {
-    var _a;
-    const stats = this.plugin.getReadingStats();
-    const book = stats.books[filePath];
+  renderBookDetail(parent, groupKey) {
+    var _a, _b;
+    const books = this.getAggregatedBooks();
+    const book = (_a = books.find((item) => item.groupKey === groupKey)) != null ? _a : books.find((item) => item.filePaths.includes(groupKey));
     if (!book) {
       this.selectedBookPath = null;
       this.renderGlobal(parent);
       return;
     }
-    this.renderHeader(parent, book.title || filePath, true);
-    const dailyEntries = Object.entries((_a = book.daily) != null ? _a : {}).sort((a, b) => b[0].localeCompare(a[0]));
+    this.selectedBookPath = book.groupKey;
+    this.renderHeader(parent, book.title, true);
+    const dailyEntries = Object.entries((_b = book.daily) != null ? _b : {}).sort((a, b) => b[0].localeCompare(a[0]));
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-detail");
@@ -3078,7 +3100,7 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     }
     for (const [date, item] of dailyEntries) {
       const card = list.createDiv({ cls: "puffs-reading-stats-day" });
-      this.registerBookDailyStatsContextMenu(card, filePath, date);
+      this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
       card.createDiv({ cls: "puffs-reading-stats-day-title", text: date });
       const meta = card.createDiv({ cls: "puffs-reading-stats-book-meta" });
       meta.createSpan({
@@ -3088,7 +3110,10 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
           `\u5E73\u5747\u9605\u8BFB\u901F\u5EA6 ${this.formatSpeed(item.readWords, item.readingMs, "hour")}`
         ].join("\uFF1B")
       });
-      card.createDiv({ cls: "puffs-reading-stats-chapters puffs-reading-stats-day-chapters", text: this.formatChapterRanges(item.readChapterRanges, "\u9605\u8BFB\u7AE0\u8282") });
+      const chapterText = this.formatChapterRanges(item.readChapterRanges, "\u9605\u8BFB\u7AE0\u8282");
+      if (chapterText) {
+        card.createDiv({ cls: "puffs-reading-stats-chapters puffs-reading-stats-day-chapters", text: chapterText });
+      }
     }
   }
   renderHeader(parent, title, withBack = false) {
@@ -3128,15 +3153,67 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
   createSectionTitle(parent, title) {
     parent.createDiv({ cls: "puffs-reading-stats-section-title", text: title });
   }
-  registerBookStatsContextMenu(card, filePath) {
+  getAggregatedBooks() {
+    var _a, _b, _c, _d;
+    const stats = this.plugin.getReadingStats();
+    const groups = /* @__PURE__ */ new Map();
+    for (const [filePath, book] of Object.entries(stats.books)) {
+      const sourceTitle = getReadingStatsDisplayTitle(filePath, book.title);
+      const groupKey = getReadingStatsGroupKey(filePath, book.title);
+      const isSummary = isSummaryReadingStatsBook(filePath, book.title);
+      let group = groups.get(groupKey);
+      if (!group) {
+        group = {
+          groupKey,
+          title: stripSummaryBookSuffix(sourceTitle),
+          filePaths: [],
+          hasOriginalSource: false,
+          totalReadingMs: 0,
+          totalReadWords: 0,
+          readChapterRanges: [],
+          daily: {},
+          lastReadAt: 0
+        };
+        groups.set(groupKey, group);
+      }
+      if (!isSummary && !group.hasOriginalSource) {
+        group.title = sourceTitle;
+        group.hasOriginalSource = true;
+      }
+      group.filePaths.push(filePath);
+      group.totalReadingMs += book.totalReadingMs;
+      group.totalReadWords += book.totalReadWords;
+      group.lastReadAt = Math.max(group.lastReadAt, book.lastReadAt);
+      if (!isSummary) {
+        group.readChapterRanges = this.mergeDisplayableChapterRanges([
+          ...group.readChapterRanges,
+          ...(_a = book.readChapterRanges) != null ? _a : []
+        ]);
+      }
+      for (const [date, daily] of Object.entries((_b = book.daily) != null ? _b : {})) {
+        const groupDaily = (_c = group.daily[date]) != null ? _c : { readingMs: 0, readWords: 0, readChapterRanges: [] };
+        groupDaily.readingMs += daily.readingMs;
+        groupDaily.readWords += daily.readWords;
+        if (!isSummary) {
+          groupDaily.readChapterRanges = this.mergeDisplayableChapterRanges([
+            ...groupDaily.readChapterRanges,
+            ...(_d = daily.readChapterRanges) != null ? _d : []
+          ]);
+        }
+        group.daily[date] = groupDaily;
+      }
+    }
+    return Array.from(groups.values());
+  }
+  registerBookStatsContextMenu(card, groupKey) {
     card.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const menu = new import_obsidian3.Menu();
       menu.addItem((item) => {
         item.setTitle("\u5220\u9664\u6570\u636E").setIcon("trash").onClick(() => {
-          this.plugin.deleteBookReadingStats(filePath).then(() => {
-            new import_obsidian3.Notice("\u5DF2\u5220\u9664\u8FD9\u672C\u4E66\u7684\u9605\u8BFB\u7EDF\u8BA1");
-            if (this.selectedBookPath === filePath) this.selectedBookPath = null;
+          this.plugin.deleteReadingStatsGroup(groupKey).then(() => {
+            new import_obsidian3.Notice("\u5DF2\u5220\u9664\u8FD9\u7EC4\u4E66\u7684\u9605\u8BFB\u7EDF\u8BA1");
+            if (this.selectedBookPath === groupKey) this.selectedBookPath = null;
             this.globalMetric = null;
             this.bookMetric = null;
             this.render();
@@ -3146,13 +3223,13 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
       menu.showAtMouseEvent(event);
     });
   }
-  registerBookDailyStatsContextMenu(card, filePath, date) {
+  registerBookDailyStatsContextMenu(card, groupKey, date) {
     card.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const menu = new import_obsidian3.Menu();
       menu.addItem((item) => {
         item.setTitle("\u5220\u9664\u6570\u636E").setIcon("trash").onClick(() => {
-          this.plugin.deleteBookDailyReadingStats(filePath, date).then(() => {
+          this.plugin.deleteReadingStatsGroupDaily(groupKey, date).then(() => {
             new import_obsidian3.Notice("\u5DF2\u5220\u9664\u5F53\u5929\u9605\u8BFB\u7EDF\u8BA1");
             this.bookMetric = null;
             this.render();
@@ -3280,11 +3357,34 @@ var ReadingStatsView = class extends import_obsidian3.ItemView {
     card.appendChild(svg);
   }
   formatChapterRanges(ranges, label = "\u5DF2\u8BFB\u7AE0\u8282") {
-    if (ranges.length === 0) return `${label}\uFF1A\u672A\u8BC6\u522B\u7AE0\u8282`;
-    return `${label}\uFF1A${ranges.map((range) => {
+    const displayRanges = this.mergeDisplayableChapterRanges(ranges);
+    if (displayRanges.length === 0) return "";
+    const labels = displayRanges.map((range) => {
       if (range.start === range.end || range.startTitle === range.endTitle) return range.startTitle;
       return `${range.startTitle} - ${range.endTitle}`;
-    }).join("\u3001")}`;
+    });
+    return `${label}\uFF1A${[...new Set(labels)].join("\u3001")}`;
+  }
+  mergeDisplayableChapterRanges(ranges) {
+    const sorted = ranges.filter(
+      (range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.start >= 0 && range.end >= range.start && range.startTitle && range.endTitle && range.startTitle !== UNRECOGNIZED_CHAPTER_TITLE && range.endTitle !== UNRECOGNIZED_CHAPTER_TITLE
+    ).map((range) => ({
+      start: Math.floor(range.start),
+      end: Math.floor(range.end),
+      startTitle: range.startTitle,
+      endTitle: range.endTitle
+    })).sort((a, b) => a.start - b.start || a.end - b.end);
+    const merged = [];
+    for (const range of sorted) {
+      const last = merged[merged.length - 1];
+      if (!last || range.start > last.end + 1) {
+        merged.push({ ...range });
+      } else if (range.end > last.end) {
+        last.end = range.end;
+        last.endTitle = range.endTitle;
+      }
+    }
+    return merged;
   }
   formatCompactDuration(ms) {
     const totalMinutes = Math.max(0, Math.round(ms / 6e4));
@@ -3692,28 +3792,53 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     this.readingStats = this.normalizeReadingStats(stats);
     await this.savePluginData();
   }
+  async deleteReadingStatsGroup(groupKey) {
+    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
+    if (filePaths.length === 0) return;
+    let changed = false;
+    for (const filePath of filePaths) {
+      changed = this.deleteBookReadingStatsInMemory(filePath) || changed;
+    }
+    if (changed) await this.savePluginData();
+  }
+  async deleteReadingStatsGroupDaily(groupKey, date) {
+    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
+    if (filePaths.length === 0) return;
+    let changed = false;
+    for (const filePath of filePaths) {
+      changed = this.deleteBookDailyReadingStatsInMemory(filePath, date) || changed;
+    }
+    if (changed) await this.savePluginData();
+  }
   async deleteBookReadingStats(filePath) {
+    if (!this.deleteBookReadingStatsInMemory(filePath)) return;
+    await this.savePluginData();
+  }
+  deleteBookReadingStatsInMemory(filePath) {
     var _a;
     const book = this.readingStats.books[filePath];
-    if (!book) return;
+    if (!book) return false;
     for (const [date, item] of Object.entries((_a = book.daily) != null ? _a : {})) {
       this.removeBookContributionFromDaily(date, filePath, item.readingMs, item.readWords);
     }
     delete this.readingStats.books[filePath];
-    await this.savePluginData();
+    return true;
   }
   async deleteBookDailyReadingStats(filePath, date) {
+    if (!this.deleteBookDailyReadingStatsInMemory(filePath, date)) return;
+    await this.savePluginData();
+  }
+  deleteBookDailyReadingStatsInMemory(filePath, date) {
     var _a, _b;
     const book = this.readingStats.books[filePath];
     const daily = (_a = book == null ? void 0 : book.daily) == null ? void 0 : _a[date];
-    if (!book || !daily) return;
+    if (!book || !daily) return false;
     this.removeBookContributionFromDaily(date, filePath, daily.readingMs, daily.readWords);
     delete book.daily[date];
     const remainingDaily = Object.entries((_b = book.daily) != null ? _b : {});
     if (remainingDaily.length === 0) {
       delete this.readingStats.books[filePath];
-      await this.savePluginData();
-      return;
+      return true;
     }
     book.totalReadingMs = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readingMs), 0);
     book.totalReadWords = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readWords), 0);
@@ -3723,7 +3848,13 @@ var PuffsReaderPlugin = class extends import_obsidian3.Plugin {
     }));
     book.lastReadAt = Math.max(...remainingDaily.map(([day]) => this.getEndOfLocalDayTimestamp(day)), 0);
     this.readingStats.books[filePath] = book;
-    await this.savePluginData();
+    return true;
+  }
+  getReadingStatsGroupFilePaths(groupKey) {
+    const normalizedGroupKey = stripSummaryBookSuffix(groupKey.trim());
+    return Object.entries(this.readingStats.books).filter(
+      ([filePath, book]) => filePath === groupKey || getReadingStatsGroupKey(filePath, book.title) === normalizedGroupKey
+    ).map(([filePath]) => filePath);
   }
   async recordReadingStat(record) {
     var _a, _b, _c, _d, _e;
