@@ -522,7 +522,8 @@
 /* ── 阅读统计标签页 ── */
 .workspace-leaf-content[data-type='puffs-reading-stats-view'] .view-content {
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .puffs-reading-stats-view {
