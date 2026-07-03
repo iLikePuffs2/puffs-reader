@@ -1,9 +1,9 @@
 {
   "id": "puffs-reader",
-  "name": "Puffs 阅读器",
+  "name": "puffs-reader",
   "version": "1.0.0",
   "minAppVersion": "1.12.7",
-  "description": "模仿 koodo reader 样式的小说阅读器",
+  "description": "用于阅读 txt 类型小说的阅读器",
   "author": "Puffs",
   "isDesktopOnly": true
 }
