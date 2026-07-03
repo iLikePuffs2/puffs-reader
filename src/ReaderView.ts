@@ -1987,7 +1987,7 @@ export class ReaderView extends ItemView {
     this.renderTagChipSection(
       this.tagsPaneEl,
       '作者',
-      tags.authors,
+      this.plugin.sortTagValues('authors', tags.authors),
       new Set(tags.authors),
       (tag) => this.toggleBookTag('authors', tag),
       (value) => this.addCustomTag('authors', value),

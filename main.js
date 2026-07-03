@@ -1788,7 +1788,7 @@ var ReaderView = class extends import_obsidian2.ItemView {
     this.renderTagChipSection(
       this.tagsPaneEl,
       "\u4F5C\u8005",
-      tags.authors,
+      this.plugin.sortTagValues("authors", tags.authors),
       new Set(tags.authors),
       (tag) => this.toggleBookTag("authors", tag),
       (value) => this.addCustomTag("authors", value),
@@ -3378,7 +3378,7 @@ var BookTagsModal = class extends import_obsidian4.Modal {
     this.renderTagChipSection(
       body,
       "\u4F5C\u8005",
-      this.draft.authors,
+      this.plugin.sortTagValues("authors", this.draft.authors),
       new Set(this.draft.authors),
       (tag) => this.toggleArrayTag("authors", tag),
       (value) => this.addCustomArrayTag("authors", value),
@@ -3662,6 +3662,7 @@ var BookTagsModal = class extends import_obsidian4.Modal {
 var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
   constructor(plugin, onSaved) {
     super(plugin.app);
+    this.draggingTag = null;
     this.plugin = plugin;
     this.onSaved = onSaved;
   }
@@ -3681,8 +3682,9 @@ var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
     this.renderCatalogGroup(body, "\u9898\u6750", "genre", catalog.genre);
     this.renderCatalogGroup(body, "\u7279\u8272", "feature", catalog.feature);
     this.renderCatalogGroup(body, "\u79EF\u7D2F", "accumulation", catalog.accumulation);
+    this.renderCatalogGroup(body, "\u4F5C\u8005", "authors", this.plugin.getAuthorTagOptions(), false);
   }
-  renderCatalogGroup(parent, title, group, values) {
+  renderCatalogGroup(parent, title, group, values, allowAdd = true) {
     const section = parent.createDiv({ cls: "puffs-tag-section puffs-catalog-section" });
     section.createDiv({ cls: "puffs-tag-section-title", text: title });
     const list = section.createDiv({ cls: "puffs-catalog-list" });
@@ -3696,11 +3698,15 @@ var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
         attr: { type: "text", "aria-label": `${title}\u6807\u7B7E\u540D` }
       });
       input.value = value;
-      const saveBtn = row.createEl("button", {
-        cls: "puffs-icon-btn puffs-catalog-btn",
-        attr: { type: "button", "aria-label": `\u91CD\u547D\u540D${value}` }
+      const dragBtn = row.createEl("button", {
+        cls: "puffs-icon-btn puffs-catalog-btn puffs-catalog-drag",
+        attr: {
+          type: "button",
+          "aria-label": `\u8C03\u6574${value}\u987A\u5E8F`,
+          draggable: "true"
+        }
       });
-      (0, import_obsidian4.setIcon)(saveBtn, "check");
+      (0, import_obsidian4.setIcon)(dragBtn, "grip-vertical");
       const removeBtn = row.createEl("button", {
         cls: "puffs-icon-btn puffs-catalog-btn",
         attr: { type: "button", "aria-label": `\u5220\u9664${value}` }
@@ -3722,16 +3728,46 @@ var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
         event.preventDefault();
         save();
       });
-      input.addEventListener("change", save);
-      saveBtn.addEventListener("click", save);
       removeBtn.addEventListener("click", () => {
         this.plugin.deleteTagCatalogItem(group, value).then(() => this.afterSaved()).catch((error) => {
           console.error("[Puffs Reader] Failed to delete global tag:", error);
           new import_obsidian4.Notice("\u5220\u9664\u5168\u5C40\u6807\u7B7E\u5931\u8D25");
         });
       });
+      dragBtn.addEventListener("dragstart", (event) => {
+        var _a;
+        this.draggingTag = { group, value };
+        row.addClass("is-dragging");
+        (_a = event.dataTransfer) == null ? void 0 : _a.setData("text/plain", `${group}:${value}`);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+      });
+      dragBtn.addEventListener("dragend", () => {
+        this.draggingTag = null;
+        row.removeClass("is-dragging");
+      });
+      row.addEventListener("dragover", (event) => {
+        if (!this.draggingTag || this.draggingTag.group !== group || this.draggingTag.value === value) return;
+        event.preventDefault();
+        row.toggleClass("is-drag-over-after", this.isDropAfter(event, row));
+        row.toggleClass("is-drag-over-before", !this.isDropAfter(event, row));
+      });
+      row.addEventListener("dragleave", () => {
+        row.removeClass("is-drag-over-after");
+        row.removeClass("is-drag-over-before");
+      });
+      row.addEventListener("drop", (event) => {
+        if (!this.draggingTag || this.draggingTag.group !== group || this.draggingTag.value === value) return;
+        event.preventDefault();
+        const movingValue = this.draggingTag.value;
+        const placement = this.isDropAfter(event, row) ? "after" : "before";
+        this.draggingTag = null;
+        this.plugin.reorderTagCatalogItem(group, movingValue, value, placement).then(() => this.afterSaved()).catch((error) => {
+          console.error("[Puffs Reader] Failed to reorder global tag:", error);
+          new import_obsidian4.Notice("\u8C03\u6574\u6807\u7B7E\u987A\u5E8F\u5931\u8D25");
+        });
+      });
     }
-    this.renderAddRow(section, group);
+    if (allowAdd && group !== "authors") this.renderAddRow(section, group);
   }
   renderAddRow(parent, group) {
     const row = parent.createDiv({ cls: "puffs-catalog-row puffs-catalog-add-row" });
@@ -3764,8 +3800,18 @@ var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
     addBtn.addEventListener("click", add);
   }
   afterSaved() {
+    var _a, _b;
+    const scrollTop = (_b = (_a = this.contentEl.querySelector(".puffs-tag-modal-body")) == null ? void 0 : _a.scrollTop) != null ? _b : 0;
     this.onSaved();
     this.render();
+    window.requestAnimationFrame(() => {
+      const body = this.contentEl.querySelector(".puffs-tag-modal-body");
+      if (body) body.scrollTop = scrollTop;
+    });
+  }
+  isDropAfter(event, row) {
+    const rect = row.getBoundingClientRect();
+    return event.clientY > rect.top + rect.height / 2;
   }
 };
 var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView {
@@ -4318,7 +4364,7 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
   getTagFilterOptions(books) {
     const catalog = this.plugin.getTagCatalog();
     return {
-      genre: uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)]),
+      genre: this.plugin.sortTagValues("genre", uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)])),
       serialStatus: uniqueNormalizedTags([...catalog.status, ...books.map((book) => {
         var _a;
         return (_a = book.tags.serialStatus) != null ? _a : "";
@@ -4327,11 +4373,11 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
         ...READING_STATUS_OPTIONS,
         ...books.map((book) => book.tags.readingStatus || DEFAULT_READING_STATUS)
       ]),
-      feature: uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)]),
-      accumulation: uniqueNormalizedTags([
+      feature: this.plugin.sortTagValues("feature", uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)])),
+      accumulation: this.plugin.sortTagValues("accumulation", uniqueNormalizedTags([
         ...catalog.accumulation,
         ...books.flatMap((book) => book.tags.accumulation.map((tag) => tag.name))
-      ])
+      ]))
     };
   }
   toggleTagFilter(group, value) {
@@ -4414,15 +4460,15 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
   getBookTagGroups(tags) {
     const normalized = normalizeBookTags(tags);
     return [
-      { group: "authors", label: "\u4F5C\u8005", labels: normalized.authors },
-      { group: "genre", label: "\u9898\u6750", labels: normalized.genre },
+      { group: "authors", label: "\u4F5C\u8005", labels: this.plugin.sortTagValues("authors", normalized.authors) },
+      { group: "genre", label: "\u9898\u6750", labels: this.plugin.sortTagValues("genre", normalized.genre) },
       { group: "serialStatus", label: "\u72B6\u6001", labels: normalized.serialStatus ? [normalized.serialStatus] : [] },
       { group: "readingStatus", label: "\u9605\u8BFB", labels: [normalized.readingStatus || DEFAULT_READING_STATUS] },
-      { group: "feature", label: "\u7279\u8272", labels: normalized.feature },
+      { group: "feature", label: "\u7279\u8272", labels: this.plugin.sortTagValues("feature", normalized.feature) },
       {
         group: "accumulation",
         label: "\u79EF\u7D2F",
-        labels: normalized.accumulation.map((tag) => formatAccumulationTagLabel(tag))
+        labels: this.plugin.sortAccumulationTags(normalized.accumulation).map((tag) => formatAccumulationTagLabel(tag))
       }
     ];
   }
@@ -4764,6 +4810,7 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     this.progress = {};
     this.bookSettings = {};
     this.tagCatalog = normalizeTagCatalog(void 0);
+    this.authorTagOrder = [];
     this.readingStats = { schemaVersion: 2, books: {}, daily: {} };
     this.lastDataBackupAt = 0;
     this.knownBooks = [];
@@ -4869,6 +4916,7 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     this.progress = (_a = data == null ? void 0 : data.progress) != null ? _a : {};
     this.bookSettings = (_b = data == null ? void 0 : data.bookSettings) != null ? _b : {};
     this.tagCatalog = normalizeTagCatalog(data == null ? void 0 : data.tagCatalog);
+    this.authorTagOrder = this.normalizeAuthorTagOrder(data == null ? void 0 : data.authorTagOrder);
     this.readingStats = this.normalizeReadingStats(data == null ? void 0 : data.readingStats);
     this.lastDataBackupAt = (_c = data == null ? void 0 : data.lastDataBackupAt) != null ? _c : 0;
     this.knownBooks = (_d = data == null ? void 0 : data.knownBooks) != null ? _d : [];
@@ -4895,6 +4943,7 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
       progress: this.progress,
       bookSettings: this.bookSettings,
       tagCatalog: this.tagCatalog,
+      authorTagOrder: this.authorTagOrder,
       readingStats: this.readingStats,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks
@@ -5308,10 +5357,33 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     return normalizeTagCatalog(this.tagCatalog);
   }
   getAuthorTagOptions(extra = []) {
-    return uniqueNormalizedTags([
-      ...extra,
-      ...Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors)
-    ]).sort((a, b) => a.localeCompare(b, "zh-CN", { numeric: true }));
+    const currentAuthors = uniqueNormalizedTags([
+      ...Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors),
+      ...extra
+    ]);
+    return this.sortValuesByOrder(currentAuthors, this.authorTagOrder);
+  }
+  sortTagValues(group, values) {
+    const order = group === "authors" ? this.authorTagOrder : this.getTagCatalog()[group];
+    return this.sortValuesByOrder(values, order);
+  }
+  sortAccumulationTags(tags) {
+    const names = this.sortTagValues("accumulation", tags.map((tag) => tag.name));
+    return names.map((name) => tags.find((tag) => tag.name === name)).filter((tag) => !!tag);
+  }
+  async reorderTagCatalogItem(group, movingRawValue, targetRawValue, placement) {
+    const movingValue = this.normalizeCatalogValue(group, movingRawValue);
+    const targetValue = this.normalizeCatalogValue(group, targetRawValue);
+    if (!movingValue || !targetValue || movingValue === targetValue) return;
+    if (group === "authors") {
+      this.authorTagOrder = this.reorderValues(this.getAuthorTagOptions(), movingValue, targetValue, placement);
+      await this.savePluginData();
+      return;
+    }
+    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+    nextCatalog[group] = this.reorderValues(nextCatalog[group], movingValue, targetValue, placement);
+    this.tagCatalog = nextCatalog;
+    await this.savePluginData();
   }
   async addTagCatalogItem(group, rawValue) {
     const value = group === "accumulation" ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
@@ -5326,9 +5398,13 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     const oldValue = this.normalizeCatalogValue(group, oldRawValue);
     const newValue = this.normalizeCatalogValue(group, newRawValue);
     if (!oldValue || !newValue || oldValue === newValue) return;
-    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
-    nextCatalog[group] = uniqueNormalizedTags(nextCatalog[group].map((value) => value === oldValue ? newValue : value));
-    this.tagCatalog = nextCatalog;
+    if (group !== "authors") {
+      const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+      nextCatalog[group] = uniqueNormalizedTags(nextCatalog[group].map((value) => value === oldValue ? newValue : value));
+      this.tagCatalog = nextCatalog;
+    } else {
+      this.authorTagOrder = uniqueNormalizedTags(this.authorTagOrder.map((value) => value === oldValue ? newValue : value));
+    }
     for (const [filePath, settings] of Object.entries(this.bookSettings)) {
       const tags = normalizeBookTags(settings.tags);
       const nextTags = this.renameBookTag(tags, group, oldValue, newValue);
@@ -5340,9 +5416,13 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
   async deleteTagCatalogItem(group, rawValue) {
     const value = this.normalizeCatalogValue(group, rawValue);
     if (!value) return;
-    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
-    nextCatalog[group] = nextCatalog[group].filter((item) => item !== value);
-    this.tagCatalog = nextCatalog;
+    if (group !== "authors") {
+      const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+      nextCatalog[group] = nextCatalog[group].filter((item) => item !== value);
+      this.tagCatalog = nextCatalog;
+    } else {
+      this.authorTagOrder = this.authorTagOrder.filter((item) => item !== value);
+    }
     for (const [filePath, settings] of Object.entries(this.bookSettings)) {
       const tags = normalizeBookTags(settings.tags);
       const nextTags = this.deleteBookTag(tags, group, value);
@@ -5410,8 +5490,40 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     const tags = normalizeBookTags(settings.tags);
     if (hasAnyBookTags(tags)) {
       compact.tags = tags;
+      this.authorTagOrder = this.sortValuesByOrder(uniqueNormalizedTags([
+        ...this.authorTagOrder,
+        ...tags.authors
+      ]), this.authorTagOrder);
     }
     this.bookSettings[filePath] = compact;
     await this.savePluginData();
+  }
+  normalizeAuthorTagOrder(input) {
+    const saved = Array.isArray(input) ? input : [];
+    const discovered = Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors);
+    return this.sortValuesByOrder(uniqueNormalizedTags([...saved, ...discovered]), uniqueNormalizedTags(saved));
+  }
+  sortValuesByOrder(values, order) {
+    const normalizedValues = uniqueNormalizedTags(values);
+    const remaining = new Set(normalizedValues);
+    const result = [];
+    for (const orderedValue of uniqueNormalizedTags(order)) {
+      if (!remaining.has(orderedValue)) continue;
+      result.push(orderedValue);
+      remaining.delete(orderedValue);
+    }
+    for (const value of normalizedValues) {
+      if (!remaining.has(value)) continue;
+      result.push(value);
+      remaining.delete(value);
+    }
+    return result;
+  }
+  reorderValues(values, movingValue, targetValue, placement) {
+    const next = uniqueNormalizedTags(values).filter((value) => value !== movingValue);
+    const targetIndex = next.indexOf(targetValue);
+    if (targetIndex < 0) return uniqueNormalizedTags(values);
+    next.splice(placement === "after" ? targetIndex + 1 : targetIndex, 0, movingValue);
+    return next;
   }
 };

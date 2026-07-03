@@ -37,6 +37,7 @@ type TagCatalogGroup = keyof TagCatalog;
 type ReadingStatsTagFilterGroup = 'genre' | 'serialStatus' | 'readingStatus' | 'feature' | 'accumulation';
 type BookTagDisplayGroup = ReadingStatsTagFilterGroup | 'authors';
 type EditableCatalogGroup = 'genre' | 'feature' | 'accumulation';
+type EditableGlobalTagGroup = EditableCatalogGroup | 'authors';
 type BookTagArrayGroup = 'authors' | 'genre' | 'feature';
 type BookSearchMode = 'title' | 'author';
 
@@ -189,6 +190,7 @@ interface PluginData {
   progress: Record<string, BookProgress>;
   bookSettings?: Record<string, BookSettings>;
   tagCatalog?: TagCatalog;
+  authorTagOrder?: string[];
   readingStats?: ReadingStatsData;
   lastDataBackupAt?: number;
   knownBooks?: string[];
@@ -302,7 +304,7 @@ class BookTagsModal extends Modal {
     this.renderTagChipSection(
       body,
       '作者',
-      this.draft.authors,
+      this.plugin.sortTagValues('authors', this.draft.authors),
       new Set(this.draft.authors),
       (tag) => this.toggleArrayTag('authors', tag),
       (value) => this.addCustomArrayTag('authors', value),
@@ -616,6 +618,7 @@ class BookTagsModal extends Modal {
 class GlobalTagCatalogModal extends Modal {
   private plugin: PuffsReaderPlugin;
   private onSaved: () => void;
+  private draggingTag: { group: EditableGlobalTagGroup; value: string } | null = null;
 
   constructor(plugin: PuffsReaderPlugin, onSaved: () => void) {
     super(plugin.app);
@@ -641,9 +644,16 @@ class GlobalTagCatalogModal extends Modal {
     this.renderCatalogGroup(body, '题材', 'genre', catalog.genre);
     this.renderCatalogGroup(body, '特色', 'feature', catalog.feature);
     this.renderCatalogGroup(body, '积累', 'accumulation', catalog.accumulation);
+    this.renderCatalogGroup(body, '作者', 'authors', this.plugin.getAuthorTagOptions(), false);
   }
 
-  private renderCatalogGroup(parent: HTMLElement, title: string, group: EditableCatalogGroup, values: string[]): void {
+  private renderCatalogGroup(
+    parent: HTMLElement,
+    title: string,
+    group: EditableGlobalTagGroup,
+    values: string[],
+    allowAdd = true,
+  ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section puffs-catalog-section' });
     section.createDiv({ cls: 'puffs-tag-section-title', text: title });
     const list = section.createDiv({ cls: 'puffs-catalog-list' });
@@ -657,11 +667,15 @@ class GlobalTagCatalogModal extends Modal {
         attr: { type: 'text', 'aria-label': `${title}标签名` },
       }) as HTMLInputElement;
       input.value = value;
-      const saveBtn = row.createEl('button', {
-        cls: 'puffs-icon-btn puffs-catalog-btn',
-        attr: { type: 'button', 'aria-label': `重命名${value}` },
+      const dragBtn = row.createEl('button', {
+        cls: 'puffs-icon-btn puffs-catalog-btn puffs-catalog-drag',
+        attr: {
+          type: 'button',
+          'aria-label': `调整${value}顺序`,
+          draggable: 'true',
+        },
       });
-      setIcon(saveBtn, 'check');
+      setIcon(dragBtn, 'grip-vertical');
       const removeBtn = row.createEl('button', {
         cls: 'puffs-icon-btn puffs-catalog-btn',
         attr: { type: 'button', 'aria-label': `删除${value}` },
@@ -685,8 +699,6 @@ class GlobalTagCatalogModal extends Modal {
         event.preventDefault();
         save();
       });
-      input.addEventListener('change', save);
-      saveBtn.addEventListener('click', save);
       removeBtn.addEventListener('click', () => {
         this.plugin.deleteTagCatalogItem(group, value)
           .then(() => this.afterSaved())
@@ -695,8 +707,41 @@ class GlobalTagCatalogModal extends Modal {
             new Notice('删除全局标签失败');
           });
       });
+      dragBtn.addEventListener('dragstart', (event) => {
+        this.draggingTag = { group, value };
+        row.addClass('is-dragging');
+        event.dataTransfer?.setData('text/plain', `${group}:${value}`);
+        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      });
+      dragBtn.addEventListener('dragend', () => {
+        this.draggingTag = null;
+        row.removeClass('is-dragging');
+      });
+      row.addEventListener('dragover', (event) => {
+        if (!this.draggingTag || this.draggingTag.group !== group || this.draggingTag.value === value) return;
+        event.preventDefault();
+        row.toggleClass('is-drag-over-after', this.isDropAfter(event, row));
+        row.toggleClass('is-drag-over-before', !this.isDropAfter(event, row));
+      });
+      row.addEventListener('dragleave', () => {
+        row.removeClass('is-drag-over-after');
+        row.removeClass('is-drag-over-before');
+      });
+      row.addEventListener('drop', (event) => {
+        if (!this.draggingTag || this.draggingTag.group !== group || this.draggingTag.value === value) return;
+        event.preventDefault();
+        const movingValue = this.draggingTag.value;
+        const placement = this.isDropAfter(event, row) ? 'after' : 'before';
+        this.draggingTag = null;
+        this.plugin.reorderTagCatalogItem(group, movingValue, value, placement)
+          .then(() => this.afterSaved())
+          .catch((error) => {
+            console.error('[Puffs Reader] Failed to reorder global tag:', error);
+            new Notice('调整标签顺序失败');
+          });
+      });
     }
-    this.renderAddRow(section, group);
+    if (allowAdd && group !== 'authors') this.renderAddRow(section, group);
   }
 
   private renderAddRow(parent: HTMLElement, group: EditableCatalogGroup): void {
@@ -733,8 +778,18 @@ class GlobalTagCatalogModal extends Modal {
   }
 
   private afterSaved(): void {
+    const scrollTop = this.contentEl.querySelector<HTMLElement>('.puffs-tag-modal-body')?.scrollTop ?? 0;
     this.onSaved();
     this.render();
+    window.requestAnimationFrame(() => {
+      const body = this.contentEl.querySelector<HTMLElement>('.puffs-tag-modal-body');
+      if (body) body.scrollTop = scrollTop;
+    });
+  }
+
+  private isDropAfter(event: DragEvent, row: HTMLElement): boolean {
+    const rect = row.getBoundingClientRect();
+    return event.clientY > rect.top + rect.height / 2;
   }
 }
 
@@ -1384,17 +1439,17 @@ class ReadingStatsView extends ItemView {
   private getTagFilterOptions(books: AggregatedBookStats[]): Record<ReadingStatsTagFilterGroup, string[]> {
     const catalog = this.plugin.getTagCatalog();
     return {
-      genre: uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)]),
+      genre: this.plugin.sortTagValues('genre', uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)])),
       serialStatus: uniqueNormalizedTags([...catalog.status, ...books.map((book) => book.tags.serialStatus ?? '')]),
       readingStatus: uniqueNormalizedTags([
         ...READING_STATUS_OPTIONS,
         ...books.map((book) => book.tags.readingStatus || DEFAULT_READING_STATUS),
       ]),
-      feature: uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)]),
-      accumulation: uniqueNormalizedTags([
+      feature: this.plugin.sortTagValues('feature', uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)])),
+      accumulation: this.plugin.sortTagValues('accumulation', uniqueNormalizedTags([
         ...catalog.accumulation,
         ...books.flatMap((book) => book.tags.accumulation.map((tag) => tag.name)),
-      ]),
+      ])),
     };
   }
 
@@ -1495,15 +1550,15 @@ class ReadingStatsView extends ItemView {
   private getBookTagGroups(tags: BookTags): Array<{ group: BookTagDisplayGroup; label: string; labels: string[] }> {
     const normalized = normalizeBookTags(tags);
     return [
-      { group: 'authors' as const, label: '作者', labels: normalized.authors },
-      { group: 'genre' as const, label: '题材', labels: normalized.genre },
+      { group: 'authors' as const, label: '作者', labels: this.plugin.sortTagValues('authors', normalized.authors) },
+      { group: 'genre' as const, label: '题材', labels: this.plugin.sortTagValues('genre', normalized.genre) },
       { group: 'serialStatus' as const, label: '状态', labels: normalized.serialStatus ? [normalized.serialStatus] : [] },
       { group: 'readingStatus' as const, label: '阅读', labels: [normalized.readingStatus || DEFAULT_READING_STATUS] },
-      { group: 'feature' as const, label: '特色', labels: normalized.feature },
+      { group: 'feature' as const, label: '特色', labels: this.plugin.sortTagValues('feature', normalized.feature) },
       {
         group: 'accumulation' as const,
         label: '积累',
-        labels: normalized.accumulation.map((tag) => formatAccumulationTagLabel(tag)),
+        labels: this.plugin.sortAccumulationTags(normalized.accumulation).map((tag) => formatAccumulationTagLabel(tag)),
       },
     ];
   }
@@ -1900,6 +1955,7 @@ export default class PuffsReaderPlugin extends Plugin {
   progress: Record<string, BookProgress> = {};
   bookSettings: Record<string, BookSettings> = {};
   tagCatalog: TagCatalog = normalizeTagCatalog(undefined);
+  authorTagOrder: string[] = [];
   readingStats: ReadingStatsData = { schemaVersion: 2, books: {}, daily: {} };
   lastDataBackupAt = 0;
   knownBooks: string[] = [];
@@ -2029,6 +2085,7 @@ export default class PuffsReaderPlugin extends Plugin {
     this.progress = data?.progress ?? {};
     this.bookSettings = data?.bookSettings ?? {};
     this.tagCatalog = normalizeTagCatalog(data?.tagCatalog);
+    this.authorTagOrder = this.normalizeAuthorTagOrder(data?.authorTagOrder);
     this.readingStats = this.normalizeReadingStats(data?.readingStats);
     this.lastDataBackupAt = data?.lastDataBackupAt ?? 0;
     this.knownBooks = data?.knownBooks ?? [];
@@ -2060,6 +2117,7 @@ export default class PuffsReaderPlugin extends Plugin {
       progress: this.progress,
       bookSettings: this.bookSettings,
       tagCatalog: this.tagCatalog,
+      authorTagOrder: this.authorTagOrder,
       readingStats: this.readingStats,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks,
@@ -2525,10 +2583,45 @@ export default class PuffsReaderPlugin extends Plugin {
   }
 
   getAuthorTagOptions(extra: string[] = []): string[] {
-    return uniqueNormalizedTags([
-      ...extra,
+    const currentAuthors = uniqueNormalizedTags([
       ...Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors),
-    ]).sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }));
+      ...extra,
+    ]);
+    return this.sortValuesByOrder(currentAuthors, this.authorTagOrder);
+  }
+
+  sortTagValues(group: EditableGlobalTagGroup, values: string[]): string[] {
+    const order = group === 'authors' ? this.authorTagOrder : this.getTagCatalog()[group];
+    return this.sortValuesByOrder(values, order);
+  }
+
+  sortAccumulationTags(tags: BookTags['accumulation']): BookTags['accumulation'] {
+    const names = this.sortTagValues('accumulation', tags.map((tag) => tag.name));
+    return names
+      .map((name) => tags.find((tag) => tag.name === name))
+      .filter((tag): tag is BookTags['accumulation'][number] => !!tag);
+  }
+
+  async reorderTagCatalogItem(
+    group: EditableGlobalTagGroup,
+    movingRawValue: string,
+    targetRawValue: string,
+    placement: 'before' | 'after',
+  ): Promise<void> {
+    const movingValue = this.normalizeCatalogValue(group, movingRawValue);
+    const targetValue = this.normalizeCatalogValue(group, targetRawValue);
+    if (!movingValue || !targetValue || movingValue === targetValue) return;
+
+    if (group === 'authors') {
+      this.authorTagOrder = this.reorderValues(this.getAuthorTagOptions(), movingValue, targetValue, placement);
+      await this.savePluginData();
+      return;
+    }
+
+    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+    nextCatalog[group] = this.reorderValues(nextCatalog[group], movingValue, targetValue, placement);
+    this.tagCatalog = nextCatalog;
+    await this.savePluginData();
   }
 
   async addTagCatalogItem(group: TagCatalogGroup, rawValue: string): Promise<string | null> {
@@ -2541,14 +2634,18 @@ export default class PuffsReaderPlugin extends Plugin {
     return value;
   }
 
-  async renameTagCatalogItem(group: EditableCatalogGroup, oldRawValue: string, newRawValue: string): Promise<void> {
+  async renameTagCatalogItem(group: EditableGlobalTagGroup, oldRawValue: string, newRawValue: string): Promise<void> {
     const oldValue = this.normalizeCatalogValue(group, oldRawValue);
     const newValue = this.normalizeCatalogValue(group, newRawValue);
     if (!oldValue || !newValue || oldValue === newValue) return;
 
-    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
-    nextCatalog[group] = uniqueNormalizedTags(nextCatalog[group].map((value) => value === oldValue ? newValue : value));
-    this.tagCatalog = nextCatalog;
+    if (group !== 'authors') {
+      const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+      nextCatalog[group] = uniqueNormalizedTags(nextCatalog[group].map((value) => value === oldValue ? newValue : value));
+      this.tagCatalog = nextCatalog;
+    } else {
+      this.authorTagOrder = uniqueNormalizedTags(this.authorTagOrder.map((value) => value === oldValue ? newValue : value));
+    }
 
     for (const [filePath, settings] of Object.entries(this.bookSettings)) {
       const tags = normalizeBookTags(settings.tags);
@@ -2559,13 +2656,17 @@ export default class PuffsReaderPlugin extends Plugin {
     await this.savePluginData();
   }
 
-  async deleteTagCatalogItem(group: EditableCatalogGroup, rawValue: string): Promise<void> {
+  async deleteTagCatalogItem(group: EditableGlobalTagGroup, rawValue: string): Promise<void> {
     const value = this.normalizeCatalogValue(group, rawValue);
     if (!value) return;
 
-    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
-    nextCatalog[group] = nextCatalog[group].filter((item) => item !== value);
-    this.tagCatalog = nextCatalog;
+    if (group !== 'authors') {
+      const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+      nextCatalog[group] = nextCatalog[group].filter((item) => item !== value);
+      this.tagCatalog = nextCatalog;
+    } else {
+      this.authorTagOrder = this.authorTagOrder.filter((item) => item !== value);
+    }
 
     for (const [filePath, settings] of Object.entries(this.bookSettings)) {
       const tags = normalizeBookTags(settings.tags);
@@ -2576,11 +2677,11 @@ export default class PuffsReaderPlugin extends Plugin {
     await this.savePluginData();
   }
 
-  private normalizeCatalogValue(group: EditableCatalogGroup, rawValue: string): string {
+  private normalizeCatalogValue(group: EditableGlobalTagGroup, rawValue: string): string {
     return group === 'accumulation' ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
   }
 
-  private renameBookTag(tags: BookTags, group: EditableCatalogGroup, oldValue: string, newValue: string): BookTags {
+  private renameBookTag(tags: BookTags, group: EditableGlobalTagGroup, oldValue: string, newValue: string): BookTags {
     if (group === 'accumulation') {
       let changed = false;
       const byName = new Map<string, BookTags['accumulation'][number]>();
@@ -2597,7 +2698,7 @@ export default class PuffsReaderPlugin extends Plugin {
     return { ...tags, [group]: uniqueNormalizedTags(current.map((value) => value === oldValue ? newValue : value)) };
   }
 
-  private deleteBookTag(tags: BookTags, group: EditableCatalogGroup, value: string): BookTags {
+  private deleteBookTag(tags: BookTags, group: EditableGlobalTagGroup, value: string): BookTags {
     if (group === 'accumulation') {
       if (!tags.accumulation.some((item) => item.name === value)) return tags;
       return { ...tags, accumulation: tags.accumulation.filter((item) => item.name !== value) };
@@ -2640,8 +2741,43 @@ export default class PuffsReaderPlugin extends Plugin {
     const tags = normalizeBookTags(settings.tags);
     if (hasAnyBookTags(tags)) {
       compact.tags = tags;
+      this.authorTagOrder = this.sortValuesByOrder(uniqueNormalizedTags([
+        ...this.authorTagOrder,
+        ...tags.authors,
+      ]), this.authorTagOrder);
     }
     this.bookSettings[filePath] = compact;
     await this.savePluginData();
+  }
+
+  private normalizeAuthorTagOrder(input: unknown): string[] {
+    const saved = Array.isArray(input) ? input : [];
+    const discovered = Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors);
+    return this.sortValuesByOrder(uniqueNormalizedTags([...saved, ...discovered]), uniqueNormalizedTags(saved));
+  }
+
+  private sortValuesByOrder(values: string[], order: string[]): string[] {
+    const normalizedValues = uniqueNormalizedTags(values);
+    const remaining = new Set(normalizedValues);
+    const result: string[] = [];
+    for (const orderedValue of uniqueNormalizedTags(order)) {
+      if (!remaining.has(orderedValue)) continue;
+      result.push(orderedValue);
+      remaining.delete(orderedValue);
+    }
+    for (const value of normalizedValues) {
+      if (!remaining.has(value)) continue;
+      result.push(value);
+      remaining.delete(value);
+    }
+    return result;
+  }
+
+  private reorderValues(values: string[], movingValue: string, targetValue: string, placement: 'before' | 'after'): string[] {
+    const next = uniqueNormalizedTags(values).filter((value) => value !== movingValue);
+    const targetIndex = next.indexOf(targetValue);
+    if (targetIndex < 0) return uniqueNormalizedTags(values);
+    next.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, movingValue);
+    return next;
   }
 }

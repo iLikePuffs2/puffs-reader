@@ -651,6 +651,26 @@
   padding: 0;
 }
 
+.puffs-catalog-drag {
+  cursor: grab;
+}
+
+.puffs-catalog-drag:active {
+  cursor: grabbing;
+}
+
+.puffs-catalog-row.is-dragging {
+  opacity: 0.55;
+}
+
+.puffs-catalog-row.is-drag-over-before {
+  box-shadow: inset 0 2px 0 var(--interactive-accent);
+}
+
+.puffs-catalog-row.is-drag-over-after {
+  box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+
 .puffs-catalog-section > .puffs-tag-section-title {
   font-size: 15px;
   line-height: 1.4;
