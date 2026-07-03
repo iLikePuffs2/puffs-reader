@@ -1,0 +1,1 @@
+项目文档的绝对路径：E:\Obsidian-Data\其他\工具\自制插件\Puffs-Reader-文档.md

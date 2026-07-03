@@ -19,7 +19,9 @@ import {
   BookTags,
   Chapter,
   CountedRange,
+  DEFAULT_READING_STATUS,
   DEFAULT_SETTINGS,
+  READING_STATUS_OPTIONS,
   ReadChapterRange,
   SearchMatch,
   SUPPORTED_ENCODINGS,
@@ -49,7 +51,7 @@ interface ReadingStatsPageRange {
 }
 
 type ReaderSidebarMode = 'toc' | 'search' | 'notes' | 'tags';
-type EditableTagArrayGroup = 'genre' | 'feature';
+type EditableTagArrayGroup = 'authors' | 'genre' | 'feature';
 
 const DEFAULT_READING_STATS_PAGE_MIN_MS = 100;
 const DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1000;
@@ -1955,7 +1957,7 @@ export class ReaderView extends ItemView {
   // ═══════════════════════════ 书籍标签 ═══════════════════════════
 
   private getBookTags(): BookTags {
-    if (!this.currentFile) return { genre: [], feature: [], accumulation: [] };
+    if (!this.currentFile) return { authors: [], genre: [], feature: [], accumulation: [] };
     return this.plugin.getBookTags(this.currentFile.path);
   }
 
@@ -1977,6 +1979,14 @@ export class ReaderView extends ItemView {
     const tags = this.getBookTags();
     this.renderTagChipSection(
       this.tagsPaneEl,
+      '作者',
+      tags.authors,
+      new Set(tags.authors),
+      (tag) => this.toggleBookTag('authors', tag),
+      (value) => this.addCustomTag('authors', value),
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
       '题材',
       this.mergeTagOptions(catalog.genre, tags.genre),
       new Set(tags.genre),
@@ -1986,10 +1996,16 @@ export class ReaderView extends ItemView {
     this.renderTagChipSection(
       this.tagsPaneEl,
       '状态',
-      this.mergeTagOptions(catalog.status, tags.status ? [tags.status] : []),
-      new Set(tags.status ? [tags.status] : []),
-      (tag) => this.setBookStatusTag(tag),
-      (value) => this.addCustomStatusTag(value),
+      this.mergeTagOptions(catalog.status, tags.serialStatus ? [tags.serialStatus] : []),
+      new Set(tags.serialStatus ? [tags.serialStatus] : []),
+      (tag) => this.toggleSerialStatusTag(tag),
+    );
+    this.renderTagChipSection(
+      this.tagsPaneEl,
+      '阅读',
+      READING_STATUS_OPTIONS,
+      new Set([tags.readingStatus || DEFAULT_READING_STATUS]),
+      (tag) => this.setReadingStatusTag(tag),
     );
     this.renderTagChipSection(
       this.tagsPaneEl,
@@ -1999,7 +2015,7 @@ export class ReaderView extends ItemView {
       (tag) => this.toggleBookTag('feature', tag),
       (value) => this.addCustomTag('feature', value),
     );
-    this.renderAccumulationTagSection(this.tagsPaneEl, catalog.feature, tags);
+    this.renderAccumulationTagSection(this.tagsPaneEl, catalog.accumulation, tags);
   }
 
   private renderTagChipSection(
@@ -2008,7 +2024,7 @@ export class ReaderView extends ItemView {
     options: string[],
     selected: Set<string>,
     onToggle: (tag: string) => void | Promise<void>,
-    onAdd: (value: string) => void | Promise<void>,
+    onAdd?: (value: string) => void | Promise<void>,
   ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
     section.createDiv({ cls: 'puffs-tag-section-title', text: title });
@@ -2022,7 +2038,7 @@ export class ReaderView extends ItemView {
         Promise.resolve(onToggle(option)).catch((error) => console.error('[Puffs Reader] Failed to toggle tag:', error));
       });
     }
-    this.renderCustomTagInput(section, onAdd);
+    if (onAdd) this.renderCustomTagInput(section, onAdd);
   }
 
   private renderAccumulationTagSection(parent: HTMLElement, options: string[], tags: BookTags): void {
@@ -2108,19 +2124,15 @@ export class ReaderView extends ItemView {
   }
 
   private async addCustomTag(group: EditableTagArrayGroup, rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem(group, rawValue);
+    const value = group === 'authors'
+      ? this.normalizeTagName(rawValue)
+      : await this.plugin.addTagCatalogItem(group, rawValue);
     if (!value) return;
     await this.addBookTag(group, value);
   }
 
-  private async addCustomStatusTag(rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem('status', rawValue);
-    if (!value) return;
-    await this.setBookStatusTag(value);
-  }
-
   private async addCustomAccumulationTag(rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem('feature', this.normalizeAccumulationTagName(rawValue));
+    const value = await this.plugin.addTagCatalogItem('accumulation', this.normalizeAccumulationTagName(rawValue));
     if (!value) return;
     const tags = this.getBookTags();
     if (!tags.accumulation.some((tag) => tag.name === value)) {
@@ -2151,11 +2163,19 @@ export class ReaderView extends ItemView {
     await this.saveBookTags({ ...tags, [group]: Array.from(selected) });
   }
 
-  private async setBookStatusTag(tag: string): Promise<void> {
+  private async toggleSerialStatusTag(tag: string): Promise<void> {
     const tags = this.getBookTags();
     await this.saveBookTags({
       ...tags,
-      status: tags.status === tag ? undefined : tag,
+      serialStatus: tags.serialStatus === tag ? undefined : tag,
+    });
+  }
+
+  private async setReadingStatusTag(tag: string): Promise<void> {
+    const tags = this.getBookTags();
+    await this.saveBookTags({
+      ...tags,
+      readingStatus: tag || DEFAULT_READING_STATUS,
     });
   }
 

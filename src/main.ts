@@ -15,9 +15,12 @@ import {
   BookDailyReadingStats,
   CountedRange,
   DEFAULT_TAG_CATALOG,
+  DEFAULT_READING_STATUS,
   DEFAULT_SETTINGS,
   ReadChapterRange,
   ReadingStatsData,
+  READING_STATUS_OPTIONS,
+  SERIAL_STATUS_OPTIONS,
   TagCatalog,
 } from './types';
 
@@ -30,18 +33,22 @@ const SUMMARY_BOOK_SUFFIX = '-概括版';
 const UNRECOGNIZED_CHAPTER_TITLE = '未识别章节';
 
 type TagCatalogGroup = keyof TagCatalog;
-type ReadingStatsTagFilterGroup = TagCatalogGroup | 'accumulation';
-type EditableBookTagArrayGroup = 'genre' | 'feature';
+type ReadingStatsTagFilterGroup = 'genre' | 'serialStatus' | 'readingStatus' | 'feature' | 'accumulation';
+type BookTagDisplayGroup = ReadingStatsTagFilterGroup | 'authors';
+type EditableCatalogGroup = 'genre' | 'feature' | 'accumulation';
+type BookTagArrayGroup = 'authors' | 'genre' | 'feature';
+type BookSearchMode = 'title' | 'author';
 
 interface ReadingStatsTagFilters {
   genre: Set<string>;
-  status: Set<string>;
+  serialStatus: Set<string>;
+  readingStatus: Set<string>;
   feature: Set<string>;
   accumulation: Set<string>;
 }
 
 function createEmptyBookTags(): BookTags {
-  return { genre: [], feature: [], accumulation: [] };
+  return { authors: [], genre: [], feature: [], accumulation: [] };
 }
 
 function normalizeTagName(value: unknown): string {
@@ -72,7 +79,13 @@ function normalizePositiveChapter(value: unknown): number | undefined {
 
 function normalizeBookTags(input: BookTags | undefined): BookTags {
   const raw = (input ?? {}) as Partial<BookTags>;
-  const status = normalizeTagName(raw.status);
+  const legacyStatus = normalizeTagName(raw.status);
+  const serialStatus = normalizeTagName(raw.serialStatus) || (
+    SERIAL_STATUS_OPTIONS.includes(legacyStatus) ? legacyStatus : ''
+  );
+  const readingStatus = normalizeTagName(raw.readingStatus) || (
+    READING_STATUS_OPTIONS.includes(legacyStatus) ? legacyStatus : ''
+  );
   const accumulation = Array.isArray(raw.accumulation)
     ? raw.accumulation
       .map((item) => {
@@ -97,8 +110,10 @@ function normalizeBookTags(input: BookTags | undefined): BookTags {
     if (!byName.has(item.name)) byName.set(item.name, item);
   }
   return {
+    authors: uniqueNormalizedTags(Array.isArray(raw.authors) ? raw.authors : []),
     genre: uniqueNormalizedTags(Array.isArray(raw.genre) ? raw.genre : []),
-    ...(status ? { status } : {}),
+    ...(serialStatus ? { serialStatus } : {}),
+    ...(readingStatus ? { readingStatus } : {}),
     feature: uniqueNormalizedTags(Array.isArray(raw.feature) ? raw.feature : []),
     accumulation: Array.from(byName.values()),
   };
@@ -106,17 +121,28 @@ function normalizeBookTags(input: BookTags | undefined): BookTags {
 
 function hasAnyBookTags(tags: BookTags | undefined): boolean {
   const normalized = normalizeBookTags(tags);
-  return normalized.genre.length > 0
-    || !!normalized.status
+  return normalized.authors.length > 0
+    || normalized.genre.length > 0
+    || !!normalized.serialStatus
+    || (!!normalized.readingStatus && normalized.readingStatus !== DEFAULT_READING_STATUS)
     || normalized.feature.length > 0
     || normalized.accumulation.length > 0;
 }
 
 function normalizeTagCatalog(input: TagCatalog | undefined): TagCatalog {
+  const genreValues = Array.isArray(input?.genre) ? input.genre : DEFAULT_TAG_CATALOG.genre;
+  const statusValues = Array.isArray(input?.status) ? input.status : DEFAULT_TAG_CATALOG.status;
+  const featureValues = Array.isArray(input?.feature) ? input.feature : DEFAULT_TAG_CATALOG.feature;
+  const accumulationValues = Array.isArray(input?.accumulation)
+    ? input.accumulation
+    : Array.isArray(input?.feature)
+      ? input.feature
+      : DEFAULT_TAG_CATALOG.accumulation;
   return {
-    genre: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.genre ?? []), ...((input?.genre ?? []) as unknown[])]),
-    status: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.status ?? []), ...((input?.status ?? []) as unknown[])]),
-    feature: uniqueNormalizedTags([...(DEFAULT_TAG_CATALOG.feature ?? []), ...((input?.feature ?? []) as unknown[])]),
+    genre: uniqueNormalizedTags(genreValues ?? []),
+    status: uniqueNormalizedTags(statusValues ?? []),
+    feature: uniqueNormalizedTags(featureValues ?? []),
+    accumulation: uniqueNormalizedTags(accumulationValues ?? [], normalizeAccumulationTagName),
   };
 }
 
@@ -268,6 +294,14 @@ class BookTagsModal extends Modal {
 
     this.renderTagChipSection(
       body,
+      '作者',
+      this.draft.authors,
+      new Set(this.draft.authors),
+      (tag) => this.toggleArrayTag('authors', tag),
+      (value) => this.addCustomArrayTag('authors', value),
+    );
+    this.renderTagChipSection(
+      body,
       '题材',
       this.mergeTagOptions(catalog.genre, this.draft.genre),
       new Set(this.draft.genre),
@@ -277,10 +311,16 @@ class BookTagsModal extends Modal {
     this.renderTagChipSection(
       body,
       '状态',
-      this.mergeTagOptions(catalog.status, this.draft.status ? [this.draft.status] : []),
-      new Set(this.draft.status ? [this.draft.status] : []),
-      (tag) => this.toggleStatusTag(tag),
-      (value) => this.addCustomStatusTag(value),
+      this.mergeTagOptions(catalog.status, this.draft.serialStatus ? [this.draft.serialStatus] : []),
+      new Set(this.draft.serialStatus ? [this.draft.serialStatus] : []),
+      (tag) => this.toggleSerialStatusTag(tag),
+    );
+    this.renderTagChipSection(
+      body,
+      '阅读',
+      READING_STATUS_OPTIONS,
+      new Set([this.draft.readingStatus || DEFAULT_READING_STATUS]),
+      (tag) => this.setReadingStatusTag(tag),
     );
     this.renderTagChipSection(
       body,
@@ -290,7 +330,7 @@ class BookTagsModal extends Modal {
       (tag) => this.toggleArrayTag('feature', tag),
       (value) => this.addCustomArrayTag('feature', value),
     );
-    this.renderAccumulationTagSection(body, catalog.feature);
+    this.renderAccumulationTagSection(body, catalog.accumulation);
   }
 
   private renderTagChipSection(
@@ -299,7 +339,7 @@ class BookTagsModal extends Modal {
     options: string[],
     selected: Set<string>,
     onToggle: (tag: string) => void | Promise<void>,
-    onAdd: (value: string) => void | Promise<void>,
+    onAdd?: (value: string) => void | Promise<void>,
   ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
     section.createDiv({ cls: 'puffs-tag-section-title', text: title });
@@ -320,7 +360,7 @@ class BookTagsModal extends Modal {
         });
       });
     }
-    this.renderCustomTagInput(section, onAdd);
+    if (onAdd) this.renderCustomTagInput(section, onAdd);
   }
 
   private renderAccumulationTagSection(parent: HTMLElement, options: string[]): void {
@@ -415,25 +455,19 @@ class BookTagsModal extends Modal {
     return uniqueNormalizedTags([...base, ...extra]);
   }
 
-  private async addCustomArrayTag(group: EditableBookTagArrayGroup, rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem(group, rawValue);
+  private async addCustomArrayTag(group: BookTagArrayGroup, rawValue: string): Promise<void> {
+    const value = group === 'authors' ? normalizeTagName(rawValue) : await this.plugin.addTagCatalogItem(group, rawValue);
     if (!value) return;
     const current = new Set(this.draft[group]);
     current.add(value);
-    if (group === 'genre') this.draft = { ...this.draft, genre: Array.from(current) };
+    if (group === 'authors') this.draft = { ...this.draft, authors: Array.from(current) };
+    else if (group === 'genre') this.draft = { ...this.draft, genre: Array.from(current) };
     else this.draft = { ...this.draft, feature: Array.from(current) };
     await this.persistDraft();
   }
 
-  private async addCustomStatusTag(rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem('status', rawValue);
-    if (!value) return;
-    this.draft = { ...this.draft, status: value };
-    await this.persistDraft();
-  }
-
   private async addCustomAccumulationTag(rawValue: string): Promise<void> {
-    const value = await this.plugin.addTagCatalogItem('feature', rawValue);
+    const value = await this.plugin.addTagCatalogItem('accumulation', rawValue);
     if (!value) return;
     if (!this.draft.accumulation.some((tag) => tag.name === value)) {
       this.draft = { ...this.draft, accumulation: [...this.draft.accumulation, { name: value }] };
@@ -441,19 +475,28 @@ class BookTagsModal extends Modal {
     await this.persistDraft();
   }
 
-  private async toggleArrayTag(group: EditableBookTagArrayGroup, tag: string): Promise<void> {
+  private async toggleArrayTag(group: BookTagArrayGroup, tag: string): Promise<void> {
     const selected = new Set(this.draft[group]);
     if (selected.has(tag)) selected.delete(tag);
     else selected.add(tag);
-    if (group === 'genre') this.draft = { ...this.draft, genre: Array.from(selected) };
+    if (group === 'authors') this.draft = { ...this.draft, authors: Array.from(selected) };
+    else if (group === 'genre') this.draft = { ...this.draft, genre: Array.from(selected) };
     else this.draft = { ...this.draft, feature: Array.from(selected) };
     await this.persistDraft();
   }
 
-  private async toggleStatusTag(tag: string): Promise<void> {
+  private async toggleSerialStatusTag(tag: string): Promise<void> {
     this.draft = {
       ...this.draft,
-      status: this.draft.status === tag ? undefined : tag,
+      serialStatus: this.draft.serialStatus === tag ? undefined : tag,
+    };
+    await this.persistDraft();
+  }
+
+  private async setReadingStatusTag(tag: string): Promise<void> {
+    this.draft = {
+      ...this.draft,
+      readingStatus: tag || DEFAULT_READING_STATUS,
     };
     await this.persistDraft();
   }
@@ -545,6 +588,131 @@ class BookTagsModal extends Modal {
   }
 }
 
+class GlobalTagCatalogModal extends Modal {
+  private plugin: PuffsReaderPlugin;
+  private onSaved: () => void;
+
+  constructor(plugin: PuffsReaderPlugin, onSaved: () => void) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.onSaved = onSaved;
+  }
+
+  onOpen(): void {
+    this.modalEl.addClass('puffs-tag-modal');
+    this.modalEl.addClass('puffs-catalog-modal');
+    this.render();
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+
+  private render(): void {
+    const catalog = this.plugin.getTagCatalog();
+    this.contentEl.empty();
+    this.contentEl.createEl('h3', { cls: 'puffs-tag-modal-title', text: '编辑全局标签' });
+    const body = this.contentEl.createDiv({ cls: 'puffs-tag-modal-body' });
+    this.renderCatalogGroup(body, '题材', 'genre', catalog.genre);
+    this.renderCatalogGroup(body, '特色', 'feature', catalog.feature);
+    this.renderCatalogGroup(body, '已积累', 'accumulation', catalog.accumulation);
+  }
+
+  private renderCatalogGroup(parent: HTMLElement, title: string, group: EditableCatalogGroup, values: string[]): void {
+    const section = parent.createDiv({ cls: 'puffs-tag-section puffs-catalog-section' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: title });
+    const list = section.createDiv({ cls: 'puffs-catalog-list' });
+    if (values.length === 0) {
+      list.createDiv({ cls: 'puffs-tag-empty', text: '暂无标签' });
+    }
+    for (const value of values) {
+      const row = list.createDiv({ cls: 'puffs-catalog-row' });
+      const input = row.createEl('input', {
+        cls: 'puffs-catalog-input',
+        attr: { type: 'text', 'aria-label': `${title}标签名` },
+      }) as HTMLInputElement;
+      input.value = value;
+      const saveBtn = row.createEl('button', {
+        cls: 'puffs-icon-btn puffs-catalog-btn',
+        attr: { type: 'button', 'aria-label': `重命名${value}` },
+      });
+      setIcon(saveBtn, 'check');
+      const removeBtn = row.createEl('button', {
+        cls: 'puffs-icon-btn puffs-catalog-btn',
+        attr: { type: 'button', 'aria-label': `删除${value}` },
+      });
+      setIcon(removeBtn, 'trash');
+      const save = () => {
+        const next = input.value.trim();
+        if (!next || next === value) {
+          input.value = value;
+          return;
+        }
+        this.plugin.renameTagCatalogItem(group, value, next)
+          .then(() => this.afterSaved())
+          .catch((error) => {
+            console.error('[Puffs Reader] Failed to rename global tag:', error);
+            new Notice('保存全局标签失败');
+          });
+      };
+      input.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        save();
+      });
+      input.addEventListener('change', save);
+      saveBtn.addEventListener('click', save);
+      removeBtn.addEventListener('click', () => {
+        this.plugin.deleteTagCatalogItem(group, value)
+          .then(() => this.afterSaved())
+          .catch((error) => {
+            console.error('[Puffs Reader] Failed to delete global tag:', error);
+            new Notice('删除全局标签失败');
+          });
+      });
+    }
+    this.renderAddRow(section, group);
+  }
+
+  private renderAddRow(parent: HTMLElement, group: EditableCatalogGroup): void {
+    const row = parent.createDiv({ cls: 'puffs-catalog-row puffs-catalog-add-row' });
+    const input = row.createEl('input', {
+      cls: 'puffs-catalog-input',
+      attr: { type: 'text', 'aria-label': '添加全局标签' },
+    }) as HTMLInputElement;
+    const addBtn = row.createEl('button', {
+      cls: 'puffs-icon-btn puffs-catalog-btn',
+      attr: { type: 'button', 'aria-label': '添加全局标签' },
+    });
+    setIcon(addBtn, 'plus');
+    const add = () => {
+      const value = input.value.trim();
+      if (!value) return;
+      this.plugin.addTagCatalogItem(group, value)
+        .then((saved) => {
+          if (!saved) return;
+          input.value = '';
+          this.afterSaved();
+        })
+        .catch((error) => {
+          console.error('[Puffs Reader] Failed to add global tag:', error);
+          new Notice('添加全局标签失败');
+        });
+    };
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      add();
+    });
+    addBtn.addEventListener('click', add);
+  }
+
+  private afterSaved(): void {
+    this.onSaved();
+    this.render();
+  }
+}
+
 class ReadingStatsView extends ItemView {
   private plugin: PuffsReaderPlugin;
   private selectedBookPath: string | null = null;
@@ -553,9 +721,17 @@ class ReadingStatsView extends ItemView {
   private bookMetric: ReadingStatsMetric | null = null;
   private speedUnit: ReadingStatsSpeedUnit = 'hour';
   private untaggedOnly = false;
+  private bookSearchOpen = false;
+  private bookSearchQuery = '';
+  private bookSearchMode: BookSearchMode = 'title';
+  private lastBookDetailPath: string | null = null;
+  private globalBookSectionTitleEl: HTMLElement | null = null;
+  private globalBookListEl: HTMLElement | null = null;
+  private globalSummaryBookCountEl: HTMLElement | null = null;
   private tagFilters: ReadingStatsTagFilters = {
     genre: new Set<string>(),
-    status: new Set<string>(),
+    serialStatus: new Set<string>(),
+    readingStatus: new Set<string>(),
     feature: new Set<string>(),
     accumulation: new Set<string>(),
   };
@@ -579,11 +755,21 @@ class ReadingStatsView extends ItemView {
 
   async onOpen(): Promise<void> {
     const handleBackHotkey = (event: KeyboardEvent) => this.handleBookDetailBackHotkey(event);
+    const handleForwardHotkey = (event: KeyboardEvent) => this.handleBookDetailForwardHotkey(event);
+    const handleSearchHotkey = (event: KeyboardEvent) => this.handleBookSearchHotkey(event);
     window.addEventListener('keydown', handleBackHotkey, true);
     document.addEventListener('keydown', handleBackHotkey, true);
+    window.addEventListener('keydown', handleForwardHotkey, true);
+    document.addEventListener('keydown', handleForwardHotkey, true);
+    window.addEventListener('keydown', handleSearchHotkey, true);
+    document.addEventListener('keydown', handleSearchHotkey, true);
     this.register(() => {
       window.removeEventListener('keydown', handleBackHotkey, true);
       document.removeEventListener('keydown', handleBackHotkey, true);
+      window.removeEventListener('keydown', handleForwardHotkey, true);
+      document.removeEventListener('keydown', handleForwardHotkey, true);
+      window.removeEventListener('keydown', handleSearchHotkey, true);
+      document.removeEventListener('keydown', handleSearchHotkey, true);
     });
     this.render();
   }
@@ -609,6 +795,9 @@ class ReadingStatsView extends ItemView {
   private render(): void {
     this.renderVersion++;
     this.contentEl.empty();
+    this.globalBookSectionTitleEl = null;
+    this.globalBookListEl = null;
+    this.globalSummaryBookCountEl = null;
     this.contentEl.addClass('puffs-reading-stats-view');
     const page = this.contentEl.createDiv({ cls: 'puffs-reading-stats-page' });
     if (this.selectedBookPath) {
@@ -619,12 +808,8 @@ class ReadingStatsView extends ItemView {
   }
 
   private renderGlobal(parent: HTMLElement): void {
-    const hasFilters = this.hasActiveTagFilters();
-    const filterOptionBooks = this.getAggregatedBooks(true).sort((a, b) => b.lastReadAt - a.lastReadAt);
-    const allBooks = (hasFilters ? filterOptionBooks : this.getAggregatedBooks(false))
-      .sort((a, b) => b.lastReadAt - a.lastReadAt);
-    const books = allBooks.filter((book) => this.matchesTagFilters(book));
-    const dailyEntries = this.getDailyEntriesForBooks(books).sort((a, b) => a[0].localeCompare(b[0]));
+    const state = this.getGlobalBookListState();
+    const dailyEntries = this.getDailyEntriesForBooks(state.books).sort((a, b) => a[0].localeCompare(b[0]));
     const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
     const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
     const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
@@ -636,9 +821,9 @@ class ReadingStatsView extends ItemView {
     this.createSummaryItem(summary, '累计字数', this.formatCompactNumber(totalReadWords), 'words', this.globalMetric === 'words', () => this.toggleGlobalMetric('words'));
     this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(totalReadingMs), 'time', this.globalMetric === 'time', () => this.toggleGlobalMetric('time'));
     this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(totalReadWords, totalReadingMs, 'hour'), 'speed', this.globalMetric === 'speed', () => this.toggleGlobalMetric('speed'));
-    this.createSummaryItem(summary, '统计书籍', `${books.length} 本`);
+    this.globalSummaryBookCountEl = this.createSummaryItem(summary, '统计书籍', `${state.books.length} 本`);
 
-    this.renderTagFilters(parent, filterOptionBooks);
+    this.renderTagFilters(parent, state.filterOptionBooks);
 
     if (this.globalMetric) {
       this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
@@ -648,24 +833,62 @@ class ReadingStatsView extends ItemView {
       })));
     }
 
-    this.createSectionTitle(parent, hasFilters ? '书籍列表' : '最近阅读');
-    const list = parent.createDiv({ cls: 'puffs-reading-stats-list' });
-    if (books.length === 0) {
+    this.globalBookSectionTitleEl = this.createSectionTitle(parent, state.useFullLibrary ? '书籍列表' : '最近阅读', (actions) => this.renderBookSearchActions(actions));
+    this.globalBookListEl = parent.createDiv({ cls: 'puffs-reading-stats-list' });
+    this.renderGlobalBookList(this.globalBookListEl, state);
+  }
+
+  private getGlobalBookListState(): {
+    hasFilters: boolean;
+    hasSearch: boolean;
+    useFullLibrary: boolean;
+    filterOptionBooks: AggregatedBookStats[];
+    books: AggregatedBookStats[];
+  } {
+    const hasFilters = this.hasActiveTagFilters();
+    const hasSearch = this.hasActiveBookSearch();
+    const useFullLibrary = hasFilters || hasSearch;
+    const filterOptionBooks = this.getAggregatedBooks(true).sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const allBooks = (useFullLibrary ? filterOptionBooks : this.getAggregatedBooks(false))
+      .sort((a, b) => b.lastReadAt - a.lastReadAt);
+    const books = allBooks
+      .filter((book) => this.matchesTagFilters(book))
+      .filter((book) => this.matchesBookSearch(book));
+    return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books };
+  }
+
+  private refreshGlobalBookList(): void {
+    const state = this.getGlobalBookListState();
+    this.globalBookSectionTitleEl?.setText(state.useFullLibrary ? '书籍列表' : '最近阅读');
+    this.globalSummaryBookCountEl?.setText(`${state.books.length} 本`);
+    if (!this.globalBookListEl) return;
+    this.globalBookListEl.empty();
+    this.renderGlobalBookList(this.globalBookListEl, state);
+  }
+
+  private renderGlobalBookList(
+    list: HTMLElement,
+    state: { hasFilters: boolean; hasSearch: boolean; books: AggregatedBookStats[] },
+  ): void {
+    if (state.books.length === 0) {
       list.createDiv({
         cls: 'puffs-reading-stats-empty',
-        text: hasFilters
+        text: state.hasFilters
           ? this.untaggedOnly
             ? '书库里没有未打标签的书籍。'
             : '没有匹配当前标签筛选的书籍。'
-          : '暂无阅读统计。打开一本书并停留阅读后开始记录。',
+          : state.hasSearch
+            ? '没有匹配当前搜索的书籍。'
+            : '暂无阅读统计。打开一本书并停留阅读后开始记录。',
       });
       return;
     }
 
-    for (const book of books) {
+    for (const book of state.books) {
       const card = list.createDiv({ cls: 'puffs-reading-stats-book' });
       const openBook = () => {
         this.selectedBookPath = book.groupKey;
+        this.lastBookDetailPath = book.groupKey;
         this.render();
       };
       card.setAttr('tabindex', '0');
@@ -679,7 +902,7 @@ class ReadingStatsView extends ItemView {
       this.registerBookStatsContextMenu(card, book.groupKey);
       const main = card.createDiv({ cls: 'puffs-reading-stats-book-main' });
       main.createDiv({ cls: 'puffs-reading-stats-book-title', text: book.title });
-      this.renderBookTagBadges(main, book.tags, ['genre', 'status', 'feature']);
+      this.renderBookTagBadges(main, book.tags, ['genre', 'serialStatus', 'readingStatus', 'feature']);
       const meta = main.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
         text: [
@@ -703,6 +926,7 @@ class ReadingStatsView extends ItemView {
       return;
     }
     this.selectedBookPath = book.groupKey;
+    this.lastBookDetailPath = book.groupKey;
 
     this.renderHeader(parent, book.title, true, (actions) => {
       this.renderOpenBookButton(actions, book);
@@ -764,16 +988,21 @@ class ReadingStatsView extends ItemView {
     renderActions?: (parent: HTMLElement) => void,
   ): void {
     const header = parent.createDiv({ cls: 'puffs-reading-stats-header' });
-    if (withBack) {
-      const back = header.createEl('button', { cls: 'puffs-icon-btn puffs-reading-stats-back', attr: { 'aria-label': '返回阅读统计' } });
-      setIcon(back, 'arrow-left');
-      back.addEventListener('click', () => {
-        this.goBackToGlobal();
-      });
-    }
     header.createEl('h3', { cls: 'puffs-reading-stats-title', text: title });
     const actions = header.createDiv({ cls: 'puffs-reading-stats-header-actions' });
     if (renderActions) renderActions(actions);
+    if (withBack) this.renderBackButton(actions);
+  }
+
+  private renderBackButton(parent: HTMLElement): void {
+    const back = parent.createEl('button', {
+      cls: 'puffs-icon-btn puffs-reading-stats-action puffs-reading-stats-back',
+      attr: { 'aria-label': '返回阅读统计' },
+    });
+    setIcon(back, 'arrow-left');
+    back.addEventListener('click', () => {
+      this.goBackToGlobal();
+    });
   }
 
   private renderRefreshButton(parent: HTMLElement): void {
@@ -852,10 +1081,37 @@ class ReadingStatsView extends ItemView {
   private handleBookDetailBackHotkey(event: KeyboardEvent): void {
     if (!this.selectedBookPath) return;
     if (!event.altKey || event.key !== 'ArrowLeft' || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    if (!this.contentEl.closest('.workspace-leaf.mod-active') && !this.contentEl.contains(document.activeElement)) return;
+    if (!this.isActiveStatsView()) return;
     event.preventDefault();
     event.stopPropagation();
     this.goBackToGlobal();
+  }
+
+  private handleBookDetailForwardHotkey(event: KeyboardEvent): void {
+    if (this.selectedBookPath || !this.lastBookDetailPath) return;
+    if (!event.altKey || event.key !== 'ArrowRight' || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (!this.isActiveStatsView()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectedBookPath = this.lastBookDetailPath;
+    this.render();
+  }
+
+  private handleBookSearchHotkey(event: KeyboardEvent): void {
+    if (event.key.toLowerCase() !== 'f' || (!event.ctrlKey && !event.metaKey) || event.altKey || event.shiftKey) return;
+    if (this.selectedBookPath) return;
+    if (!this.isActiveStatsView()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.bookSearchOpen = !this.bookSearchOpen;
+    this.globalMetric = null;
+    this.render();
+  }
+
+  private isActiveStatsView(): boolean {
+    return this.app.workspace.getActiveViewOfType(ReadingStatsView) === this
+      || !!this.contentEl.closest('.workspace-leaf.mod-active')
+      || this.contentEl.contains(document.activeElement);
   }
 
   private goBackToGlobal(): void {
@@ -872,7 +1128,7 @@ class ReadingStatsView extends ItemView {
     metric?: ReadingStatsMetric,
     active = false,
     onClick?: () => void,
-  ): void {
+  ): HTMLElement {
     const item = parent.createDiv({ cls: 'puffs-reading-stats-summary-item' });
     if (metric) {
       item.addClass('is-clickable');
@@ -882,7 +1138,7 @@ class ReadingStatsView extends ItemView {
     }
     if (active) item.addClass('is-active');
     item.createDiv({ cls: 'puffs-reading-stats-summary-label', text: label });
-    item.createDiv({ cls: 'puffs-reading-stats-summary-value', text: value });
+    const valueEl = item.createDiv({ cls: 'puffs-reading-stats-summary-value', text: value });
     if (onClick) {
       item.addEventListener('click', onClick);
       item.addEventListener('keydown', (event) => {
@@ -892,23 +1148,131 @@ class ReadingStatsView extends ItemView {
         }
       });
     }
+    return valueEl;
   }
 
-  private createSectionTitle(parent: HTMLElement, title: string, renderActions?: (actions: HTMLElement) => void): void {
+  private createSectionTitle(parent: HTMLElement, title: string, renderActions?: (actions: HTMLElement) => void): HTMLElement {
     if (!renderActions) {
-      parent.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
-      return;
+      return parent.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
     }
     const row = parent.createDiv({ cls: 'puffs-reading-stats-section-title-row' });
-    row.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
+    const titleEl = row.createDiv({ cls: 'puffs-reading-stats-section-title', text: title });
     const actions = row.createDiv({ cls: 'puffs-reading-stats-section-actions' });
     renderActions(actions);
+    return titleEl;
+  }
+
+  private renderBookSearchActions(parent: HTMLElement): void {
+    const searchWrap = parent.createDiv({ cls: 'puffs-reading-stats-book-search' });
+    if (this.bookSearchOpen) {
+      const input = searchWrap.createEl('input', {
+        cls: 'puffs-reading-stats-book-search-input',
+        attr: {
+          type: 'text',
+          placeholder: this.bookSearchMode === 'author' ? '搜索作者' : '搜索书名',
+          'aria-label': this.bookSearchMode === 'author' ? '按作者名搜索' : '按书名搜索',
+        },
+      }) as HTMLInputElement;
+      input.value = this.bookSearchQuery;
+      let isComposing = false;
+      const commitSearchValue = () => {
+        this.bookSearchQuery = input.value.trim();
+        this.globalMetric = null;
+        this.refreshGlobalBookList();
+      };
+      input.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+      input.addEventListener('compositionend', () => {
+        isComposing = false;
+        commitSearchValue();
+      });
+      input.addEventListener('input', () => {
+        if (isComposing) return;
+        commitSearchValue();
+      });
+      input.addEventListener('blur', () => {
+        window.setTimeout(() => {
+          if (!input.isConnected || parent.contains(document.activeElement)) return;
+          this.bookSearchOpen = false;
+          this.render();
+        }, 0);
+      });
+      input.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        if (this.bookSearchQuery) this.clearBookSearch();
+        else this.bookSearchOpen = false;
+        this.render();
+      });
+      window.setTimeout(() => {
+        if (input.isConnected) input.focus();
+      }, 0);
+    } else {
+      const searchBtn = searchWrap.createEl('button', {
+        cls: 'puffs-icon-btn puffs-reading-stats-section-action',
+        attr: { type: 'button', 'aria-label': '搜索书籍' },
+      });
+      setIcon(searchBtn, 'search');
+      searchBtn.addEventListener('click', () => {
+        this.bookSearchOpen = true;
+        this.render();
+      });
+    }
+
+    const authorBtn = parent.createEl('button', {
+      cls: this.bookSearchMode === 'author'
+        ? 'puffs-icon-btn puffs-reading-stats-section-action is-active'
+        : 'puffs-icon-btn puffs-reading-stats-section-action',
+      attr: {
+        type: 'button',
+        'aria-label': '按作者名搜索',
+        'aria-pressed': this.bookSearchMode === 'author' ? 'true' : 'false',
+      },
+    });
+    setIcon(authorBtn, 'user');
+    authorBtn.addEventListener('click', () => {
+      this.bookSearchMode = this.bookSearchMode === 'author' ? 'title' : 'author';
+      this.globalMetric = null;
+      this.render();
+    });
+  }
+
+  private clearBookSearch(): void {
+    this.bookSearchQuery = '';
+    this.bookSearchOpen = false;
+    this.globalMetric = null;
+  }
+
+  private hasActiveBookSearch(): boolean {
+    return this.bookSearchQuery.trim().length > 0;
+  }
+
+  private matchesBookSearch(book: AggregatedBookStats): boolean {
+    const query = this.bookSearchQuery.trim().toLowerCase();
+    if (!query) return true;
+    if (this.bookSearchMode === 'author') {
+      return normalizeBookTags(book.tags).authors.some((author) => author.toLowerCase().includes(query));
+    }
+    return book.title.toLowerCase().includes(query);
+  }
+
+  private renderGlobalTagManagerButton(parent: HTMLElement): void {
+    const button = parent.createEl('button', {
+      cls: 'puffs-icon-btn puffs-reading-stats-filter-action',
+      attr: { type: 'button', 'aria-label': '编辑全局标签' },
+    });
+    setIcon(button, 'list-plus');
+    button.addEventListener('click', () => {
+      new GlobalTagCatalogModal(this.plugin, () => this.render()).open();
+    });
   }
 
   private renderTagFilters(parent: HTMLElement, books: AggregatedBookStats[]): void {
     const options = this.getTagFilterOptions(books);
     const hasOptions = options.genre.length > 0
-      || options.status.length > 0
+      || options.serialStatus.length > 0
+      || options.readingStatus.length > 0
       || options.feature.length > 0
       || options.accumulation.length > 0;
     if (!hasOptions && !this.hasActiveTagFilters()) return;
@@ -931,11 +1295,14 @@ class ReadingStatsView extends ItemView {
       this.toggleUntaggedOnly();
       this.render();
     });
-    const clearBtn = titleRow.createEl('button', {
-      cls: 'puffs-reading-stats-tag-clear',
-      text: '清除',
-      attr: { 'aria-label': '清除标签筛选' },
+    this.renderGlobalTagManagerButton(titleActions);
+
+    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
+    const clearBtn = panel.createEl('button', {
+      cls: 'puffs-icon-btn puffs-reading-stats-tag-clear',
+      attr: { type: 'button', 'aria-label': '清除标签筛选' },
     });
+    setIcon(clearBtn, 'trash-2');
     const hasFilters = this.hasActiveTagFilters();
     clearBtn.classList.toggle('is-hidden', !hasFilters);
     clearBtn.disabled = !hasFilters;
@@ -944,9 +1311,9 @@ class ReadingStatsView extends ItemView {
       this.render();
     });
 
-    const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
     this.renderTagFilterGroup(panel, '题材', 'genre', options.genre);
-    this.renderTagFilterGroup(panel, '状态', 'status', options.status);
+    this.renderTagFilterGroup(panel, '状态', 'serialStatus', options.serialStatus);
+    this.renderTagFilterGroup(panel, '阅读', 'readingStatus', options.readingStatus);
     this.renderTagFilterGroup(panel, '特色', 'feature', options.feature);
     this.renderTagFilterGroup(panel, '已积累', 'accumulation', options.accumulation);
   }
@@ -978,10 +1345,14 @@ class ReadingStatsView extends ItemView {
     const catalog = this.plugin.getTagCatalog();
     return {
       genre: uniqueNormalizedTags([...catalog.genre, ...books.flatMap((book) => book.tags.genre)]),
-      status: uniqueNormalizedTags([...catalog.status, ...books.map((book) => book.tags.status ?? '')]),
+      serialStatus: uniqueNormalizedTags([...catalog.status, ...books.map((book) => book.tags.serialStatus ?? '')]),
+      readingStatus: uniqueNormalizedTags([
+        ...READING_STATUS_OPTIONS,
+        ...books.map((book) => book.tags.readingStatus || DEFAULT_READING_STATUS),
+      ]),
       feature: uniqueNormalizedTags([...catalog.feature, ...books.flatMap((book) => book.tags.feature)]),
       accumulation: uniqueNormalizedTags([
-        ...catalog.feature,
+        ...catalog.accumulation,
         ...books.flatMap((book) => book.tags.accumulation.map((tag) => tag.name)),
       ]),
     };
@@ -1009,7 +1380,8 @@ class ReadingStatsView extends ItemView {
     if (this.untaggedOnly) return !hasAnyBookTags(book.tags);
     const tags = normalizeBookTags(book.tags);
     return this.matchesTagFilterGroup(this.tagFilters.genre, tags.genre)
-      && this.matchesTagFilterGroup(this.tagFilters.status, tags.status ? [tags.status] : [])
+      && this.matchesTagFilterGroup(this.tagFilters.serialStatus, tags.serialStatus ? [tags.serialStatus] : [])
+      && this.matchesTagFilterGroup(this.tagFilters.readingStatus, [tags.readingStatus || DEFAULT_READING_STATUS])
       && this.matchesTagFilterGroup(this.tagFilters.feature, tags.feature)
       && this.matchesTagFilterGroup(this.tagFilters.accumulation, tags.accumulation.map((tag) => tag.name));
   }
@@ -1044,7 +1416,7 @@ class ReadingStatsView extends ItemView {
   private renderBookTagBadges(
     parent: HTMLElement,
     tags: BookTags,
-    groups: ReadingStatsTagFilterGroup[] = ['genre', 'status', 'feature', 'accumulation'],
+    groups: BookTagDisplayGroup[] = ['authors', 'genre', 'serialStatus', 'readingStatus', 'feature', 'accumulation'],
     extraClass = '',
   ): void {
     const tagGroups = this.getBookTagGroups(tags).filter((group) => groups.includes(group.group) && group.labels.length > 0);
@@ -1080,11 +1452,13 @@ class ReadingStatsView extends ItemView {
     }
   }
 
-  private getBookTagGroups(tags: BookTags): Array<{ group: ReadingStatsTagFilterGroup; label: string; labels: string[] }> {
+  private getBookTagGroups(tags: BookTags): Array<{ group: BookTagDisplayGroup; label: string; labels: string[] }> {
     const normalized = normalizeBookTags(tags);
     return [
+      { group: 'authors' as const, label: '作者', labels: normalized.authors },
       { group: 'genre' as const, label: '题材', labels: normalized.genre },
-      { group: 'status' as const, label: '状态', labels: normalized.status ? [normalized.status] : [] },
+      { group: 'serialStatus' as const, label: '状态', labels: normalized.serialStatus ? [normalized.serialStatus] : [] },
+      { group: 'readingStatus' as const, label: '阅读', labels: [normalized.readingStatus || DEFAULT_READING_STATUS] },
       { group: 'feature' as const, label: '特色', labels: normalized.feature },
       {
         group: 'accumulation' as const,
@@ -2098,13 +2472,79 @@ export default class PuffsReaderPlugin extends Plugin {
   }
 
   async addTagCatalogItem(group: TagCatalogGroup, rawValue: string): Promise<string | null> {
-    const value = group === 'feature' ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
+    const value = group === 'accumulation' ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
     if (!value) return null;
     const next = normalizeTagCatalog(this.tagCatalog);
     next[group] = uniqueNormalizedTags([...next[group], value]);
     this.tagCatalog = next;
     await this.savePluginData();
     return value;
+  }
+
+  async renameTagCatalogItem(group: EditableCatalogGroup, oldRawValue: string, newRawValue: string): Promise<void> {
+    const oldValue = this.normalizeCatalogValue(group, oldRawValue);
+    const newValue = this.normalizeCatalogValue(group, newRawValue);
+    if (!oldValue || !newValue || oldValue === newValue) return;
+
+    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+    nextCatalog[group] = uniqueNormalizedTags(nextCatalog[group].map((value) => value === oldValue ? newValue : value));
+    this.tagCatalog = nextCatalog;
+
+    for (const [filePath, settings] of Object.entries(this.bookSettings)) {
+      const tags = normalizeBookTags(settings.tags);
+      const nextTags = this.renameBookTag(tags, group, oldValue, newValue);
+      if (nextTags === tags) continue;
+      this.bookSettings[filePath] = { ...settings, tags: nextTags };
+    }
+    await this.savePluginData();
+  }
+
+  async deleteTagCatalogItem(group: EditableCatalogGroup, rawValue: string): Promise<void> {
+    const value = this.normalizeCatalogValue(group, rawValue);
+    if (!value) return;
+
+    const nextCatalog = normalizeTagCatalog(this.tagCatalog);
+    nextCatalog[group] = nextCatalog[group].filter((item) => item !== value);
+    this.tagCatalog = nextCatalog;
+
+    for (const [filePath, settings] of Object.entries(this.bookSettings)) {
+      const tags = normalizeBookTags(settings.tags);
+      const nextTags = this.deleteBookTag(tags, group, value);
+      if (nextTags === tags) continue;
+      this.bookSettings[filePath] = { ...settings, tags: nextTags };
+    }
+    await this.savePluginData();
+  }
+
+  private normalizeCatalogValue(group: EditableCatalogGroup, rawValue: string): string {
+    return group === 'accumulation' ? normalizeAccumulationTagName(rawValue) : normalizeTagName(rawValue);
+  }
+
+  private renameBookTag(tags: BookTags, group: EditableCatalogGroup, oldValue: string, newValue: string): BookTags {
+    if (group === 'accumulation') {
+      let changed = false;
+      const byName = new Map<string, BookTags['accumulation'][number]>();
+      for (const item of tags.accumulation) {
+        const name = item.name === oldValue ? newValue : item.name;
+        if (name !== item.name) changed = true;
+        if (!byName.has(name)) byName.set(name, { ...item, name });
+      }
+      return changed ? { ...tags, accumulation: Array.from(byName.values()) } : tags;
+    }
+
+    const current = tags[group];
+    if (!current.includes(oldValue)) return tags;
+    return { ...tags, [group]: uniqueNormalizedTags(current.map((value) => value === oldValue ? newValue : value)) };
+  }
+
+  private deleteBookTag(tags: BookTags, group: EditableCatalogGroup, value: string): BookTags {
+    if (group === 'accumulation') {
+      if (!tags.accumulation.some((item) => item.name === value)) return tags;
+      return { ...tags, accumulation: tags.accumulation.filter((item) => item.name !== value) };
+    }
+
+    if (!tags[group].includes(value)) return tags;
+    return { ...tags, [group]: tags[group].filter((item) => item !== value) };
   }
 
   async saveBookTags(filePath: string, tags: BookTags): Promise<void> {
