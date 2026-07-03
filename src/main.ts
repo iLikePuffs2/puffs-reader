@@ -7,6 +7,7 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 const execAsync = promisify(exec);
 import { ReaderView, READER_VIEW_TYPE } from './ReaderView';
 import { SettingsTab } from './SettingsTab';
+import { TagInputSuggest } from './TagInputSuggest';
 import {
   ReaderSettings,
   BookProgress,
@@ -38,6 +39,12 @@ type BookTagDisplayGroup = ReadingStatsTagFilterGroup | 'authors';
 type EditableCatalogGroup = 'genre' | 'feature' | 'accumulation';
 type BookTagArrayGroup = 'authors' | 'genre' | 'feature';
 type BookSearchMode = 'title' | 'author';
+
+interface CustomTagInputOptions {
+  ariaLabel?: string;
+  placeholder?: string;
+  suggestions?: string[];
+}
 
 interface ReadingStatsTagFilters {
   genre: Set<string>;
@@ -299,6 +306,11 @@ class BookTagsModal extends Modal {
       new Set(this.draft.authors),
       (tag) => this.toggleArrayTag('authors', tag),
       (value) => this.addCustomArrayTag('authors', value),
+      {
+        ariaLabel: '添加作者',
+        placeholder: '输入作者',
+        suggestions: this.plugin.getAuthorTagOptions(this.draft.authors),
+      },
     );
     this.renderTagChipSection(
       body,
@@ -340,6 +352,7 @@ class BookTagsModal extends Modal {
     selected: Set<string>,
     onToggle: (tag: string) => void | Promise<void>,
     onAdd?: (value: string) => void | Promise<void>,
+    inputOptions: CustomTagInputOptions = {},
   ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
     section.createDiv({ cls: 'puffs-tag-section-title', text: title });
@@ -360,13 +373,13 @@ class BookTagsModal extends Modal {
         });
       });
     }
-    if (onAdd) this.renderCustomTagInput(section, onAdd);
+    if (onAdd) this.renderCustomTagInput(section, onAdd, inputOptions);
   }
 
   private renderAccumulationTagSection(parent: HTMLElement, options: string[]): void {
     const selected = new Set(this.draft.accumulation.map((tag) => tag.name));
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
-    section.createDiv({ cls: 'puffs-tag-section-title', text: '已积累' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: '积累' });
     const chips = section.createDiv({ cls: 'puffs-tag-chip-row' });
     for (const option of this.mergeTagOptions(options, this.draft.accumulation.map((tag) => tag.name))) {
       const chip = chips.createEl('button', {
@@ -429,14 +442,22 @@ class BookTagsModal extends Modal {
     }
   }
 
-  private renderCustomTagInput(parent: HTMLElement, onAdd: (value: string) => void | Promise<void>): void {
+  private renderCustomTagInput(
+    parent: HTMLElement,
+    onAdd: (value: string) => void | Promise<void>,
+    options: CustomTagInputOptions = {},
+  ): void {
     const row = parent.createDiv({ cls: 'puffs-tag-custom-row' });
     const input = row.createEl('input', {
       cls: 'puffs-tag-custom-input',
-      attr: { type: 'text', 'aria-label': '添加标签' },
+      attr: {
+        type: 'text',
+        'aria-label': options.ariaLabel ?? '添加标签',
+        ...(options.placeholder ? { placeholder: options.placeholder } : {}),
+      },
     }) as HTMLInputElement;
-    const submit = () => {
-      const value = input.value.trim();
+    const submitValue = (rawValue: string) => {
+      const value = rawValue.trim();
       if (!value) return;
       input.value = '';
       Promise.resolve(onAdd(value)).catch((error) => {
@@ -444,6 +465,10 @@ class BookTagsModal extends Modal {
         new Notice('保存标签失败');
       });
     };
+    const submit = () => submitValue(input.value);
+    if (options.suggestions && options.suggestions.length > 0) {
+      new TagInputSuggest(this.plugin.app, input, options.suggestions, submitValue);
+    }
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();
@@ -615,7 +640,7 @@ class GlobalTagCatalogModal extends Modal {
     const body = this.contentEl.createDiv({ cls: 'puffs-tag-modal-body' });
     this.renderCatalogGroup(body, '题材', 'genre', catalog.genre);
     this.renderCatalogGroup(body, '特色', 'feature', catalog.feature);
-    this.renderCatalogGroup(body, '已积累', 'accumulation', catalog.accumulation);
+    this.renderCatalogGroup(body, '积累', 'accumulation', catalog.accumulation);
   }
 
   private renderCatalogGroup(parent: HTMLElement, title: string, group: EditableCatalogGroup, values: string[]): void {
@@ -757,12 +782,14 @@ class ReadingStatsView extends ItemView {
     const handleBackHotkey = (event: KeyboardEvent) => this.handleBookDetailBackHotkey(event);
     const handleForwardHotkey = (event: KeyboardEvent) => this.handleBookDetailForwardHotkey(event);
     const handleSearchHotkey = (event: KeyboardEvent) => this.handleBookSearchHotkey(event);
+    const handleSearchOutsideClick = (event: MouseEvent) => this.handleBookSearchOutsideClick(event);
     window.addEventListener('keydown', handleBackHotkey, true);
     document.addEventListener('keydown', handleBackHotkey, true);
     window.addEventListener('keydown', handleForwardHotkey, true);
     document.addEventListener('keydown', handleForwardHotkey, true);
     window.addEventListener('keydown', handleSearchHotkey, true);
     document.addEventListener('keydown', handleSearchHotkey, true);
+    document.addEventListener('click', handleSearchOutsideClick, true);
     this.register(() => {
       window.removeEventListener('keydown', handleBackHotkey, true);
       document.removeEventListener('keydown', handleBackHotkey, true);
@@ -770,6 +797,7 @@ class ReadingStatsView extends ItemView {
       document.removeEventListener('keydown', handleForwardHotkey, true);
       window.removeEventListener('keydown', handleSearchHotkey, true);
       document.removeEventListener('keydown', handleSearchHotkey, true);
+      document.removeEventListener('click', handleSearchOutsideClick, true);
     });
     this.render();
   }
@@ -833,7 +861,7 @@ class ReadingStatsView extends ItemView {
       })));
     }
 
-    this.globalBookSectionTitleEl = this.createSectionTitle(parent, state.useFullLibrary ? '书籍列表' : '最近阅读', (actions) => this.renderBookSearchActions(actions));
+    this.globalBookSectionTitleEl = this.createSectionTitle(parent, '书籍列表', (actions) => this.renderBookSearchActions(actions));
     this.globalBookListEl = parent.createDiv({ cls: 'puffs-reading-stats-list' });
     this.renderGlobalBookList(this.globalBookListEl, state);
   }
@@ -859,7 +887,7 @@ class ReadingStatsView extends ItemView {
 
   private refreshGlobalBookList(): void {
     const state = this.getGlobalBookListState();
-    this.globalBookSectionTitleEl?.setText(state.useFullLibrary ? '书籍列表' : '最近阅读');
+    this.globalBookSectionTitleEl?.setText('书籍列表');
     this.globalSummaryBookCountEl?.setText(`${state.books.length} 本`);
     if (!this.globalBookListEl) return;
     this.globalBookListEl.empty();
@@ -1103,9 +1131,27 @@ class ReadingStatsView extends ItemView {
     if (!this.isActiveStatsView()) return;
     event.preventDefault();
     event.stopPropagation();
-    this.bookSearchOpen = !this.bookSearchOpen;
-    this.globalMetric = null;
+    if (this.bookSearchOpen) {
+      this.clearBookSearch();
+    } else {
+      this.bookSearchOpen = true;
+      this.bookSearchQuery = '';
+      this.globalMetric = null;
+    }
     this.render();
+  }
+
+  private handleBookSearchOutsideClick(event: MouseEvent): void {
+    if (!this.bookSearchOpen || this.selectedBookPath) return;
+    const target = event.target;
+    if (!(target instanceof Node)) return;
+    const searchActions = this.contentEl.querySelector('.puffs-reading-stats-book-search-actions');
+    if (searchActions?.contains(target)) return;
+    window.setTimeout(() => {
+      if (!this.bookSearchOpen || this.selectedBookPath) return;
+      this.clearBookSearch();
+      this.render();
+    }, 0);
   }
 
   private isActiveStatsView(): boolean {
@@ -1163,6 +1209,7 @@ class ReadingStatsView extends ItemView {
   }
 
   private renderBookSearchActions(parent: HTMLElement): void {
+    parent.addClass('puffs-reading-stats-book-search-actions');
     const searchWrap = parent.createDiv({ cls: 'puffs-reading-stats-book-search' });
     if (this.bookSearchOpen) {
       const input = searchWrap.createEl('input', {
@@ -1191,18 +1238,10 @@ class ReadingStatsView extends ItemView {
         if (isComposing) return;
         commitSearchValue();
       });
-      input.addEventListener('blur', () => {
-        window.setTimeout(() => {
-          if (!input.isConnected || parent.contains(document.activeElement)) return;
-          this.bookSearchOpen = false;
-          this.render();
-        }, 0);
-      });
       input.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
-        if (this.bookSearchQuery) this.clearBookSearch();
-        else this.bookSearchOpen = false;
+        this.clearBookSearch();
         this.render();
       });
       window.setTimeout(() => {
@@ -1216,6 +1255,7 @@ class ReadingStatsView extends ItemView {
       setIcon(searchBtn, 'search');
       searchBtn.addEventListener('click', () => {
         this.bookSearchOpen = true;
+        this.bookSearchQuery = '';
         this.render();
       });
     }
@@ -1277,25 +1317,25 @@ class ReadingStatsView extends ItemView {
       || options.accumulation.length > 0;
     if (!hasOptions && !this.hasActiveTagFilters()) return;
 
-    const titleRow = parent.createDiv({ cls: 'puffs-reading-stats-filter-title-row' });
-    const titleActions = titleRow.createDiv({ cls: 'puffs-reading-stats-filter-title-actions' });
-    titleActions.createDiv({ cls: 'puffs-reading-stats-title puffs-reading-stats-filter-title', text: '标签筛选' });
-    const untaggedBtn = titleActions.createEl('button', {
-      cls: this.untaggedOnly
-        ? 'puffs-icon-btn puffs-reading-stats-filter-action is-active'
-        : 'puffs-icon-btn puffs-reading-stats-filter-action',
-      attr: {
-        type: 'button',
-        'aria-label': '筛选书库里所有未打标签的书籍',
-        'aria-pressed': this.untaggedOnly ? 'true' : 'false',
-      },
+    this.createSectionTitle(parent, '标签筛选', (titleActions) => {
+      titleActions.addClass('puffs-reading-stats-filter-title-actions');
+      const untaggedBtn = titleActions.createEl('button', {
+        cls: this.untaggedOnly
+          ? 'puffs-icon-btn puffs-reading-stats-filter-action is-active'
+          : 'puffs-icon-btn puffs-reading-stats-filter-action',
+        attr: {
+          type: 'button',
+          'aria-label': '筛选书库里所有未打标签的书籍',
+          'aria-pressed': this.untaggedOnly ? 'true' : 'false',
+        },
+      });
+      setIcon(untaggedBtn, 'tags');
+      untaggedBtn.addEventListener('click', () => {
+        this.toggleUntaggedOnly();
+        this.render();
+      });
+      this.renderGlobalTagManagerButton(titleActions);
     });
-    setIcon(untaggedBtn, 'tags');
-    untaggedBtn.addEventListener('click', () => {
-      this.toggleUntaggedOnly();
-      this.render();
-    });
-    this.renderGlobalTagManagerButton(titleActions);
 
     const panel = parent.createDiv({ cls: 'puffs-reading-stats-tag-filter' });
     const clearBtn = panel.createEl('button', {
@@ -1315,7 +1355,7 @@ class ReadingStatsView extends ItemView {
     this.renderTagFilterGroup(panel, '状态', 'serialStatus', options.serialStatus);
     this.renderTagFilterGroup(panel, '阅读', 'readingStatus', options.readingStatus);
     this.renderTagFilterGroup(panel, '特色', 'feature', options.feature);
-    this.renderTagFilterGroup(panel, '已积累', 'accumulation', options.accumulation);
+    this.renderTagFilterGroup(panel, '积累', 'accumulation', options.accumulation);
   }
 
   private renderTagFilterGroup(
@@ -1462,7 +1502,7 @@ class ReadingStatsView extends ItemView {
       { group: 'feature' as const, label: '特色', labels: normalized.feature },
       {
         group: 'accumulation' as const,
-        label: '已积累',
+        label: '积累',
         labels: normalized.accumulation.map((tag) => formatAccumulationTagLabel(tag)),
       },
     ];
@@ -1932,16 +1972,29 @@ export default class PuffsReaderPlugin extends Plugin {
    */
   async openInReader(file: TFile): Promise<void> {
     await this.markBookAsRecentlyRead(file.path);
-    const leaf: WorkspaceLeaf = this.app.workspace.getLeaf('tab');
-    await leaf.setViewState({
-      type: READER_VIEW_TYPE,
-      state: { file: file.path },
-    });
+    const existing = this.findOpenReaderLeaf(file.path);
+    const leaf: WorkspaceLeaf = existing ?? this.app.workspace.getLeaf('tab');
+    if (!existing) {
+      await leaf.setViewState({
+        type: READER_VIEW_TYPE,
+        state: { file: file.path },
+      });
+    }
     this.app.workspace.setActiveLeaf(leaf, { focus: true });
     const view = leaf.view;
     if (view instanceof ReaderView) {
       view.focusReader();
     }
+  }
+
+  private findOpenReaderLeaf(filePath: string): WorkspaceLeaf | null {
+    for (const leaf of this.app.workspace.getLeavesOfType(READER_VIEW_TYPE)) {
+      const state = leaf.view instanceof ReaderView
+        ? leaf.view.getState()
+        : leaf.getViewState().state as Record<string, unknown> | null;
+      if (state?.file === filePath) return leaf;
+    }
+    return null;
   }
 
   async openReadingStats(): Promise<void> {
@@ -2469,6 +2522,13 @@ export default class PuffsReaderPlugin extends Plugin {
 
   getTagCatalog(): TagCatalog {
     return normalizeTagCatalog(this.tagCatalog);
+  }
+
+  getAuthorTagOptions(extra: string[] = []): string[] {
+    return uniqueNormalizedTags([
+      ...extra,
+      ...Object.values(this.bookSettings).flatMap((settings) => normalizeBookTags(settings.tags).authors),
+    ]).sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }));
   }
 
   async addTagCatalogItem(group: TagCatalogGroup, rawValue: string): Promise<string | null> {

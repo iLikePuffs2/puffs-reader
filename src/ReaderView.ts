@@ -13,6 +13,7 @@ import {
   Scope,
 } from 'obsidian';
 import PuffsReaderPlugin from './main';
+import { TagInputSuggest } from './TagInputSuggest';
 import {
   Annotation,
   BookSettings,
@@ -52,6 +53,12 @@ interface ReadingStatsPageRange {
 
 type ReaderSidebarMode = 'toc' | 'search' | 'notes' | 'tags';
 type EditableTagArrayGroup = 'authors' | 'genre' | 'feature';
+
+interface CustomTagInputOptions {
+  ariaLabel?: string;
+  placeholder?: string;
+  suggestions?: string[];
+}
 
 const DEFAULT_READING_STATS_PAGE_MIN_MS = 100;
 const DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1000;
@@ -1984,6 +1991,11 @@ export class ReaderView extends ItemView {
       new Set(tags.authors),
       (tag) => this.toggleBookTag('authors', tag),
       (value) => this.addCustomTag('authors', value),
+      {
+        ariaLabel: '添加作者',
+        placeholder: '输入作者',
+        suggestions: this.plugin.getAuthorTagOptions(tags.authors),
+      },
     );
     this.renderTagChipSection(
       this.tagsPaneEl,
@@ -2025,6 +2037,7 @@ export class ReaderView extends ItemView {
     selected: Set<string>,
     onToggle: (tag: string) => void | Promise<void>,
     onAdd?: (value: string) => void | Promise<void>,
+    inputOptions: CustomTagInputOptions = {},
   ): void {
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
     section.createDiv({ cls: 'puffs-tag-section-title', text: title });
@@ -2038,13 +2051,13 @@ export class ReaderView extends ItemView {
         Promise.resolve(onToggle(option)).catch((error) => console.error('[Puffs Reader] Failed to toggle tag:', error));
       });
     }
-    if (onAdd) this.renderCustomTagInput(section, onAdd);
+    if (onAdd) this.renderCustomTagInput(section, onAdd, inputOptions);
   }
 
   private renderAccumulationTagSection(parent: HTMLElement, options: string[], tags: BookTags): void {
     const selected = new Set(tags.accumulation.map((tag) => tag.name));
     const section = parent.createDiv({ cls: 'puffs-tag-section' });
-    section.createDiv({ cls: 'puffs-tag-section-title', text: '已积累' });
+    section.createDiv({ cls: 'puffs-tag-section-title', text: '积累' });
     const chips = section.createDiv({ cls: 'puffs-tag-chip-row' });
     for (const option of this.mergeTagOptions(options, tags.accumulation.map((tag) => tag.name))) {
       const chip = chips.createEl('button', {
@@ -2084,18 +2097,30 @@ export class ReaderView extends ItemView {
     }
   }
 
-  private renderCustomTagInput(parent: HTMLElement, onAdd: (value: string) => void | Promise<void>): void {
+  private renderCustomTagInput(
+    parent: HTMLElement,
+    onAdd: (value: string) => void | Promise<void>,
+    options: CustomTagInputOptions = {},
+  ): void {
     const row = parent.createDiv({ cls: 'puffs-tag-custom-row' });
     const input = row.createEl('input', {
       cls: 'puffs-tag-custom-input',
-      attr: { type: 'text', 'aria-label': '添加标签' },
+      attr: {
+        type: 'text',
+        'aria-label': options.ariaLabel ?? '添加标签',
+        ...(options.placeholder ? { placeholder: options.placeholder } : {}),
+      },
     }) as HTMLInputElement;
-    const submit = () => {
-      const value = input.value.trim();
+    const submitValue = (rawValue: string) => {
+      const value = rawValue.trim();
       if (!value) return;
       input.value = '';
       Promise.resolve(onAdd(value)).catch((error) => console.error('[Puffs Reader] Failed to add tag:', error));
     };
+    const submit = () => submitValue(input.value);
+    if (options.suggestions && options.suggestions.length > 0) {
+      new TagInputSuggest(this.app, input, options.suggestions, submitValue);
+    }
     input.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter') return;
       event.preventDefault();

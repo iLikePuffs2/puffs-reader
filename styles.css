@@ -695,6 +695,12 @@
   text-align: center;
 }
 
+.puffs-tag-suggest-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .puffs-tag-modal {
   width: min(560px, calc(100vw - 32px));
 }
@@ -892,6 +898,18 @@
 
 .puffs-reading-stats-tag-filter:not(.puffs-reading-stats-tag-readonly) .puffs-reading-stats-tag-filter-row {
   margin-top: 12px;
+}
+
+.puffs-reading-stats-tag-readonly {
+  padding: 14px;
+}
+
+.puffs-reading-stats-tag-readonly .puffs-reading-stats-tag-filter-row {
+  margin-top: 12px;
+}
+
+.puffs-reading-stats-tag-readonly .puffs-reading-stats-tag-filter-row:first-child {
+  margin-top: 0;
 }
 
 .puffs-reading-stats-tag-clear + .puffs-reading-stats-tag-filter-row {

@@ -108,9 +108,9 @@ export interface Annotation {
   createdAt: number;
 }
 
-/** 已积累标签的章节范围 */
+/** 积累标签的章节范围 */
 export interface BookAccumulationTag {
-  /** 标签基础名，如“情节”“文采”，不保存“已积累”前缀 */
+  /** 标签基础名，如“情节”“文采”，兼容读取旧的“已积累”前缀 */
   name: string;
   /** 起始章节号 */
   startChapter?: number;
@@ -132,7 +132,7 @@ export interface BookTags {
   readingStatus?: string;
   /** 特色标签 */
   feature: string[];
-  /** 已积累情况，标签名使用独立的全局词库 */
+  /** 积累情况，标签名使用独立的全局词库 */
   accumulation: BookAccumulationTag[];
 }
 
