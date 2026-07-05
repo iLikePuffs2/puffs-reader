@@ -3851,6 +3851,14 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       accumulation: /* @__PURE__ */ new Set()
     };
     this.plugin = plugin;
+    this.scope = new import_obsidian4.Scope(this.app.scope);
+    this.scope.register(null, "Escape", (event) => {
+      if (document.body.querySelector(".modal-container")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeBookSearchOnEscape();
+      return false;
+    });
   }
   getViewType() {
     return READING_STATS_VIEW_TYPE;
@@ -3862,10 +3870,13 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     return "bar-chart-3";
   }
   async onOpen() {
+    const handleEscapeHotkey = (event) => this.handleStatsEscapeHotkey(event);
     const handleBackHotkey = (event) => this.handleBookDetailBackHotkey(event);
     const handleForwardHotkey = (event) => this.handleBookDetailForwardHotkey(event);
     const handleSearchHotkey = (event) => this.handleBookSearchHotkey(event);
     const handleSearchOutsideClick = (event) => this.handleBookSearchOutsideClick(event);
+    window.addEventListener("keydown", handleEscapeHotkey, true);
+    document.addEventListener("keydown", handleEscapeHotkey, true);
     window.addEventListener("keydown", handleBackHotkey, true);
     document.addEventListener("keydown", handleBackHotkey, true);
     window.addEventListener("keydown", handleForwardHotkey, true);
@@ -3874,6 +3885,8 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     document.addEventListener("keydown", handleSearchHotkey, true);
     document.addEventListener("click", handleSearchOutsideClick, true);
     this.register(() => {
+      window.removeEventListener("keydown", handleEscapeHotkey, true);
+      document.removeEventListener("keydown", handleEscapeHotkey, true);
       window.removeEventListener("keydown", handleBackHotkey, true);
       document.removeEventListener("keydown", handleBackHotkey, true);
       window.removeEventListener("keydown", handleForwardHotkey, true);
@@ -4140,6 +4153,21 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       if (file instanceof import_obsidian4.TFile) return file;
     }
     return null;
+  }
+  handleStatsEscapeHotkey(event) {
+    if (event.key !== "Escape") return;
+    if (!this.isActiveStatsView()) return;
+    if (document.body.querySelector(".modal-container")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    this.closeBookSearchOnEscape();
+  }
+  closeBookSearchOnEscape() {
+    if (this.bookSearchOpen && !this.selectedBookPath) {
+      this.clearBookSearch();
+      this.render();
+    }
   }
   handleBookDetailBackHotkey(event) {
     if (!this.selectedBookPath) return;

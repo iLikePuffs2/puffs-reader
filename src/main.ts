@@ -1,4 +1,4 @@
-import { Plugin, TFile, FuzzySuggestModal, Modal, WorkspaceLeaf, normalizePath, ItemView, ViewStateResult, setIcon, Menu, Notice } from 'obsidian';
+import { Plugin, TFile, FuzzySuggestModal, Modal, WorkspaceLeaf, normalizePath, ItemView, ViewStateResult, setIcon, Menu, Notice, Scope } from 'obsidian';
 import { promises as fs } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -833,6 +833,14 @@ class ReadingStatsView extends ItemView {
   constructor(leaf: WorkspaceLeaf, plugin: PuffsReaderPlugin) {
     super(leaf);
     this.plugin = plugin;
+    this.scope = new Scope(this.app.scope);
+    this.scope.register(null, 'Escape', (event) => {
+      if (document.body.querySelector('.modal-container')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeBookSearchOnEscape();
+      return false;
+    });
   }
 
   getViewType(): string {
@@ -848,10 +856,13 @@ class ReadingStatsView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    const handleEscapeHotkey = (event: KeyboardEvent) => this.handleStatsEscapeHotkey(event);
     const handleBackHotkey = (event: KeyboardEvent) => this.handleBookDetailBackHotkey(event);
     const handleForwardHotkey = (event: KeyboardEvent) => this.handleBookDetailForwardHotkey(event);
     const handleSearchHotkey = (event: KeyboardEvent) => this.handleBookSearchHotkey(event);
     const handleSearchOutsideClick = (event: MouseEvent) => this.handleBookSearchOutsideClick(event);
+    window.addEventListener('keydown', handleEscapeHotkey, true);
+    document.addEventListener('keydown', handleEscapeHotkey, true);
     window.addEventListener('keydown', handleBackHotkey, true);
     document.addEventListener('keydown', handleBackHotkey, true);
     window.addEventListener('keydown', handleForwardHotkey, true);
@@ -860,6 +871,8 @@ class ReadingStatsView extends ItemView {
     document.addEventListener('keydown', handleSearchHotkey, true);
     document.addEventListener('click', handleSearchOutsideClick, true);
     this.register(() => {
+      window.removeEventListener('keydown', handleEscapeHotkey, true);
+      document.removeEventListener('keydown', handleEscapeHotkey, true);
       window.removeEventListener('keydown', handleBackHotkey, true);
       document.removeEventListener('keydown', handleBackHotkey, true);
       window.removeEventListener('keydown', handleForwardHotkey, true);
@@ -1175,6 +1188,23 @@ class ReadingStatsView extends ItemView {
       if (file instanceof TFile) return file;
     }
     return null;
+  }
+
+  private handleStatsEscapeHotkey(event: KeyboardEvent): void {
+    if (event.key !== 'Escape') return;
+    if (!this.isActiveStatsView()) return;
+    if (document.body.querySelector('.modal-container')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    this.closeBookSearchOnEscape();
+  }
+
+  private closeBookSearchOnEscape(): void {
+    if (this.bookSearchOpen && !this.selectedBookPath) {
+      this.clearBookSearch();
+      this.render();
+    }
   }
 
   private handleBookDetailBackHotkey(event: KeyboardEvent): void {
