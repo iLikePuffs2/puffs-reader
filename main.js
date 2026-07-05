@@ -3909,11 +3909,11 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1", false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-global");
+    this.globalSummaryBookCountEl = this.createSummaryItem(summary, "\u4E66\u7C4D\u6570\u91CF", `${state.summaryBookCount} \u672C`);
     this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(totalReadWords), "words", this.globalMetric === "words", () => this.toggleGlobalMetric("words"));
     this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(totalReadingMs), "time", this.globalMetric === "time", () => this.toggleGlobalMetric("time"));
     this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(totalReadWords, totalReadingMs, "hour"), "speed", this.globalMetric === "speed", () => this.toggleGlobalMetric("speed"));
-    this.globalSummaryBookCountEl = this.createSummaryItem(summary, "\u7EDF\u8BA1\u4E66\u7C4D", `${state.books.length} \u672C`);
     this.renderTagFilters(parent, state.filterOptionBooks);
     if (this.globalMetric) {
       this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
@@ -3933,13 +3933,14 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     const filterOptionBooks = this.getAggregatedBooks(true).sort((a, b) => b.lastReadAt - a.lastReadAt);
     const allBooks = (useFullLibrary ? filterOptionBooks : this.getAggregatedBooks(false)).sort((a, b) => b.lastReadAt - a.lastReadAt);
     const books = allBooks.filter((book) => this.matchesTagFilters(book)).filter((book) => this.matchesBookSearch(book));
-    return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books };
+    const summaryBookCount = useFullLibrary ? books.length : filterOptionBooks.length;
+    return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books, summaryBookCount };
   }
   refreshGlobalBookList() {
     var _a, _b;
     const state = this.getGlobalBookListState();
     (_a = this.globalBookSectionTitleEl) == null ? void 0 : _a.setText("\u4E66\u7C4D\u5217\u8868");
-    (_b = this.globalSummaryBookCountEl) == null ? void 0 : _b.setText(`${state.books.length} \u672C`);
+    (_b = this.globalSummaryBookCountEl) == null ? void 0 : _b.setText(`${state.summaryBookCount} \u672C`);
     if (!this.globalBookListEl) return;
     this.globalBookListEl.empty();
     this.renderGlobalBookList(this.globalBookListEl, state);

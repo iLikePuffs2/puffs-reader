@@ -900,11 +900,11 @@ class ReadingStatsView extends ItemView {
     this.renderHeader(parent, '阅读统计', false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: 'puffs-reading-stats-summary' });
     summary.addClass('is-global');
+    this.globalSummaryBookCountEl = this.createSummaryItem(summary, '书籍数量', `${state.summaryBookCount} 本`);
     this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
     this.createSummaryItem(summary, '累计字数', this.formatCompactNumber(totalReadWords), 'words', this.globalMetric === 'words', () => this.toggleGlobalMetric('words'));
     this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(totalReadingMs), 'time', this.globalMetric === 'time', () => this.toggleGlobalMetric('time'));
     this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(totalReadWords, totalReadingMs, 'hour'), 'speed', this.globalMetric === 'speed', () => this.toggleGlobalMetric('speed'));
-    this.globalSummaryBookCountEl = this.createSummaryItem(summary, '统计书籍', `${state.books.length} 本`);
 
     this.renderTagFilters(parent, state.filterOptionBooks);
 
@@ -927,6 +927,7 @@ class ReadingStatsView extends ItemView {
     useFullLibrary: boolean;
     filterOptionBooks: AggregatedBookStats[];
     books: AggregatedBookStats[];
+    summaryBookCount: number;
   } {
     const hasFilters = this.hasActiveTagFilters();
     const hasSearch = this.hasActiveBookSearch();
@@ -937,13 +938,14 @@ class ReadingStatsView extends ItemView {
     const books = allBooks
       .filter((book) => this.matchesTagFilters(book))
       .filter((book) => this.matchesBookSearch(book));
-    return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books };
+    const summaryBookCount = useFullLibrary ? books.length : filterOptionBooks.length;
+    return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books, summaryBookCount };
   }
 
   private refreshGlobalBookList(): void {
     const state = this.getGlobalBookListState();
     this.globalBookSectionTitleEl?.setText('书籍列表');
-    this.globalSummaryBookCountEl?.setText(`${state.books.length} 本`);
+    this.globalSummaryBookCountEl?.setText(`${state.summaryBookCount} 本`);
     if (!this.globalBookListEl) return;
     this.globalBookListEl.empty();
     this.renderGlobalBookList(this.globalBookListEl, state);
