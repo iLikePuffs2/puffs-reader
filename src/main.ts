@@ -45,6 +45,7 @@ interface CustomTagInputOptions {
   ariaLabel?: string;
   placeholder?: string;
   suggestions?: string[];
+  submitOnBlur?: boolean;
 }
 
 interface ReadingStatsTagFilters {
@@ -312,6 +313,7 @@ class BookTagsModal extends Modal {
         ariaLabel: '添加作者',
         placeholder: '输入作者',
         suggestions: this.plugin.getAuthorTagOptions(this.draft.authors),
+        submitOnBlur: true,
       },
     );
     this.renderTagChipSection(
@@ -476,6 +478,9 @@ class BookTagsModal extends Modal {
       event.preventDefault();
       submit();
     });
+    if (options.submitOnBlur) {
+      input.addEventListener('blur', submit);
+    }
   }
 
   private mergeTagOptions(base: string[], extra: string[]): string[] {
@@ -550,12 +555,12 @@ class BookTagsModal extends Modal {
     const endChapter = this.parseOptionalChapter(rawEnd);
     if (startChapter === null || endChapter === null) {
       new Notice('章节范围必须是正整数');
-      this.render();
+      this.rerenderPreservingScroll();
       return;
     }
     if (startChapter !== undefined && endChapter !== undefined && endChapter < startChapter) {
       new Notice('结束章节不能小于起始章节');
-      this.render();
+      this.rerenderPreservingScroll();
       return;
     }
     this.rangeDraftValues.set(name, { start: rawStart, end: rawEnd });
@@ -611,7 +616,16 @@ class BookTagsModal extends Modal {
     await this.plugin.saveBookTags(this.filePath, tags);
     this.draft = tags;
     this.onSaved();
+    this.rerenderPreservingScroll();
+  }
+
+  private rerenderPreservingScroll(): void {
+    const scrollTop = this.contentEl.querySelector<HTMLElement>('.puffs-tag-modal-body')?.scrollTop ?? 0;
     this.render();
+    window.requestAnimationFrame(() => {
+      const body = this.contentEl.querySelector<HTMLElement>('.puffs-tag-modal-body');
+      if (body) body.scrollTop = scrollTop;
+    });
   }
 }
 

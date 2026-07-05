@@ -3385,7 +3385,8 @@ var BookTagsModal = class extends import_obsidian4.Modal {
       {
         ariaLabel: "\u6DFB\u52A0\u4F5C\u8005",
         placeholder: "\u8F93\u5165\u4F5C\u8005",
-        suggestions: this.plugin.getAuthorTagOptions(this.draft.authors)
+        suggestions: this.plugin.getAuthorTagOptions(this.draft.authors),
+        submitOnBlur: true
       }
     );
     this.renderTagChipSection(
@@ -3533,6 +3534,9 @@ var BookTagsModal = class extends import_obsidian4.Modal {
       event.preventDefault();
       submit();
     });
+    if (options.submitOnBlur) {
+      input.addEventListener("blur", submit);
+    }
   }
   mergeTagOptions(base, extra) {
     return uniqueNormalizedTags([...base, ...extra]);
@@ -3599,12 +3603,12 @@ var BookTagsModal = class extends import_obsidian4.Modal {
     const endChapter = this.parseOptionalChapter(rawEnd);
     if (startChapter === null || endChapter === null) {
       new import_obsidian4.Notice("\u7AE0\u8282\u8303\u56F4\u5FC5\u987B\u662F\u6B63\u6574\u6570");
-      this.render();
+      this.rerenderPreservingScroll();
       return;
     }
     if (startChapter !== void 0 && endChapter !== void 0 && endChapter < startChapter) {
       new import_obsidian4.Notice("\u7ED3\u675F\u7AE0\u8282\u4E0D\u80FD\u5C0F\u4E8E\u8D77\u59CB\u7AE0\u8282");
-      this.render();
+      this.rerenderPreservingScroll();
       return;
     }
     this.rangeDraftValues.set(name, { start: rawStart, end: rawEnd });
@@ -3656,7 +3660,16 @@ var BookTagsModal = class extends import_obsidian4.Modal {
     await this.plugin.saveBookTags(this.filePath, tags);
     this.draft = tags;
     this.onSaved();
+    this.rerenderPreservingScroll();
+  }
+  rerenderPreservingScroll() {
+    var _a, _b;
+    const scrollTop = (_b = (_a = this.contentEl.querySelector(".puffs-tag-modal-body")) == null ? void 0 : _a.scrollTop) != null ? _b : 0;
     this.render();
+    window.requestAnimationFrame(() => {
+      const body = this.contentEl.querySelector(".puffs-tag-modal-body");
+      if (body) body.scrollTop = scrollTop;
+    });
   }
 };
 var GlobalTagCatalogModal = class extends import_obsidian4.Modal {
