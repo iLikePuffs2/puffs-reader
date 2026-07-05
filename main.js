@@ -128,6 +128,8 @@ var DEFAULT_SETTINGS = {
   searchHotkey: "Ctrl+F",
   tocPanelHotkey: "Ctrl+B",
   copySourceHotkey: "Ctrl+Shift+C",
+  bookshelfTitleSearchHotkey: "Ctrl+F",
+  bookshelfAuthorSearchHotkey: "Ctrl+Alt+F",
   breakdownTextDir: "\u62C6\u4E66\u6587\u672C",
   sidebarTitleFontSize: 16,
   annotationHighlightColor: "",
@@ -3130,6 +3132,19 @@ var SettingsTab = class extends import_obsidian3.PluginSettingTab {
       ".obsidian/plugins/puffs-reader/data.backup.json"
     );
     this.addNumberSetting("\u5907\u4EFD\u9891\u7387", "\u6BCF\u9694\u591A\u5C11\u5C0F\u65F6\u81EA\u52A8\u8986\u76D6\u5907\u4EFD\u4E00\u6B21 data.json\u3002", "dataBackupFrequencyHours", 1, 720, 1, "\u5C0F\u65F6");
+    containerEl.createEl("h3", { text: "\u4E66\u67B6\u76F8\u5173" });
+    this.addTextSetting(
+      "\u641C\u7D22\u4E66\u540D\u5FEB\u6377\u952E",
+      "\u9ED8\u8BA4 Ctrl+F\u3002\u7528\u4E8E\u5728\u4E66\u67B6\u9875\u5F39\u51FA/\u6536\u8D77\u4E66\u540D\u641C\u7D22\u6846\u3002\u652F\u6301 Ctrl/Alt/Shift \u52A0\u5355\u4E2A\u6309\u952E\u3002",
+      "bookshelfTitleSearchHotkey",
+      DEFAULT_SETTINGS.bookshelfTitleSearchHotkey
+    );
+    this.addTextSetting(
+      "\u9009\u62E9\u4F5C\u8005\u5FEB\u6377\u952E",
+      "\u9ED8\u8BA4 Ctrl+Alt+F\u3002\u7528\u4E8E\u5728\u4E66\u67B6\u9875\u9009\u4E2D/\u53D6\u6D88\u4F5C\u8005\u641C\u7D22\uFF0C\u5E76\u5F39\u51FA/\u6536\u8D77\u641C\u7D22\u6846\u3002",
+      "bookshelfAuthorSearchHotkey",
+      DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey
+    );
   }
   addNumberSetting(name, desc, key, min, max, step, unit) {
     let sliderControl = null;
@@ -3205,7 +3220,7 @@ var SettingsTab = class extends import_obsidian3.PluginSettingTab {
   addTextSetting(name, desc, key, placeholder) {
     new import_obsidian3.Setting(this.containerEl).setName(name).setDesc(desc).addText(
       (text) => text.setPlaceholder(placeholder).setValue(this.plugin.settings[key]).onChange(async (v) => {
-        const fallback = key === "searchHotkey" ? DEFAULT_SETTINGS.searchHotkey : key === "tocPanelHotkey" ? DEFAULT_SETTINGS.tocPanelHotkey : key === "copySourceHotkey" ? DEFAULT_SETTINGS.copySourceHotkey : key === "breakdownTextDir" ? DEFAULT_SETTINGS.breakdownTextDir : key === "previousPageHotkey" ? DEFAULT_SETTINGS.previousPageHotkey : key === "nextPageHotkey" ? DEFAULT_SETTINGS.nextPageHotkey : key === "chapterTitleRegex" ? DEFAULT_SETTINGS.chapterTitleRegex : key === "prologueTitleRegex" ? DEFAULT_SETTINGS.prologueTitleRegex : "";
+        const fallback = key === "searchHotkey" ? DEFAULT_SETTINGS.searchHotkey : key === "tocPanelHotkey" ? DEFAULT_SETTINGS.tocPanelHotkey : key === "copySourceHotkey" ? DEFAULT_SETTINGS.copySourceHotkey : key === "bookshelfTitleSearchHotkey" ? DEFAULT_SETTINGS.bookshelfTitleSearchHotkey : key === "bookshelfAuthorSearchHotkey" ? DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey : key === "breakdownTextDir" ? DEFAULT_SETTINGS.breakdownTextDir : key === "previousPageHotkey" ? DEFAULT_SETTINGS.previousPageHotkey : key === "nextPageHotkey" ? DEFAULT_SETTINGS.nextPageHotkey : key === "chapterTitleRegex" ? DEFAULT_SETTINGS.chapterTitleRegex : key === "prologueTitleRegex" ? DEFAULT_SETTINGS.prologueTitleRegex : "";
         this.plugin.settings[key] = v.trim() || fallback;
         await this.plugin.savePluginData();
         this.refreshOpenReaders();
@@ -3328,6 +3343,14 @@ function isSummaryReadingStatsBook(filePath, title) {
   const displayTitle = (title != null ? title : "").trim();
   const baseName = ((_a = filePath.split(/[\\/]/).pop()) != null ? _a : filePath).replace(/\.[^.]+$/, "");
   return displayTitle.endsWith(SUMMARY_BOOK_SUFFIX) || baseName.endsWith(SUMMARY_BOOK_SUFFIX);
+}
+function matchesHotkey(event, raw) {
+  const parts = raw.split("+").map((part) => part.trim().toLowerCase()).filter(Boolean);
+  const key = parts.find((part) => !["ctrl", "control", "cmd", "meta", "alt", "shift"].includes(part));
+  if (!key) return false;
+  const eventKey = event.key.toLowerCase();
+  const eventCode = event.code.toLowerCase().replace(/^key/, "");
+  return (eventKey === key || eventCode === key) && event.ctrlKey === (parts.includes("ctrl") || parts.includes("control")) && event.metaKey === (parts.includes("cmd") || parts.includes("meta")) && event.altKey === parts.includes("alt") && event.shiftKey === parts.includes("shift");
 }
 var TxtFileSuggestModal = class extends import_obsidian4.FuzzySuggestModal {
   constructor(plugin) {
@@ -4187,19 +4210,15 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.render();
   }
   handleBookSearchHotkey(event) {
-    if (event.key.toLowerCase() !== "f" || !event.ctrlKey && !event.metaKey || event.altKey || event.shiftKey) return;
+    const isTitleSearch = matchesHotkey(event, this.plugin.settings.bookshelfTitleSearchHotkey || DEFAULT_SETTINGS.bookshelfTitleSearchHotkey);
+    const isAuthorSearch = matchesHotkey(event, this.plugin.settings.bookshelfAuthorSearchHotkey || DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey);
+    if (!isTitleSearch && !isAuthorSearch) return;
     if (this.selectedBookPath) return;
     if (!this.isActiveStatsView()) return;
     event.preventDefault();
     event.stopPropagation();
-    if (this.bookSearchOpen) {
-      this.clearBookSearch();
-    } else {
-      this.bookSearchOpen = true;
-      this.bookSearchQuery = "";
-      this.globalMetric = null;
-    }
-    this.render();
+    if (isAuthorSearch) this.toggleAuthorBookSearch();
+    else this.toggleTitleBookSearch();
   }
   handleBookSearchOutsideClick(event) {
     if (!this.bookSearchOpen || this.selectedBookPath) return;
@@ -4324,6 +4343,31 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.bookSearchQuery = "";
     this.bookSearchOpen = false;
     this.globalMetric = null;
+  }
+  toggleTitleBookSearch() {
+    if (this.bookSearchOpen && this.bookSearchMode === "title") {
+      this.clearBookSearch();
+      this.render();
+      return;
+    }
+    this.bookSearchMode = "title";
+    this.bookSearchOpen = true;
+    this.bookSearchQuery = "";
+    this.globalMetric = null;
+    this.render();
+  }
+  toggleAuthorBookSearch() {
+    if (this.bookSearchMode === "author") {
+      this.bookSearchMode = "title";
+      this.clearBookSearch();
+      this.render();
+      return;
+    }
+    this.bookSearchMode = "author";
+    this.bookSearchOpen = true;
+    this.bookSearchQuery = "";
+    this.globalMetric = null;
+    this.render();
   }
   hasActiveBookSearch() {
     return this.bookSearchQuery.trim().length > 0;

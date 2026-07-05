@@ -214,6 +214,20 @@ export class SettingsTab extends PluginSettingTab {
       '.obsidian/plugins/puffs-reader/data.backup.json',
     );
     this.addNumberSetting('备份频率', '每隔多少小时自动覆盖备份一次 data.json。', 'dataBackupFrequencyHours', 1, 720, 1, '小时');
+
+    containerEl.createEl('h3', { text: '书架相关' });
+    this.addTextSetting(
+      '搜索书名快捷键',
+      '默认 Ctrl+F。用于在书架页弹出/收起书名搜索框。支持 Ctrl/Alt/Shift 加单个按键。',
+      'bookshelfTitleSearchHotkey',
+      DEFAULT_SETTINGS.bookshelfTitleSearchHotkey,
+    );
+    this.addTextSetting(
+      '选择作者快捷键',
+      '默认 Ctrl+Alt+F。用于在书架页选中/取消作者搜索，并弹出/收起搜索框。',
+      'bookshelfAuthorSearchHotkey',
+      DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey,
+    );
   }
 
   private addNumberSetting(
@@ -335,7 +349,7 @@ export class SettingsTab extends PluginSettingTab {
   private addTextSetting(
     name: string,
     desc: string,
-    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'prologueTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'copySourceHotkey' | 'breakdownTextDir' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
+    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'prologueTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'copySourceHotkey' | 'bookshelfTitleSearchHotkey' | 'bookshelfAuthorSearchHotkey' | 'breakdownTextDir' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
     placeholder: string,
   ): void {
     new Setting(this.containerEl)
@@ -350,6 +364,8 @@ export class SettingsTab extends PluginSettingTab {
               key === 'searchHotkey' ? DEFAULT_SETTINGS.searchHotkey :
               key === 'tocPanelHotkey' ? DEFAULT_SETTINGS.tocPanelHotkey :
               key === 'copySourceHotkey' ? DEFAULT_SETTINGS.copySourceHotkey :
+              key === 'bookshelfTitleSearchHotkey' ? DEFAULT_SETTINGS.bookshelfTitleSearchHotkey :
+              key === 'bookshelfAuthorSearchHotkey' ? DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey :
               key === 'breakdownTextDir' ? DEFAULT_SETTINGS.breakdownTextDir :
               key === 'previousPageHotkey' ? DEFAULT_SETTINGS.previousPageHotkey :
               key === 'nextPageHotkey' ? DEFAULT_SETTINGS.nextPageHotkey :

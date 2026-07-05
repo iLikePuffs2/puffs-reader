@@ -185,6 +185,21 @@ function isSummaryReadingStatsBook(filePath: string, title?: string): boolean {
   return displayTitle.endsWith(SUMMARY_BOOK_SUFFIX) || baseName.endsWith(SUMMARY_BOOK_SUFFIX);
 }
 
+function matchesHotkey(event: KeyboardEvent, raw: string): boolean {
+  const parts = raw.split('+').map((part) => part.trim().toLowerCase()).filter(Boolean);
+  const key = parts.find((part) => !['ctrl', 'control', 'cmd', 'meta', 'alt', 'shift'].includes(part));
+  if (!key) return false;
+  const eventKey = event.key.toLowerCase();
+  const eventCode = event.code.toLowerCase().replace(/^key/, '');
+  return (
+    (eventKey === key || eventCode === key)
+    && event.ctrlKey === (parts.includes('ctrl') || parts.includes('control'))
+    && event.metaKey === (parts.includes('cmd') || parts.includes('meta'))
+    && event.altKey === parts.includes('alt')
+    && event.shiftKey === parts.includes('shift')
+  );
+}
+
 /** 插件持久化数据结构 */
 interface PluginData {
   settings: ReaderSettings;
@@ -1227,19 +1242,15 @@ class ReadingStatsView extends ItemView {
   }
 
   private handleBookSearchHotkey(event: KeyboardEvent): void {
-    if (event.key.toLowerCase() !== 'f' || (!event.ctrlKey && !event.metaKey) || event.altKey || event.shiftKey) return;
+    const isTitleSearch = matchesHotkey(event, this.plugin.settings.bookshelfTitleSearchHotkey || DEFAULT_SETTINGS.bookshelfTitleSearchHotkey);
+    const isAuthorSearch = matchesHotkey(event, this.plugin.settings.bookshelfAuthorSearchHotkey || DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey);
+    if (!isTitleSearch && !isAuthorSearch) return;
     if (this.selectedBookPath) return;
     if (!this.isActiveStatsView()) return;
     event.preventDefault();
     event.stopPropagation();
-    if (this.bookSearchOpen) {
-      this.clearBookSearch();
-    } else {
-      this.bookSearchOpen = true;
-      this.bookSearchQuery = '';
-      this.globalMetric = null;
-    }
-    this.render();
+    if (isAuthorSearch) this.toggleAuthorBookSearch();
+    else this.toggleTitleBookSearch();
   }
 
   private handleBookSearchOutsideClick(event: MouseEvent): void {
@@ -1383,6 +1394,33 @@ class ReadingStatsView extends ItemView {
     this.bookSearchQuery = '';
     this.bookSearchOpen = false;
     this.globalMetric = null;
+  }
+
+  private toggleTitleBookSearch(): void {
+    if (this.bookSearchOpen && this.bookSearchMode === 'title') {
+      this.clearBookSearch();
+      this.render();
+      return;
+    }
+    this.bookSearchMode = 'title';
+    this.bookSearchOpen = true;
+    this.bookSearchQuery = '';
+    this.globalMetric = null;
+    this.render();
+  }
+
+  private toggleAuthorBookSearch(): void {
+    if (this.bookSearchMode === 'author') {
+      this.bookSearchMode = 'title';
+      this.clearBookSearch();
+      this.render();
+      return;
+    }
+    this.bookSearchMode = 'author';
+    this.bookSearchOpen = true;
+    this.bookSearchQuery = '';
+    this.globalMetric = null;
+    this.render();
   }
 
   private hasActiveBookSearch(): boolean {

@@ -66,6 +66,10 @@ export interface ReaderSettings {
   tocPanelHotkey: string;
   /** 拆分文本快捷键 */
   copySourceHotkey: string;
+  /** 书架书名搜索快捷键 */
+  bookshelfTitleSearchHotkey: string;
+  /** 书架作者搜索快捷键 */
+  bookshelfAuthorSearchHotkey: string;
   /** 按章节拆分原文的导出目录（vault 内相对路径） */
   breakdownTextDir: string;
   /** 侧边栏顶部书名字号 (px) */
@@ -315,6 +319,8 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   searchHotkey: 'Ctrl+F',
   tocPanelHotkey: 'Ctrl+B',
   copySourceHotkey: 'Ctrl+Shift+C',
+  bookshelfTitleSearchHotkey: 'Ctrl+F',
+  bookshelfAuthorSearchHotkey: 'Ctrl+Alt+F',
   breakdownTextDir: '拆书文本',
   sidebarTitleFontSize: 16,
   annotationHighlightColor: '',
