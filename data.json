@@ -1,0 +1,8761 @@
+{
+  "settings": {
+    "fontSize": 30,
+    "lineHeight": 1.7,
+    "paragraphSpacing": 10,
+    "firstLineIndent": 0,
+    "contentWidth": 800,
+    "letterSpacing": 0,
+    "paddingTop": 100,
+    "paddingBottom": 100,
+    "fontColor": "0,0,0",
+    "backgroundColor": "233,216,188",
+    "chapterMetaFontSize": 16,
+    "chapterMetaColor": "163,151,131",
+    "chapterMetaTop": 45,
+    "progressMetaFontSize": 15,
+    "progressMetaColor": "163,151,131",
+    "progressMetaBottom": 30,
+    "sidebarWidth": 300,
+    "sidebarTransitionMs": 0,
+    "tocFontSize": 16,
+    "showProgress": false,
+    "showChapterTitle": true,
+    "removeExtraBlankLines": true,
+    "cursorHideDelayMs": 500,
+    "manualPageTurnsPerSecond": 5,
+    "previousPageHotkey": "k",
+    "nextPageHotkey": "l",
+    "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章卷].*$",
+    "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章卷])\\s*(.*)$",
+    "prologueTitleRegex": "^\\s*(?:序章|前言|楔子|引子)(?:\\s+.*)?$",
+    "defaultEncoding": "utf-8",
+    "searchHotkey": "Ctrl+F",
+    "tocPanelHotkey": "Ctrl+B",
+    "bookSettingsHotkey": "Ctrl+;",
+    "copySourceHotkey": "Ctrl+Shift+C",
+    "bookshelfTitleSearchHotkey": "Ctrl+F",
+    "bookshelfAuthorSearchHotkey": "Ctrl+Alt+F",
+    "breakdownTextDir": "小说/书库/拆书文本",
+    "sidebarTitleFontSize": 16,
+    "annotationHighlightColor": "187,194,193",
+    "annotationExportDir": "小说/摘抄",
+    "deleteAnnotationsAfterExport": true,
+    "dataBackupPath": "其他/备份",
+    "dataBackupFrequencyHours": 24,
+    "bookLibraryPath": "小说/书库",
+    "readingStatsMinPageMs": 100,
+    "readingStatsIdleLimitMs": 120000,
+    "chapterCopyDefaultMode": "batch",
+    "autoSwitchImeForReader": true,
+    "imeHelperDebug": false,
+    "toggleImeWithShiftOnReaderFocus": true,
+    "capturePageTurnPhysicalKeys": true,
+    "floatingButtonColor": "163,151,131",
+    "annotationFirstCharColor": "0,0,0"
+  },
+  "progress": {
+    "小说/书库/苟在初圣魔门当人材.txt": {
+      "paragraphIndex": 50009,
+      "charOffset": 0,
+      "lastRead": 1777830354445
+    },
+    "小说/书库/锦衣夜行.txt": {
+      "paragraphIndex": 2958,
+      "charOffset": 0,
+      "lastRead": 1777571603852
+    },
+    "小说/书库/渊天尊.txt": {
+      "paragraphIndex": 732,
+      "charOffset": 0,
+      "lastRead": 1777485516842
+    },
+    "小说/书库/天龙八部.txt": {
+      "paragraphIndex": 120,
+      "charOffset": 23,
+      "lastRead": 1777464043878
+    },
+    "小说/书库/诡秘之主.txt": {
+      "paragraphIndex": 8,
+      "charOffset": 0,
+      "lastRead": 1777465644334
+    },
+    "小说/书库/醉枕江山.txt": {
+      "paragraphIndex": 13,
+      "charOffset": 0,
+      "lastRead": 1777557643101
+    },
+    "小说/书库/从斩妖除魔开始长生不死.txt": {
+      "paragraphIndex": 16036,
+      "charOffset": 0,
+      "lastRead": 1778432462727
+    },
+    "小说/书库/庆余年.txt": {
+      "paragraphIndex": 1648,
+      "charOffset": 0,
+      "lastRead": 1777996828350
+    },
+    "小说/书库/赘婿.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1777993724034
+    },
+    "小说/书库/从斩妖除魔开始长生不死1.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1777994761022
+    },
+    "小说/书库/大梦主.txt": {
+      "paragraphIndex": 2191,
+      "charOffset": 48,
+      "lastRead": 1778930635545
+    },
+    "小说/书库/道诡异仙.txt": {
+      "paragraphIndex": 55778,
+      "charOffset": 24,
+      "lastRead": 1779614751066
+    },
+    "小说/书库/故事策略.txt": {
+      "paragraphIndex": 1,
+      "charOffset": 0,
+      "lastRead": 1783269335247
+    },
+    "小说/书库/龙族.txt": {
+      "paragraphIndex": 27477,
+      "charOffset": 0,
+      "lastRead": 1783482873320
+    },
+    "小说/书库/逆天邪神.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783482873563
+    },
+    "小说/书库/一世之尊.txt": {
+      "paragraphIndex": 6634,
+      "charOffset": 0,
+      "lastRead": 1781290854696
+    },
+    "小说/书库/苟在两界修仙.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783416855459
+    },
+    "小说/书库/斗破苍穹.txt": {
+      "paragraphIndex": 75474,
+      "charOffset": 0,
+      "lastRead": 1783003182508
+    },
+    "小说/书库/问镜.txt": {
+      "paragraphIndex": 22,
+      "charOffset": 24,
+      "lastRead": 1783014334162
+    },
+    "小说/书库/亵渎.txt": {
+      "paragraphIndex": 58,
+      "charOffset": 0,
+      "lastRead": 1783003219051
+    },
+    "小说/书库/万古神帝.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783170704956
+    },
+    "小说/书库/百万英镑.txt": {
+      "paragraphIndex": 291,
+      "charOffset": 118,
+      "lastRead": 1783170686883
+    },
+    "小说/书库/斗破苍穹-概括版.txt": {
+      "paragraphIndex": 4,
+      "charOffset": 72,
+      "lastRead": 1782924057732
+    },
+    "小说/书库/吞噬星空.txt": {
+      "paragraphIndex": 17264,
+      "charOffset": 0,
+      "lastRead": 1783004738314
+    },
+    "小说/书库/苟在两界修仙-概括版.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783008822672
+    },
+    "小说/书库/大奉打更人.txt": {
+      "paragraphIndex": 15,
+      "charOffset": 0,
+      "lastRead": 1782975445340
+    },
+    "小说/书库/仙逆.txt": {
+      "paragraphIndex": 40297,
+      "charOffset": 0,
+      "lastRead": 1783003248712
+    },
+    "小说/书库/求魔.txt": {
+      "paragraphIndex": 16,
+      "charOffset": 0,
+      "lastRead": 1783003627102
+    },
+    "小说/书库/超神机械师.txt": {
+      "paragraphIndex": 15,
+      "charOffset": 0,
+      "lastRead": 1783001100406
+    },
+    "小说/书库/十方武圣.txt": {
+      "paragraphIndex": 268,
+      "charOffset": 0,
+      "lastRead": 1782999450258
+    },
+    "小说/书库/夜无疆.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783003651109
+    },
+    "小说/书库/天生仙种.txt": {
+      "paragraphIndex": 4,
+      "charOffset": 0,
+      "lastRead": 1783004058906
+    },
+    "小说/书库/仙道尽头.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004138179
+    },
+    "小说/书库/天之下.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004158866
+    },
+    "小说/书库/我在永夜打造庇护所.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004213709
+    },
+    "小说/书库/轮回乐园.txt": {
+      "paragraphIndex": 8,
+      "charOffset": 0,
+      "lastRead": 1783004286095
+    },
+    "小说/书库/从姑获鸟开始.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783417799890
+    },
+    "小说/书库/道爷要飞升.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004457654
+    },
+    "小说/书库/山河稷.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004486238
+    },
+    "小说/书库/我在修行世界当古神.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004511930
+    },
+    "小说/书库/望长天.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004537060
+    },
+    "小说/书库/没钱修什么仙？.txt": {
+      "paragraphIndex": 9,
+      "charOffset": 27,
+      "lastRead": 1783004571964
+    },
+    "小说/书库/玄鉴仙族.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004633789
+    },
+    "小说/书库/苟在武道世界成圣.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004652288
+    },
+    "小说/书库/长夜君主.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004673346
+    },
+    "小说/书库/青山.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783004682689
+    },
+    "小说/书库/问道红尘.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783057581385
+    },
+    "小说/书库/云海玉弓缘.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783017803759
+    },
+    "小说/书库/回到明朝当王爷.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783016561566
+    },
+    "小说/书库/我的模拟长生路.txt": {
+      "paragraphIndex": 15,
+      "charOffset": 0,
+      "lastRead": 1783135082028
+    },
+    "小说/书库/网游之邪龙逆天.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783143033952
+    },
+    "小说/书库/赡养人类.txt": {
+      "paragraphIndex": 356,
+      "charOffset": 22,
+      "lastRead": 1783253858112
+    },
+    "小说/书库/赡养人类-2.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783247895679
+    },
+    "小说/书库/欢乐颂.txt": {
+      "paragraphIndex": 240,
+      "charOffset": 74,
+      "lastRead": 1783257067282
+    },
+    "小说/书库/三体.txt": {
+      "paragraphIndex": 6664,
+      "charOffset": 0,
+      "lastRead": 1783257065744
+    },
+    "小说/书库/烂柯棋缘.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783267630350
+    },
+    "小说/书库/我家老婆来自一千年前.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783269336199
+    },
+    "小说/书库/倾城之恋.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783275737066
+    },
+    "小说/书库/小明修仙记.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783275104721
+    },
+    "小说/书库/剑来.txt": {
+      "paragraphIndex": 5,
+      "charOffset": 0,
+      "lastRead": 1783312672502
+    },
+    "小说/书库/天辰.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783324142619
+    },
+    "小说/书库/我是仙凡.txt": {
+      "paragraphIndex": 6506,
+      "charOffset": 95,
+      "lastRead": 1783340972981
+    },
+    "小说/书库/大道争锋.txt": {
+      "paragraphIndex": 10,
+      "charOffset": 0,
+      "lastRead": 1783418080589
+    },
+    "小说/书库/赤心巡天.txt": {
+      "paragraphIndex": 238,
+      "charOffset": 0,
+      "lastRead": 1783417799285
+    },
+    "小说/书库/万相之王.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783418039151
+    },
+    "小说/书库/刚准备高考，离婚逆袭系统来了.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783428142373
+    },
+    "小说/书库/重燃青葱时代.txt": {
+      "paragraphIndex": 9450,
+      "charOffset": 24,
+      "lastRead": 1783483107467
+    },
+    "小说/书库/黎明之剑.txt": {
+      "paragraphIndex": 1,
+      "charOffset": 0,
+      "lastRead": 1783491720433
+    },
+    "小说/书库/明朝那些事儿.txt": {
+      "paragraphIndex": 0,
+      "charOffset": 0,
+      "lastRead": 1783534880383
+    }
+  },
+  "bookSettings": {
+    "小说/书库/锦衣夜行.txt": {
+      "encoding": "gbk",
+      "firstLineIndent": 2,
+      "annotations": [
+        {
+          "paraIndex": 2164,
+          "startOffset": 2,
+          "length": 25,
+          "endParaIndex": 2164,
+          "endOffset": 27,
+          "text": "夏浔微笑道：“若是生同衾，死同穴，那就更感人了。”",
+          "note": "爱恋",
+          "createdAt": 1777457722347
+        },
+        {
+          "paraIndex": 2363,
+          "startOffset": 24,
+          "length": 21,
+          "endParaIndex": 2363,
+          "endOffset": 45,
+          "text": "一口痰火堵住了喉咙，救治不及，就此驾鹤西去",
+          "note": "死亡",
+          "createdAt": 1777458577927
+        },
+        {
+          "paraIndex": 2539,
+          "startOffset": 65,
+          "length": 23,
+          "endParaIndex": 2539,
+          "endOffset": 88,
+          "text": "那淫棍也曾享用过他进献的女人，与他可谓一丘之貉",
+          "note": "淫邪",
+          "createdAt": 1777464734081
+        }
+      ],
+      "tags": {
+        "authors": [
+          "月关"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "感情",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/苟在初圣魔门当人材.txt": {
+      "encoding": "utf-8",
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "鹤守月满池"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "笑点",
+          "情节",
+          "人物",
+          "谋略",
+          "设定",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天龙八部.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "金庸"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/诡秘之主.txt": {
+      "tags": {
+        "authors": [
+          "爱潜水的乌贼"
+        ],
+        "genre": [
+          "西幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "架构",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/渊天尊.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "烽仙"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/醉枕江山.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "月关"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "后宫",
+          "感情",
+          "人物",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从斩妖除魔开始长生不死.txt": {
+      "firstLineIndent": 2,
+      "annotations": [
+        {
+          "paraIndex": 2185,
+          "startOffset": 29,
+          "length": 27,
+          "endParaIndex": 2185,
+          "endOffset": 56,
+          "text": "要是以前，对方恨不得把麻烦抛得一干二净，全心全意搂银子",
+          "createdAt": 1777995261094
+        }
+      ],
+      "tags": {
+        "authors": [
+          "陆月十九"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/庆余年.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "猫腻"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/赘婿.txt": {
+      "tocRegex": "^\\s*第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*$",
+      "tags": {
+        "authors": [
+          "愤怒的香蕉"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大梦主.txt": {
+      "firstLineIndent": 2
+    },
+    "小说/书库/道诡异仙.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "狐尾的笔"
+        ],
+        "genre": [
+          "玄幻",
+          "灵异"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "设定",
+          "谋略",
+          "人物",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/故事策略.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "篇",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [],
+        "genre": [
+          "工具"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/龙族.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[卷幕部章].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([部卷幕章])\\s*(.*)$",
+      "prologueTitleRegex": "^\\s*(?:序幕|前言|楔子|引子)(?:\\s+.*)?$",
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "部",
+      "tocIndentLevel2Regex": "幕|章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "江南"
+        ],
+        "genre": [
+          "奇幻",
+          "都市"
+        ],
+        "serialStatus": "连载",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/逆天邪神.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章卷].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章卷])\\s*(.*)$",
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "火星引力"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "谋略",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/一世之尊.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "爱潜水的乌贼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定",
+          "架构"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/苟在两界修仙.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章])\\s*(.*)$",
+      "tags": {
+        "authors": [
+          "文抄公"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "readingStatus": "半读",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/斗破苍穹.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章])\\s*(.*)$",
+      "tags": {
+        "authors": [
+          "天蚕土豆"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "略读",
+        "feature": [
+          "情节",
+          "爽点",
+          "节奏"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/问镜.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "减肥专家"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/亵渎.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "烟雨江南"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/百万英镑.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章])\\s*(.*)$",
+      "tags": {
+        "genre": [
+          "严肃"
+        ],
+        "status": "完结",
+        "feature": [
+          "笑点",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/吞噬星空.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章集篇].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章集篇])\\s*(.*)$",
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "篇",
+      "tocIndentLevel2Regex": "集",
+      "tocIndentLevel3Regex": "章",
+      "tags": {
+        "authors": [
+          "我吃西红柿"
+        ],
+        "genre": [
+          "科幻",
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/斗破苍穹-概括版.txt": {
+      "firstLineIndent": 0,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([])\\s*(.*)$",
+      "prologueTitleRegex": "^\\s*(?:)(?:\\s+.*)?$",
+      "removeExtraBlankLines": false
+    },
+    "小说/书库/苟在两界修仙-概括版.txt": {
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([])\\s*(.*)$",
+      "removeExtraBlankLines": false
+    },
+    "小说/书库/大奉打更人.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "卖报小郎君"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙逆.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章卷].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章卷])\\s*(.*)$",
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "耳根"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/求魔.txt": {
+      "firstLineIndent": 2,
+      "tocRegex": "^\\s*第[零一二三四五六七八九十百千万亿\\d]+[章卷].*$",
+      "chapterTitleRegex": "^\\s*第([零〇一二三四五六七八九十百千万亿两\\d]+)([章卷])\\s*(.*)$",
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "耳根"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/超神机械师.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "genre": [
+          "游戏"
+        ],
+        "status": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/十方武圣.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "滚开"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/夜无疆.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天生仙种.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "genre": [
+          "仙侠"
+        ],
+        "status": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/万古神帝.txt": {
+      "tags": {
+        "authors": [
+          "飞天鱼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙道尽头.txt": {
+      "tags": {
+        "genre": [
+          "仙侠"
+        ],
+        "status": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天之下.txt": {
+      "tags": {
+        "genre": [
+          "武侠"
+        ],
+        "status": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我在永夜打造庇护所.txt": {
+      "tags": {
+        "authors": [
+          "中世纪的兔子"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/轮回乐园.txt": {
+      "tags": {
+        "authors": [
+          "那一只蚊子"
+        ],
+        "genre": [
+          "诸天"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从姑获鸟开始.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "活儿该"
+        ],
+        "genre": [
+          "诸天"
+        ],
+        "serialStatus": "连载",
+        "readingStatus": "半读",
+        "feature": [
+          "文采",
+          "情节",
+          "节奏",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/道爷要飞升.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/山河稷.txt": {
+      "tags": {
+        "genre": [
+          "仙侠"
+        ],
+        "status": "完结",
+        "feature": [
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我在修行世界当古神.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/望长天.txt": {
+      "tags": {
+        "genre": [
+          "仙侠"
+        ],
+        "status": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/没钱修什么仙？.txt": {
+      "tags": {
+        "genre": [
+          "仙侠"
+        ],
+        "status": "连载",
+        "feature": [
+          "笑点",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/玄鉴仙族.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采",
+          "架构",
+          "人物",
+          "设定",
+          "谋略",
+          "经营",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/苟在武道世界成圣.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/长夜君主.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/青山.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/问道红尘.txt": {
+      "tags": {
+        "authors": [
+          "姬叉"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "人物",
+          "感情",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/云海玉弓缘.txt": {
+      "tags": {
+        "authors": [
+          "梁羽生"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/回到明朝当王爷.txt": {
+      "tags": {
+        "authors": [
+          "月关"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "爽点",
+          "笑点",
+          "文采",
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "谋略"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/网游之邪龙逆天.txt": {
+      "tags": {
+        "authors": [
+          "火星引力"
+        ],
+        "genre": [
+          "都市",
+          "游戏"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "爽点",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天辰.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "火星引力"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "谋略",
+          "爽点",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/网游之修罗传说.txt": {
+      "tags": {
+        "authors": [
+          "火星引力"
+        ],
+        "genre": [
+          "都市",
+          "游戏"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "人物",
+          "感情",
+          "爽点",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/网游之天谴修罗.txt": {
+      "tags": {
+        "authors": [
+          "火星引力"
+        ],
+        "genre": [
+          "都市",
+          "玄幻",
+          "游戏"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "人物",
+          "感情",
+          "爽点",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/娱乐春秋.txt": {
+      "tags": {
+        "authors": [
+          "姬叉"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "设定",
+          "人物",
+          "感情",
+          "爽点",
+          "谋略",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙朝鹰犬.txt": {
+      "tags": {
+        "authors": [
+          "平层"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从十二形拳开始肉身成圣.txt": {
+      "tags": {
+        "authors": [
+          "海无颜"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/这个地下城长蘑菇了.txt": {
+      "tags": {
+        "authors": [
+          "生吃菌子"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/重生高考前99天.txt": {
+      "tags": {
+        "authors": [
+          "柳岸花又明"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/奥术神座.txt": {
+      "tags": {
+        "authors": [
+          "爱潜水的乌贼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/鸣龙.txt": {
+      "tags": {
+        "authors": [
+          "关关公子"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/万生痴魔.txt": {
+      "tags": {
+        "authors": [
+          "沙拉古斯"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/赡养人类.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "刘慈欣"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "哲理",
+          "情节",
+          "人物",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/赡养上帝.txt": {
+      "tags": {
+        "authors": [
+          "刘慈欣"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/三体.txt": {
+      "tags": {
+        "authors": [
+          "刘慈欣"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "设定",
+          "哲理"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/诗云.txt": {
+      "tags": {
+        "authors": [
+          "刘慈欣"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "哲理"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/欢乐颂.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "刘慈欣"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/献给阿尔吉侬的花束.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "科幻"
+        ],
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/长生武尊.txt": {
+      "tags": {
+        "authors": [
+          "江上景"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的女友来自未来.txt": {
+      "tags": {
+        "authors": [
+          "骚茶"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙业.txt": {
+      "tags": {
+        "authors": [
+          "鹓扶君"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/刚准备高考，离婚逆袭系统来了.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "七月封阳"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从水猴子开始成神.txt": {
+      "tags": {
+        "authors": [
+          "甲壳蚁"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/借剑.txt": {
+      "tags": {
+        "authors": [
+          "幼儿园一把手"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/让仙门再次伟大.txt": {
+      "tags": {
+        "authors": [
+          "鹤守月满池"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "爽点",
+          "笑点",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/临圣.txt": {
+      "tags": {
+        "authors": [
+          "卖报小郎君"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/杀神.txt": {
+      "tags": {
+        "authors": [
+          "逆苍天"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/峨眉剑仙.txt": {
+      "tags": {
+        "authors": [
+          "北冥没有鱼啊"
+        ],
+        "genre": [
+          "诸天"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/烂柯棋缘.txt": {
+      "tags": {
+        "authors": [
+          "真费事"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/被迫进入了恋爱状态.txt": {
+      "tags": {
+        "authors": [
+          "旧日闲吟"
+        ],
+        "genre": [],
+        "serialStatus": "连载",
+        "feature": [
+          "恋爱"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的模拟长生路.txt": {
+      "tags": {
+        "authors": [
+          "愤怒的乌贼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/尘缘.txt": {
+      "tags": {
+        "authors": [
+          "烟雨江南"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "节奏",
+          "架构",
+          "人物",
+          "感情",
+          "后宫",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/步步生莲.txt": {
+      "tags": {
+        "authors": [
+          "月关"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "架构",
+          "人物",
+          "感情",
+          "后宫",
+          "谋略"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙路烟尘.txt": {
+      "tags": {
+        "authors": [
+          "管平潮"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "笑点",
+          "人物",
+          "感情",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我家老婆来自一千年前.txt": {
+      "tags": {
+        "authors": [
+          "花还没开"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "恋爱"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/围城.txt": {
+      "tags": {
+        "authors": [
+          "钱钟书"
+        ],
+        "genre": [
+          "严肃"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "哲理"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/唐诗三百首.txt": {
+      "tags": {
+        "authors": [],
+        "genre": [
+          "古书"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/紫府仙缘.txt": {
+      "tags": {
+        "authors": [
+          "百里玺"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/不周记.txt": {
+      "tags": {
+        "authors": [
+          "树下野狐"
+        ],
+        "genre": [
+          "玄幻",
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/云海仙踪.txt": {
+      "tags": {
+        "authors": [
+          "树下野狐"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/搜神记.txt": {
+      "tags": {
+        "authors": [
+          "树下野狐"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/蛮荒记.txt": {
+      "tags": {
+        "authors": [
+          "树下野狐"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙楚.txt": {
+      "tags": {
+        "authors": [
+          "树下野狐"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/诛仙.txt": {
+      "tags": {
+        "authors": [
+          "萧鼎"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大道争锋.txt": {
+      "tags": {
+        "authors": [
+          "误道者"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/觅仙路.txt": {
+      "tags": {
+        "authors": [
+          "何不语"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/七剑下天山.txt": {
+      "tags": {
+        "authors": [
+          "梁羽生"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "文采",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/世子很凶.txt": {
+      "tags": {
+        "authors": [
+          "关关公子"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/幽冥仙途.txt": {
+      "tags": {
+        "authors": [
+          "减肥专家"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "架构",
+          "人物",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/极道天魔.txt": {
+      "tags": {
+        "authors": [
+          "滚开"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/真灵九变.txt": {
+      "tags": {
+        "authors": [
+          "睡秋"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "情节",
+          "人物",
+          "感情",
+          "谋略",
+          "设定",
+          "经营"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/觅仙.txt": {
+      "tags": {
+        "authors": [
+          "何不语"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/凡人修仙传.txt": {
+      "tags": {
+        "authors": [
+          "忘语"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "情节",
+          "架构",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/凡人修仙之仙界篇.txt": {
+      "tags": {
+        "authors": [
+          "忘语"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "情节",
+          "架构",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/遮天.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "设定",
+          "架构"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/地煞七十二变.txt": {},
+    "小说/书库/地煞七十二通鉴.txt": {
+      "tags": {
+        "authors": [
+          "祭酒"
+        ],
+        "genre": [
+          "诸天"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/帝尊.txt": {
+      "tags": {
+        "authors": [
+          "宅猪"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我是仙凡.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "百里玺"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "节奏",
+          "架构",
+          "人物",
+          "谋略",
+          "设定",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/执魔.txt": {
+      "tags": {
+        "authors": [
+          "我是墨水"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "后宫",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/灵山.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/修真门派掌门路.txt": {
+      "tags": {
+        "authors": [
+          "齐可休"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "readingStatus": "精读",
+        "feature": [
+          "经营"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/道君.txt": {
+      "tags": {
+        "authors": [
+          "跃千愁"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/白发魔女传.txt": {
+      "tags": {
+        "authors": [
+          "梁羽生"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "感情",
+          "情节",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/萍踪侠影录.txt": {
+      "tags": {
+        "authors": [
+          "梁羽生"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙玉尘缘.txt": {
+      "tags": {
+        "authors": [
+          "顽木"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/塞外奇侠传.txt": {
+      "tags": {
+        "authors": [
+          "梁羽生"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/七夜雪.txt": {
+      "tags": {
+        "authors": [
+          "沧月"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/花千骨.txt": {
+      "tags": {
+        "authors": [
+          "Fresh果果"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "feature": [
+          "恋爱"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/将夜.txt": {
+      "tags": {
+        "authors": [
+          "猫腻"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神明今夜想你.txt": {
+      "tags": {
+        "authors": [
+          "藤萝为枝"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "恋爱",
+          "文采",
+          "情节",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙剑奇侠传.txt": {
+      "tags": {
+        "authors": [
+          "管平潮"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的26岁女房客.txt": {
+      "tags": {
+        "authors": [
+          "超级大坦克科比"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情",
+          "恋爱",
+          "后宫",
+          "经营"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/无疆.txt": {
+      "tags": {
+        "authors": [
+          "小刀锋利"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/玄浑道章.txt": {
+      "tags": {
+        "authors": [
+          "误道者"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/阳神.txt": {
+      "tags": {
+        "authors": [
+          "梦入神机"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/倾城之恋.txt": {
+      "tags": {
+        "authors": [
+          "张爱玲"
+        ],
+        "genre": [
+          "严肃"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "恋爱",
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/长风渡.txt": {
+      "tags": {
+        "authors": [
+          "墨书白"
+        ],
+        "genre": [
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/故事-对白-人物.txt": {
+      "tags": {
+        "authors": [
+          "罗伯特·麦基"
+        ],
+        "genre": [
+          "工具"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/基地.txt": {
+      "tags": {
+        "authors": [
+          "阿西莫夫"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "架构",
+          "人物",
+          "谋略",
+          "设定",
+          "哲理"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神们自己.txt": {
+      "tags": {
+        "authors": [
+          "阿西莫夫"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "情节",
+          "设定",
+          "文采",
+          "架构",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/最后的问题.txt": {
+      "tags": {
+        "authors": [
+          "阿西莫夫"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/永恒的终结.txt": {
+      "tags": {
+        "authors": [
+          "阿西莫夫"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "设定",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙府之缘.txt": {
+      "tags": {
+        "authors": [
+          "百里玺"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "谋略",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/蛊真人.txt": {
+      "tags": {
+        "authors": [
+          "蛊真人"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "情节",
+          "节奏",
+          "架构",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/小明修仙记.txt": {
+      "tags": {
+        "authors": [
+          "最多不过禽兽"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "笑点",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/傲世九重天.txt": {
+      "tags": {
+        "authors": [
+          "风凌天下"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/搬山.txt": {
+      "tags": {
+        "authors": [
+          "豆子惹的祸"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "架构"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/升邪.txt": {
+      "tags": {
+        "authors": [
+          "豆子惹的祸"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/武神.txt": {
+      "tags": {
+        "authors": [
+          "苍天白鹤"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "情节",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神国之上.txt": {
+      "tags": {
+        "authors": [
+          "见异思剑"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "后宫",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/九州牧云录.txt": {
+      "tags": {
+        "authors": [
+          "管平潮"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "文采",
+          "情节",
+          "人物",
+          "感情",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/乱世书.txt": {
+      "tags": {
+        "authors": [
+          "姬叉"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "半读",
+        "feature": [
+          "文采",
+          "笑点",
+          "情节",
+          "节奏",
+          "人物",
+          "感情",
+          "后宫",
+          "爽点",
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/剑来.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "烽火戏诸侯"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从黄包车夫到覆海大圣.txt": {
+      "tags": {
+        "authors": [
+          "安心知易"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大乘期才有逆袭系统.txt": {
+      "tags": {
+        "authors": [
+          "最白的乌鸦"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "笑点",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/谁让他修仙的.txt": {
+      "tags": {
+        "authors": [
+          "最白的乌鸦"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "笑点",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/腐朽世界.txt": {
+      "tags": {
+        "authors": [
+          "滚开"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/湿卵胎化.txt": {
+      "tags": {
+        "authors": [
+          "黑环"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/完美世界.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/不科学御兽.txt": {
+      "tags": {
+        "authors": [
+          "轻泉流响"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大道朝天.txt": {
+      "tags": {
+        "authors": [
+          "猫腻"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大主宰.txt": {
+      "tags": {
+        "authors": [
+          "天蚕土豆"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "爽点",
+          "节奏"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/帝龙.txt": {
+      "tags": {
+        "authors": [
+          "唐宋元明氢"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/以一龙之力打倒整个世界.txt": {
+      "tags": {
+        "authors": [
+          "唐宋元明氢"
+        ],
+        "genre": [
+          "轻小说"
+        ],
+        "serialStatus": "连载",
+        "readingStatus": "未读",
+        "feature": [
+          "设定"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/方寸道主.txt": {
+      "tags": {
+        "authors": [
+          "愤怒的乌贼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/剑烛大荒.txt": {
+      "tags": {
+        "authors": [
+          "爱潜水的乌贼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/元始法则.txt": {
+      "tags": {
+        "authors": [
+          "飞天鱼"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/太虚至尊.txt": {
+      "tags": {
+        "authors": [
+          "苍天霸主"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天人图谱.txt": {
+      "tags": {
+        "authors": [
+          "误道者"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/赤心巡天.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "情何以甚"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "架构"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/绍宋.txt": {
+      "tags": {
+        "authors": [
+          "榴弹怕水"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我本无意成仙.txt": {
+      "tags": {
+        "authors": [
+          "金色茉莉花"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/万相之王.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "天蚕土豆"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/山海提灯.txt": {
+      "tags": {
+        "authors": [
+          "跃千愁"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/雪中悍刀行.txt": {
+      "tags": {
+        "authors": [
+          "烽火戏诸侯"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我有一剑.txt": {
+      "tags": {
+        "authors": [
+          "青鸾峰上"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙工开物.txt": {
+      "tags": {
+        "authors": [
+          "蛊真人"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙人消失之后.txt": {
+      "tags": {
+        "authors": [
+          "风行水云间"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/阵问长生.txt": {
+      "tags": {
+        "authors": [
+          "观虚"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/乌龙山修行笔记.txt": {
+      "tags": {
+        "authors": [
+          "八宝饭"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/高天之上.txt": {
+      "tags": {
+        "authors": [
+          "阴天神隐"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天命皆烬.txt": {
+      "tags": {
+        "authors": [
+          "阴天神隐"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/观山.txt": {
+      "tags": {
+        "authors": [
+          "要胖的红烧肉"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/光阴之外.txt": {
+      "tags": {
+        "authors": [
+          "耳根"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/国民法医.txt": {
+      "tags": {
+        "authors": [
+          "志鸟村"
+        ],
+        "genre": [
+          "医生",
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/覆汉.txt": {
+      "tags": {
+        "authors": [
+          "榴弹怕水"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/重燃青葱时代.txt": {
+      "firstLineIndent": 2,
+      "tags": {
+        "authors": [
+          "蜜汁姬"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "感情",
+          "恋爱",
+          "笑点",
+          "文采",
+          "人物",
+          "情节",
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/苟在女魔头身边偷偷修炼.txt": {
+      "tags": {
+        "authors": [
+          "怕辣的红椒"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/仙葫.txt": {
+      "tags": {
+        "authors": [
+          "流浪的蛤蟆"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的学习群里全是真大佬.txt": {
+      "tags": {
+        "authors": [
+          "胖胖的小橘"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "笑点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/重生08，我被确诊为医学泰斗.txt": {
+      "tags": {
+        "authors": [
+          "忧伤的饭饭"
+        ],
+        "genre": [
+          "医生"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的极品女友们.txt": {
+      "tags": {
+        "authors": [
+          "超级大坦克科比"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "readingStatus": "精读",
+        "feature": [
+          "人物",
+          "恋爱",
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大赤仙门.txt": {
+      "tags": {
+        "authors": [
+          "古顽石"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/今天他飞升了吗.txt": {
+      "tags": {
+        "authors": [
+          "裴不了"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/清光宝鉴.txt": {
+      "tags": {
+        "authors": [
+          "一片苏叶"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/灵境行者.txt": {
+      "tags": {
+        "authors": [
+          "卖报小郎君"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/灭运图录.txt": {
+      "tags": {
+        "authors": [
+          "爱潜水的乌贼"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/牧神记.txt": {
+      "tags": {
+        "authors": [
+          "宅猪"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/白衣卿相.txt": {
+      "tags": {
+        "authors": [
+          "王梓钧"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/太一道主.txt": {
+      "tags": {
+        "authors": [
+          "东海鱼头"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天才俱乐部.txt": {
+      "tags": {
+        "authors": [
+          "城城与蝉"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我的化身正在成为最终BOSS.txt": {
+      "tags": {
+        "authors": [
+          "汐尺"
+        ],
+        "genre": [
+          "轻小说"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/修真聊天群.txt": {
+      "tags": {
+        "authors": [
+          "圣骑士的传说"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/宇宙职业选手.txt": {
+      "tags": {
+        "authors": [
+          "我吃西红柿"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/镇妖博物馆.txt": {
+      "tags": {
+        "authors": [
+          "阎ZK"
+        ],
+        "genre": [
+          "灵异"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/盗墓笔记.txt": {
+      "tags": {
+        "authors": [
+          "南派三叔"
+        ],
+        "genre": [
+          "灵异"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大王饶命.txt": {
+      "tags": {
+        "authors": [
+          "会说话的肘子"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "笑点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/第一序列.txt": {
+      "tags": {
+        "authors": [
+          "会说话的肘子"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/夜的命名术.txt": {
+      "tags": {
+        "authors": [
+          "会说话的肘子"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/都重生了谁谈恋爱啊.txt": {
+      "tags": {
+        "authors": [
+          "错哪儿了"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "恋爱",
+          "感情"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/剑出大唐.txt": {
+      "tags": {
+        "authors": [
+          "一片苏叶"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/惊悚乐园.txt": {
+      "tags": {
+        "authors": [
+          "三天两觉"
+        ],
+        "genre": [
+          "游戏"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/太平令.txt": {
+      "tags": {
+        "authors": [
+          "阎ZK"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天倾之后.txt": {
+      "tags": {
+        "authors": [
+          "佛前献花"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我师兄实在太稳健了.txt": {
+      "tags": {
+        "authors": [
+          "言归正传"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "笑点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我真没想重生啊.txt": {
+      "tags": {
+        "authors": [
+          "柳岸花又明"
+        ],
+        "genre": [
+          "都市",
+          "言情"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "人物",
+          "感情",
+          "恋爱"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/全球高武.txt": {
+      "tags": {
+        "authors": [
+          "老鹰吃小鸡"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/万族之劫.txt": {
+      "tags": {
+        "authors": [
+          "老鹰吃小鸡"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "节奏",
+          "爽点"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/择天记.txt": {
+      "tags": {
+        "authors": [
+          "猫腻"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/间客.txt": {
+      "tags": {
+        "authors": [
+          "猫腻"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/普罗之主.txt": {
+      "tags": {
+        "authors": [
+          "沙拉古斯"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/黜龙.txt": {
+      "tags": {
+        "authors": [
+          "榴弹怕水"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/廓晋.txt": {
+      "tags": {
+        "authors": [
+          "榴弹怕水"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/星门.txt": {
+      "tags": {
+        "authors": [
+          "老鹰吃小鸡"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天道图书馆.txt": {
+      "tags": {
+        "authors": [
+          "横扫天涯"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/深空彼岸.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神墓.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/圣墟.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/长生界.txt": {
+      "tags": {
+        "authors": [
+          "辰东"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从红月开始.txt": {
+      "tags": {
+        "authors": [
+          "黑山老鬼"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/全职法师.txt": {
+      "tags": {
+        "authors": [
+          "乱"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/从效法万妖开始成就真仙.txt": {
+      "tags": {
+        "authors": [
+          "陆月十九"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/星河之主.txt": {
+      "tags": {
+        "authors": [
+          "烽仙"
+        ],
+        "genre": [
+          "都市",
+          "科幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/魔修.txt": {
+      "tags": {
+        "authors": [
+          "白特慢啊"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/浊世武尊.txt": {
+      "tags": {
+        "authors": [
+          "林守镜"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/铁血残明.txt": {
+      "tags": {
+        "authors": [
+          "柯山梦"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/长生修仙，从画符开始.txt": {
+      "tags": {
+        "authors": [
+          "饺子一碗"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/今天也在努力做魔头.txt": {
+      "tags": {
+        "authors": [
+          "开荒"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大乾武圣.txt": {
+      "tags": {
+        "authors": [
+          "湖上明月亮"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/龙藏.txt": {
+      "tags": {
+        "authors": [
+          "烟雨江南"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/冬日重现.txt": {
+      "tags": {
+        "authors": [
+          "雪梨炖茶"
+        ],
+        "genre": [
+          "轻小说",
+          "言情"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/魔王大人深不可测.txt": {
+      "tags": {
+        "authors": [
+          "晨星LL"
+        ],
+        "genre": [
+          "轻小说"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/深海余烬.txt": {
+      "tags": {
+        "authors": [
+          "远瞳"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/异常生物见闻录.txt": {
+      "tags": {
+        "authors": [
+          "远瞳"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/黎明之剑.txt": {
+      "firstLineIndent": 2,
+      "tocIndentEnabled": true,
+      "tocIndentLevel1Regex": "卷",
+      "tocIndentLevel2Regex": "章",
+      "tocIndentLevel3Regex": "节",
+      "tags": {
+        "authors": [
+          "远瞳"
+        ],
+        "genre": [
+          "科幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/她是剑修.txt": {
+      "tags": {
+        "authors": [
+          "闲等渡鸦飞却"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/叩问仙道.txt": {
+      "tags": {
+        "authors": [
+          "雨打青石"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "连载",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天启预报.txt": {
+      "tags": {
+        "authors": [
+          "风月"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/择日走红.txt": {
+      "tags": {
+        "authors": [
+          "宋不留春"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/地师.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/江山如此多娇.txt": {
+      "tags": {
+        "authors": [
+          "泥人"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/明朝那些事儿.txt": {
+      "tags": {
+        "authors": [
+          "当年明月"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "笑点",
+          "人物",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/鬼股.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "灵异"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/惊门.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "都市"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/人欲.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神游.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/太上章.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/天枢.txt": {
+      "tags": {
+        "authors": [
+          "徐公子胜治"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/一剑独尊.txt": {
+      "tags": {
+        "authors": [
+          "青鸾峰上"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "爽点",
+          "节奏"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/武炼巅峰.txt": {
+      "tags": {
+        "authors": [
+          "莫默"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大明春色.txt": {
+      "tags": {
+        "authors": [
+          "西风紧"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/极品家丁.txt": {
+      "tags": {
+        "authors": [
+          "禹岩"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "后宫"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/大唐乘风录.txt": {
+      "tags": {
+        "authors": [
+          "金寻者"
+        ],
+        "genre": [
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "人物"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/盘龙.txt": {
+      "tags": {
+        "authors": [
+          "我吃西红柿"
+        ],
+        "genre": [
+          "奇幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/神秘复苏.txt": {
+      "tags": {
+        "authors": [
+          "佛前献花"
+        ],
+        "genre": [
+          "灵异"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "文采",
+          "情节"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/我以道种铸长生.txt": {
+      "tags": {
+        "authors": [
+          "鱼龙飞度"
+        ],
+        "genre": [
+          "仙侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/无限恐怖.txt": {
+      "tags": {
+        "authors": [
+          "zhttty"
+        ],
+        "genre": [
+          "诸天"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/武夫.txt": {
+      "tags": {
+        "authors": [
+          "平生未知寒"
+        ],
+        "genre": [
+          "仙侠",
+          "武侠"
+        ],
+        "serialStatus": "完结",
+        "feature": [],
+        "accumulation": []
+      }
+    },
+    "小说/书库/宰执天下.txt": {
+      "tags": {
+        "authors": [
+          "cuslaa"
+        ],
+        "genre": [
+          "历史"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "谋略"
+        ],
+        "accumulation": []
+      }
+    },
+    "小说/书库/知北游.txt": {
+      "tags": {
+        "authors": [
+          "洛水"
+        ],
+        "genre": [
+          "玄幻"
+        ],
+        "serialStatus": "完结",
+        "feature": [
+          "情节",
+          "哲理"
+        ],
+        "accumulation": []
+      }
+    }
+  },
+  "tagCatalog": {
+    "genre": [
+      "玄幻",
+      "仙侠",
+      "历史",
+      "都市",
+      "言情",
+      "诸天",
+      "游戏",
+      "奇幻",
+      "武侠",
+      "科幻",
+      "西幻",
+      "灵异",
+      "严肃",
+      "工具",
+      "古书",
+      "医生",
+      "轻小说"
+    ],
+    "status": [
+      "连载",
+      "完结"
+    ],
+    "feature": [
+      "文采",
+      "笑点",
+      "情节",
+      "节奏",
+      "架构",
+      "人物",
+      "感情",
+      "恋爱",
+      "后宫",
+      "谋略",
+      "经营",
+      "设定",
+      "爽点",
+      "哲理"
+    ],
+    "accumulation": [
+      "文采",
+      "笑点",
+      "情节",
+      "节奏",
+      "架构",
+      "人物",
+      "感情",
+      "恋爱",
+      "后宫",
+      "谋略",
+      "经营",
+      "设定",
+      "爽点",
+      "哲理"
+    ]
+  },
+  "authorTagOrder": [
+    "江南",
+    "火星引力",
+    "文抄公",
+    "我吃西红柿",
+    "耳根",
+    "姬叉",
+    "月关",
+    "平层",
+    "海无颜",
+    "生吃菌子",
+    "柳岸花又明",
+    "爱潜水的乌贼",
+    "关关公子",
+    "沙拉古斯",
+    "飞天鱼",
+    "狐尾的笔",
+    "鹤守月满池",
+    "刘慈欣",
+    "江上景",
+    "骚茶",
+    "鹓扶君",
+    "七月封阳",
+    "甲壳蚁",
+    "幼儿园一把手",
+    "卖报小郎君",
+    "逆苍天",
+    "北冥没有鱼啊",
+    "真费事",
+    "旧日闲吟",
+    "天蚕土豆",
+    "梁羽生",
+    "金庸",
+    "愤怒的乌贼",
+    "陆月十九",
+    "烟雨江南",
+    "管平潮",
+    "花还没开",
+    "钱钟书",
+    "百里玺",
+    "树下野狐",
+    "萧鼎",
+    "误道者",
+    "何不语",
+    "活儿该",
+    "滚开",
+    "减肥专家",
+    "睡秋",
+    "忘语",
+    "辰东",
+    "祭酒",
+    "宅猪",
+    "我是墨水",
+    "徐公子胜治",
+    "齐可休",
+    "跃千愁",
+    "顽木",
+    "沧月",
+    "Fresh果果",
+    "猫腻",
+    "藤萝为枝",
+    "超级大坦克科比",
+    "小刀锋利",
+    "梦入神机",
+    "张爱玲",
+    "墨书白",
+    "罗伯特·麦基",
+    "阿西莫夫",
+    "烽仙",
+    "蛊真人",
+    "最多不过禽兽",
+    "风凌天下",
+    "豆子惹的祸",
+    "苍天白鹤",
+    "愤怒的香蕉",
+    "见异思剑",
+    "烽火戏诸侯",
+    "安心知易",
+    "最白的乌鸦",
+    "黑环",
+    "那一只蚊子",
+    "轻泉流响",
+    "唐宋元明氢",
+    "中世纪的兔子",
+    "苍天霸主",
+    "情何以甚",
+    "榴弹怕水",
+    "金色茉莉花",
+    "青鸾峰上",
+    "风行水云间",
+    "观虚",
+    "八宝饭",
+    "阴天神隐",
+    "要胖的红烧肉",
+    "志鸟村",
+    "蜜汁姬",
+    "怕辣的红椒",
+    "流浪的蛤蟆",
+    "胖胖的小橘",
+    "忧伤的饭饭",
+    "古顽石",
+    "裴不了",
+    "一片苏叶",
+    "王梓钧",
+    "东海鱼头",
+    "城城与蝉",
+    "汐尺",
+    "圣骑士的传说",
+    "阎ZK",
+    "南派三叔",
+    "会说话的肘子",
+    "错哪儿了",
+    "三天两觉",
+    "佛前献花",
+    "言归正传",
+    "老鹰吃小鸡",
+    "横扫天涯",
+    "黑山老鬼",
+    "乱",
+    "白特慢啊",
+    "林守镜",
+    "柯山梦",
+    "饺子一碗",
+    "开荒",
+    "湖上明月亮",
+    "雪梨炖茶",
+    "晨星LL",
+    "远瞳",
+    "闲等渡鸦飞却",
+    "雨打青石",
+    "风月",
+    "宋不留春",
+    "泥人",
+    "当年明月",
+    "莫默",
+    "西风紧",
+    "禹岩",
+    "金寻者",
+    "鱼龙飞度",
+    "zhttty",
+    "平生未知寒",
+    "cuslaa",
+    "洛水"
+  ],
+  "readingStats": {
+    "schemaVersion": 2,
+    "books": {
+      "小说/书库/斗破苍穹.txt": {
+        "title": "斗破苍穹",
+        "totalReadingMs": 4178540,
+        "totalReadWords": 135533,
+        "countedRanges": [
+          {
+            "start": 1423580,
+            "end": 1426692
+          },
+          {
+            "start": 1427269,
+            "end": 1505121
+          },
+          {
+            "start": 1624457,
+            "end": 1627912
+          },
+          {
+            "start": 1770101,
+            "end": 1770389
+          },
+          {
+            "start": 1932922,
+            "end": 1936497
+          },
+          {
+            "start": 1955888,
+            "end": 1963841
+          },
+          {
+            "start": 2098262,
+            "end": 2103204
+          },
+          {
+            "start": 2117029,
+            "end": 2125218
+          },
+          {
+            "start": 2125579,
+            "end": 2126255
+          },
+          {
+            "start": 2126578,
+            "end": 2129142
+          },
+          {
+            "start": 2130109,
+            "end": 2130446
+          },
+          {
+            "start": 2130753,
+            "end": 2131028
+          },
+          {
+            "start": 2133851,
+            "end": 2134170
+          },
+          {
+            "start": 2134841,
+            "end": 2138747
+          },
+          {
+            "start": 2164028,
+            "end": 2164372
+          },
+          {
+            "start": 2198798,
+            "end": 2202190
+          },
+          {
+            "start": 2357167,
+            "end": 2360511
+          },
+          {
+            "start": 2660078,
+            "end": 2663276
+          },
+          {
+            "start": 3007399,
+            "end": 3007748
+          },
+          {
+            "start": 3151797,
+            "end": 3152117
+          },
+          {
+            "start": 3322474,
+            "end": 3322791
+          },
+          {
+            "start": 3337730,
+            "end": 3338436
+          },
+          {
+            "start": 3671029,
+            "end": 3676294
+          },
+          {
+            "start": 4639449,
+            "end": 4642419
+          },
+          {
+            "start": 4977000,
+            "end": 4978627
+          },
+          {
+            "start": 4978956,
+            "end": 4983849
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 415,
+            "end": 440,
+            "startTitle": "第416章 家传玉片",
+            "endTitle": "第441章 大反击"
+          },
+          {
+            "start": 475,
+            "end": 476,
+            "startTitle": "第476章 七星大斗师",
+            "endTitle": "第477章 磐门的变化"
+          },
+          {
+            "start": 519,
+            "end": 519,
+            "startTitle": "第520章 回院",
+            "endTitle": "第520章 回院"
+          },
+          {
+            "start": 568,
+            "end": 569,
+            "startTitle": "第569章 卷轴",
+            "endTitle": "第570章 争夺前十"
+          },
+          {
+            "start": 574,
+            "end": 577,
+            "startTitle": "第575章 一招",
+            "endTitle": "第578章 落幕"
+          },
+          {
+            "start": 617,
+            "end": 619,
+            "startTitle": "第618章 异火相融后遗症",
+            "endTitle": "第620章 破塔而出！"
+          },
+          {
+            "start": 623,
+            "end": 629,
+            "startTitle": "第624章 召集人手",
+            "endTitle": "第630章 噬生丹"
+          },
+          {
+            "start": 637,
+            "end": 637,
+            "startTitle": "第638章 翡翠火莲",
+            "endTitle": "第638章 翡翠火莲"
+          },
+          {
+            "start": 648,
+            "end": 649,
+            "startTitle": "第649章 交易",
+            "endTitle": "第650章 拉取帮手"
+          },
+          {
+            "start": 697,
+            "end": 698,
+            "startTitle": "第698章 夜谈",
+            "endTitle": "第699章 幽海蛟兽"
+          },
+          {
+            "start": 793,
+            "end": 793,
+            "startTitle": "第794章 四翼天魔蝎",
+            "endTitle": "第794章 四翼天魔蝎"
+          },
+          {
+            "start": 902,
+            "end": 902,
+            "startTitle": "第903章 陀舍古帝玉的动静",
+            "endTitle": "第903章 陀舍古帝玉的动静"
+          },
+          {
+            "start": 947,
+            "end": 947,
+            "startTitle": "第948章 神秘强者",
+            "endTitle": "第948章 神秘强者"
+          },
+          {
+            "start": 1000,
+            "end": 1000,
+            "startTitle": "第1001章 慕青鸾",
+            "endTitle": "第1001章 慕青鸾"
+          },
+          {
+            "start": 1004,
+            "end": 1005,
+            "startTitle": "第1005章 血潭之底",
+            "endTitle": "第1006章 进入血潭"
+          },
+          {
+            "start": 1108,
+            "end": 1109,
+            "startTitle": "第1109章 情迷",
+            "endTitle": "第1110章 解决魔毒斑"
+          },
+          {
+            "start": 1412,
+            "end": 1412,
+            "startTitle": "第1413章 两女相见",
+            "endTitle": "第1413章 两女相见"
+          },
+          {
+            "start": 1518,
+            "end": 1520,
+            "startTitle": "第1519章 炼化妖火！",
+            "endTitle": "第1521章 破茧而出"
+          }
+        ],
+        "daily": {
+          "2026-06-26": {
+            "readingMs": 1104777,
+            "readWords": 30080,
+            "readChapterRanges": [
+              {
+                "start": 415,
+                "end": 425,
+                "startTitle": "第416章 家传玉片",
+                "endTitle": "第426章 神秘的藏书阁"
+              }
+            ]
+          },
+          "2026-06-27": {
+            "readingMs": 2621793,
+            "readWords": 90126,
+            "readChapterRanges": [
+              {
+                "start": 425,
+                "end": 440,
+                "startTitle": "第426章 神秘的藏书阁",
+                "endTitle": "第441章 大反击"
+              },
+              {
+                "start": 475,
+                "end": 476,
+                "startTitle": "第476章 七星大斗师",
+                "endTitle": "第477章 磐门的变化"
+              },
+              {
+                "start": 519,
+                "end": 519,
+                "startTitle": "第520章 回院",
+                "endTitle": "第520章 回院"
+              },
+              {
+                "start": 568,
+                "end": 569,
+                "startTitle": "第569章 卷轴",
+                "endTitle": "第570章 争夺前十"
+              },
+              {
+                "start": 574,
+                "end": 577,
+                "startTitle": "第575章 一招",
+                "endTitle": "第578章 落幕"
+              },
+              {
+                "start": 617,
+                "end": 619,
+                "startTitle": "第618章 异火相融后遗症",
+                "endTitle": "第620章 破塔而出！"
+              },
+              {
+                "start": 623,
+                "end": 629,
+                "startTitle": "第624章 召集人手",
+                "endTitle": "第630章 噬生丹"
+              },
+              {
+                "start": 637,
+                "end": 637,
+                "startTitle": "第638章 翡翠火莲",
+                "endTitle": "第638章 翡翠火莲"
+              },
+              {
+                "start": 648,
+                "end": 649,
+                "startTitle": "第649章 交易",
+                "endTitle": "第650章 拉取帮手"
+              },
+              {
+                "start": 697,
+                "end": 698,
+                "startTitle": "第698章 夜谈",
+                "endTitle": "第699章 幽海蛟兽"
+              },
+              {
+                "start": 793,
+                "end": 793,
+                "startTitle": "第794章 四翼天魔蝎",
+                "endTitle": "第794章 四翼天魔蝎"
+              }
+            ]
+          },
+          "2026-06-28": {
+            "readingMs": 305892,
+            "readWords": 9046,
+            "readChapterRanges": [
+              {
+                "start": 793,
+                "end": 793,
+                "startTitle": "第794章 四翼天魔蝎",
+                "endTitle": "第794章 四翼天魔蝎"
+              },
+              {
+                "start": 902,
+                "end": 902,
+                "startTitle": "第903章 陀舍古帝玉的动静",
+                "endTitle": "第903章 陀舍古帝玉的动静"
+              },
+              {
+                "start": 947,
+                "end": 947,
+                "startTitle": "第948章 神秘强者",
+                "endTitle": "第948章 神秘强者"
+              },
+              {
+                "start": 1000,
+                "end": 1000,
+                "startTitle": "第1001章 慕青鸾",
+                "endTitle": "第1001章 慕青鸾"
+              },
+              {
+                "start": 1004,
+                "end": 1005,
+                "startTitle": "第1005章 血潭之底",
+                "endTitle": "第1006章 进入血潭"
+              },
+              {
+                "start": 1108,
+                "end": 1109,
+                "startTitle": "第1109章 情迷",
+                "endTitle": "第1110章 解决魔毒斑"
+              }
+            ]
+          },
+          "2026-06-29": {
+            "readingMs": 127588,
+            "readWords": 6281,
+            "readChapterRanges": [
+              {
+                "start": 1412,
+                "end": 1412,
+                "startTitle": "第1413章 两女相见",
+                "endTitle": "第1413章 两女相见"
+              },
+              {
+                "start": 1518,
+                "end": 1520,
+                "startTitle": "第1519章 炼化妖火！",
+                "endTitle": "第1521章 破茧而出"
+              }
+            ]
+          },
+          "2026-07-02": {
+            "readingMs": 18490,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783003182508
+      },
+      "小说/书库/苟在两界修仙.txt": {
+        "title": "苟在两界修仙",
+        "totalReadingMs": 674842,
+        "totalReadWords": 783,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 216
+          },
+          {
+            "start": 316960,
+            "end": 317117
+          },
+          {
+            "start": 338210,
+            "end": 338386
+          },
+          {
+            "start": 1389280,
+            "end": 1389573
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 转世",
+            "endTitle": "第1章 转世"
+          },
+          {
+            "start": 100,
+            "end": 100,
+            "startTitle": "第101章 大破障丹",
+            "endTitle": "第101章 大破障丹"
+          },
+          {
+            "start": 432,
+            "end": 433,
+            "startTitle": "第435章 黑暗丛林",
+            "endTitle": "第436章 图穷(加更求月票)"
+          }
+        ],
+        "daily": {
+          "2026-06-28": {
+            "readingMs": 123974,
+            "readWords": 147,
+            "readChapterRanges": [
+              {
+                "start": 100,
+                "end": 100,
+                "startTitle": "第101章 大破障丹",
+                "endTitle": "第101章 大破障丹"
+              }
+            ]
+          },
+          "2026-07-02": {
+            "readingMs": 416359,
+            "readWords": 636,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 转世",
+                "endTitle": "第1章 转世"
+              },
+              {
+                "start": 100,
+                "end": 100,
+                "startTitle": "第101章 大破障丹",
+                "endTitle": "第101章 大破障丹"
+              },
+              {
+                "start": 432,
+                "end": 433,
+                "startTitle": "第435章 黑暗丛林",
+                "endTitle": "第436章 图穷(加更求月票)"
+              }
+            ]
+          },
+          "2026-07-03": {
+            "readingMs": 21088,
+            "readWords": 0,
+            "readChapterRanges": []
+          },
+          "2026-07-07": {
+            "readingMs": 113421,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783416855459
+      },
+      "小说/书库/逆天邪神.txt": {
+        "title": "逆天邪神",
+        "totalReadingMs": 1779763,
+        "totalReadWords": 42929,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 304
+          },
+          {
+            "start": 50087,
+            "end": 54733
+          },
+          {
+            "start": 120623,
+            "end": 127328
+          },
+          {
+            "start": 250037,
+            "end": 253784
+          },
+          {
+            "start": 365498,
+            "end": 365811
+          },
+          {
+            "start": 378817,
+            "end": 379107
+          },
+          {
+            "start": 389214,
+            "end": 389577
+          },
+          {
+            "start": 528244,
+            "end": 530338
+          },
+          {
+            "start": 530633,
+            "end": 530952
+          },
+          {
+            "start": 531595,
+            "end": 532148
+          },
+          {
+            "start": 532742,
+            "end": 533022
+          },
+          {
+            "start": 533380,
+            "end": 534074
+          },
+          {
+            "start": 545571,
+            "end": 545877
+          },
+          {
+            "start": 546147,
+            "end": 552994
+          },
+          {
+            "start": 553314,
+            "end": 554298
+          },
+          {
+            "start": 554601,
+            "end": 554934
+          },
+          {
+            "start": 555242,
+            "end": 556548
+          },
+          {
+            "start": 556847,
+            "end": 558683
+          },
+          {
+            "start": 558989,
+            "end": 559279
+          },
+          {
+            "start": 559594,
+            "end": 560369
+          },
+          {
+            "start": 560670,
+            "end": 560991
+          },
+          {
+            "start": 561276,
+            "end": 561584
+          },
+          {
+            "start": 662221,
+            "end": 663396
+          },
+          {
+            "start": 663676,
+            "end": 664256
+          },
+          {
+            "start": 664547,
+            "end": 664842
+          },
+          {
+            "start": 665407,
+            "end": 665713
+          },
+          {
+            "start": 665724,
+            "end": 666015
+          },
+          {
+            "start": 666688,
+            "end": 666986
+          },
+          {
+            "start": 667557,
+            "end": 669985
+          },
+          {
+            "start": 680718,
+            "end": 680981
+          },
+          {
+            "start": 3968232,
+            "end": 3968760
+          },
+          {
+            "start": 4615085,
+            "end": 4615354
+          },
+          {
+            "start": 4615648,
+            "end": 4616147
+          },
+          {
+            "start": 4617001,
+            "end": 4617267
+          },
+          {
+            "start": 4618088,
+            "end": 4618322
+          },
+          {
+            "start": 4618608,
+            "end": 4620055
+          },
+          {
+            "start": 7383787,
+            "end": 7386273
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 祸水红颜",
+            "endTitle": "序章"
+          },
+          {
+            "start": 16,
+            "end": 17,
+            "startTitle": "第15章 萧玉龙的试探",
+            "endTitle": "第16章 作死的萧大少"
+          },
+          {
+            "start": 36,
+            "end": 37,
+            "startTitle": "第35章 身世",
+            "endTitle": "第36章 我名云澈"
+          },
+          {
+            "start": 73,
+            "end": 74,
+            "startTitle": "第72章 一战惊城（九）",
+            "endTitle": "第73章 傲战陆斩南"
+          },
+          {
+            "start": 107,
+            "end": 107,
+            "startTitle": "第106章 《凤凰颂世典·残卷》（一）",
+            "endTitle": "第106章 《凤凰颂世典·残卷》（一）"
+          },
+          {
+            "start": 111,
+            "end": 111,
+            "startTitle": "第110章 《凤凰颂世典·残卷》（五）",
+            "endTitle": "第110章 《凤凰颂世典·残卷》（五）"
+          },
+          {
+            "start": 114,
+            "end": 114,
+            "startTitle": "第113章 《凤凰颂世典·残卷》（八）",
+            "endTitle": "第113章 《凤凰颂世典·残卷》（八）"
+          },
+          {
+            "start": 154,
+            "end": 155,
+            "startTitle": "第153章 苍月",
+            "endTitle": "第154章 真相"
+          },
+          {
+            "start": 159,
+            "end": 163,
+            "startTitle": "第158章 “医圣”",
+            "endTitle": "第162章 三剑"
+          },
+          {
+            "start": 190,
+            "end": 190,
+            "startTitle": "第188章 焚天少主",
+            "endTitle": "第188章 焚天少主"
+          },
+          {
+            "start": 192,
+            "end": 194,
+            "startTitle": "第191章 龙神之血",
+            "endTitle": "第193章 太古苍龙的请求"
+          },
+          {
+            "start": 1070,
+            "end": 1070,
+            "startTitle": "第1073章 踢到钢板",
+            "endTitle": "第1073章 踢到钢板"
+          },
+          {
+            "start": 1240,
+            "end": 1241,
+            "startTitle": "第1243章 天怒九劫",
+            "endTitle": "第1244章 再战"
+          },
+          {
+            "start": 1954,
+            "end": 1954,
+            "startTitle": "第1958章 绝路悲尘",
+            "endTitle": "第1958章 绝路悲尘"
+          }
+        ],
+        "daily": {
+          "2026-06-28": {
+            "readingMs": 17320,
+            "readWords": 1617,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1卷 祸水红颜",
+                "endTitle": "第1卷 祸水红颜"
+              },
+              {
+                "start": 1240,
+                "end": 1241,
+                "startTitle": "第1243章 天怒九劫",
+                "endTitle": "第1244章 再战"
+              }
+            ]
+          },
+          "2026-06-29": {
+            "readingMs": 35665,
+            "readWords": 905,
+            "readChapterRanges": [
+              {
+                "start": 1241,
+                "end": 1241,
+                "startTitle": "第1244章 再战",
+                "endTitle": "第1244章 再战"
+              }
+            ]
+          },
+          "2026-06-30": {
+            "readingMs": 10636,
+            "readWords": 0,
+            "readChapterRanges": []
+          },
+          "2026-07-02": {
+            "readingMs": 200706,
+            "readWords": 0,
+            "readChapterRanges": []
+          },
+          "2026-07-03": {
+            "readingMs": 390824,
+            "readWords": 0,
+            "readChapterRanges": []
+          },
+          "2026-07-04": {
+            "readingMs": 123802,
+            "readWords": 7321,
+            "readChapterRanges": [
+              {
+                "start": 36,
+                "end": 37,
+                "startTitle": "第35章 身世",
+                "endTitle": "第36章 我名云澈"
+              },
+              {
+                "start": 107,
+                "end": 107,
+                "startTitle": "第106章 《凤凰颂世典·残卷》（一）",
+                "endTitle": "第106章 《凤凰颂世典·残卷》（一）"
+              },
+              {
+                "start": 111,
+                "end": 111,
+                "startTitle": "第110章 《凤凰颂世典·残卷》（五）",
+                "endTitle": "第110章 《凤凰颂世典·残卷》（五）"
+              },
+              {
+                "start": 114,
+                "end": 114,
+                "startTitle": "第113章 《凤凰颂世典·残卷》（八）",
+                "endTitle": "第113章 《凤凰颂世典·残卷》（八）"
+              }
+            ]
+          },
+          "2026-07-05": {
+            "readingMs": 256569,
+            "readWords": 48,
+            "readChapterRanges": [
+              {
+                "start": 114,
+                "end": 114,
+                "startTitle": "第113章 《凤凰颂世典·残卷》（八）",
+                "endTitle": "第113章 《凤凰颂世典·残卷》（八）"
+              }
+            ]
+          },
+          "2026-07-06": {
+            "readingMs": 215052,
+            "readWords": 8550,
+            "readChapterRanges": [
+              {
+                "start": 16,
+                "end": 17,
+                "startTitle": "第15章 萧玉龙的试探",
+                "endTitle": "第16章 作死的萧大少"
+              },
+              {
+                "start": 73,
+                "end": 74,
+                "startTitle": "第72章 一战惊城（九）",
+                "endTitle": "第73章 傲战陆斩南"
+              },
+              {
+                "start": 1070,
+                "end": 1070,
+                "startTitle": "第1073章 踢到钢板",
+                "endTitle": "第1073章 踢到钢板"
+              }
+            ]
+          },
+          "2026-07-07": {
+            "readingMs": 167272,
+            "readWords": 18234,
+            "readChapterRanges": [
+              {
+                "start": 154,
+                "end": 155,
+                "startTitle": "第153章 苍月",
+                "endTitle": "第154章 真相"
+              },
+              {
+                "start": 159,
+                "end": 163,
+                "startTitle": "第158章 “医圣”",
+                "endTitle": "第162章 三剑"
+              },
+              {
+                "start": 1954,
+                "end": 1954,
+                "startTitle": "第1958章 绝路悲尘",
+                "endTitle": "第1958章 绝路悲尘"
+              }
+            ]
+          },
+          "2026-07-08": {
+            "readingMs": 361917,
+            "readWords": 6254,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 祸水红颜",
+                "endTitle": "序章"
+              },
+              {
+                "start": 154,
+                "end": 154,
+                "startTitle": "第153章 苍月",
+                "endTitle": "第153章 苍月"
+              },
+              {
+                "start": 190,
+                "end": 190,
+                "startTitle": "第188章 焚天少主",
+                "endTitle": "第188章 焚天少主"
+              },
+              {
+                "start": 192,
+                "end": 194,
+                "startTitle": "第191章 龙神之血",
+                "endTitle": "第193章 太古苍龙的请求"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783482873562
+      },
+      "小说/书库/吞噬星空.txt": {
+        "title": "吞噬星空",
+        "totalReadingMs": 26028780,
+        "totalReadWords": 636107,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 305
+          },
+          {
+            "start": 493,
+            "end": 476957
+          },
+          {
+            "start": 477881,
+            "end": 688732
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 208,
+            "startTitle": "未识别章节",
+            "endTitle": "第29章 诞生"
+          }
+        ],
+        "daily": {
+          "2026-06-30": {
+            "readingMs": 9203352,
+            "readWords": 142922,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 51,
+                "startTitle": "未识别章节",
+                "endTitle": "第8章 动手"
+              }
+            ]
+          },
+          "2026-07-01": {
+            "readingMs": 15246966,
+            "readWords": 408420,
+            "readChapterRanges": [
+              {
+                "start": 51,
+                "end": 182,
+                "startTitle": "第8章 动手",
+                "endTitle": "第3章 陆军上将"
+              }
+            ]
+          },
+          "2026-07-02": {
+            "readingMs": 1578462,
+            "readWords": 84765,
+            "readChapterRanges": [
+              {
+                "start": 182,
+                "end": 208,
+                "startTitle": "第3章 陆军上将",
+                "endTitle": "第29章 诞生"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004738314
+      },
+      "小说/书库/亵渎.txt": {
+        "title": "亵渎",
+        "totalReadingMs": 27076,
+        "totalReadWords": 329,
+        "countedRanges": [
+          {
+            "start": 5007,
+            "end": 5345
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 2,
+            "end": 2,
+            "startTitle": "第1章 苹果",
+            "endTitle": "第1章 苹果"
+          }
+        ],
+        "daily": {
+          "2026-06-30": {
+            "readingMs": 16024,
+            "readWords": 329,
+            "readChapterRanges": [
+              {
+                "start": 2,
+                "end": 2,
+                "startTitle": "第1章 苹果",
+                "endTitle": "第1章 苹果"
+              }
+            ]
+          },
+          "2026-07-02": {
+            "readingMs": 11052,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783003219051
+      },
+      "小说/书库/斗破苍穹-概括版.txt": {
+        "title": "斗破苍穹-概括版",
+        "totalReadingMs": 544167,
+        "totalReadWords": 2765,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 1130
+          },
+          {
+            "start": 1627,
+            "end": 1932
+          },
+          {
+            "start": 2583,
+            "end": 2990
+          },
+          {
+            "start": 3605,
+            "end": 4269
+          },
+          {
+            "start": 4912,
+            "end": 5207
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 2,
+            "startTitle": "未识别章节",
+            "endTitle": "第3章 客人"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 544167,
+            "readWords": 2765,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 2,
+                "startTitle": "未识别章节",
+                "endTitle": "第3章 客人"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1782923665710
+      },
+      "小说/书库/苟在两界修仙-概括版.txt": {
+        "title": "苟在两界修仙-概括版",
+        "totalReadingMs": 757069,
+        "totalReadWords": 2050,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 637
+          },
+          {
+            "start": 1173,
+            "end": 1476
+          },
+          {
+            "start": 2055,
+            "end": 2365
+          },
+          {
+            "start": 2973,
+            "end": 3814
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 转世"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 755097,
+            "readWords": 2050,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 转世"
+              }
+            ]
+          },
+          "2026-07-03": {
+            "readingMs": 1972,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783008822672
+      },
+      "小说/书库/大奉打更人.txt": {
+        "title": "大奉打更人",
+        "totalReadingMs": 97661,
+        "totalReadWords": 508,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 260
+          },
+          {
+            "start": 362,
+            "end": 625
+          },
+          {
+            "start": 2236859,
+            "end": 2236878
+          },
+          {
+            "start": 3631070,
+            "end": 3631079
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 1,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 牢狱之灾"
+          },
+          {
+            "start": 501,
+            "end": 501,
+            "startTitle": "第3卷 楚江暝宿，风灯零乱，少年羁旅",
+            "endTitle": "第3卷 楚江暝宿，风灯零乱，少年羁旅"
+          },
+          {
+            "start": 797,
+            "end": 797,
+            "startTitle": "第5卷 绝世武神",
+            "endTitle": "第5卷 绝世武神"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 97661,
+            "readWords": 508,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 1,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 牢狱之灾"
+              },
+              {
+                "start": 501,
+                "end": 501,
+                "startTitle": "第3卷 楚江暝宿，风灯零乱，少年羁旅",
+                "endTitle": "第3卷 楚江暝宿，风灯零乱，少年羁旅"
+              },
+              {
+                "start": 797,
+                "end": 797,
+                "startTitle": "第5卷 绝世武神",
+                "endTitle": "第5卷 绝世武神"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1782975446353
+      },
+      "小说/书库/仙逆.txt": {
+        "title": "仙逆",
+        "totalReadingMs": 467447,
+        "totalReadWords": 1161,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 329
+          },
+          {
+            "start": 333509,
+            "end": 333791
+          },
+          {
+            "start": 339806,
+            "end": 340087
+          },
+          {
+            "start": 2198449,
+            "end": 2198479
+          },
+          {
+            "start": 2198489,
+            "end": 2198794
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          },
+          {
+            "start": 127,
+            "end": 128,
+            "startTitle": "第3卷 扬名修魔海 第一百四十一章 斗邪派",
+            "endTitle": "第3卷 扬名修魔海 第一百四十二章 一身是宝"
+          },
+          {
+            "start": 648,
+            "end": 648,
+            "startTitle": "第7卷 名震罗云 第659章 离去",
+            "endTitle": "第7卷 名震罗云 第659章 离去"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 467447,
+            "readWords": 1161,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              },
+              {
+                "start": 127,
+                "end": 128,
+                "startTitle": "第3卷 扬名修魔海 第一百四十一章 斗邪派",
+                "endTitle": "第3卷 扬名修魔海 第一百四十二章 一身是宝"
+              },
+              {
+                "start": 648,
+                "end": 648,
+                "startTitle": "第7卷 名震罗云 第659章 离去",
+                "endTitle": "第7卷 名震罗云 第659章 离去"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783003248712
+      },
+      "小说/书库/求魔.txt": {
+        "title": "求魔",
+        "totalReadingMs": 362663,
+        "totalReadWords": 2124,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 1025
+          },
+          {
+            "start": 2058,
+            "end": 2070
+          },
+          {
+            "start": 2150,
+            "end": 2434
+          },
+          {
+            "start": 324087,
+            "end": 324393
+          },
+          {
+            "start": 336522,
+            "end": 336797
+          },
+          {
+            "start": 346738,
+            "end": 346747
+          },
+          {
+            "start": 358564,
+            "end": 358896
+          },
+          {
+            "start": 788409,
+            "end": 788418
+          },
+          {
+            "start": 2904100,
+            "end": 2904109
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 2,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 苏铭"
+          },
+          {
+            "start": 104,
+            "end": 105,
+            "startTitle": "第1卷 人生若只如初见 第104、105章 踏月而战！",
+            "endTitle": "第103章 最接近天的地方"
+          },
+          {
+            "start": 111,
+            "end": 111,
+            "startTitle": "第2卷 风起天寒",
+            "endTitle": "第2卷 风起天寒"
+          },
+          {
+            "start": 255,
+            "end": 255,
+            "startTitle": "第2卷 风起天寒",
+            "endTitle": "第2卷 风起天寒"
+          },
+          {
+            "start": 941,
+            "end": 941,
+            "startTitle": "第4卷 崛起神源",
+            "endTitle": "第4卷 崛起神源"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 362663,
+            "readWords": 2124,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 2,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 苏铭"
+              },
+              {
+                "start": 104,
+                "end": 105,
+                "startTitle": "第1卷 人生若只如初见 第104、105章 踏月而战！",
+                "endTitle": "第103章 最接近天的地方"
+              },
+              {
+                "start": 111,
+                "end": 111,
+                "startTitle": "第2卷 风起天寒",
+                "endTitle": "第2卷 风起天寒"
+              },
+              {
+                "start": 255,
+                "end": 255,
+                "startTitle": "第2卷 风起天寒",
+                "endTitle": "第2卷 风起天寒"
+              },
+              {
+                "start": 941,
+                "end": 941,
+                "startTitle": "第4卷 崛起神源",
+                "endTitle": "第4卷 崛起神源"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783003627101
+      },
+      "小说/书库/超神机械师.txt": {
+        "title": "超神机械师",
+        "totalReadingMs": 321578,
+        "totalReadWords": 624,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 277
+          },
+          {
+            "start": 449,
+            "end": 776
+          },
+          {
+            "start": 262964,
+            "end": 262982
+          },
+          {
+            "start": 2026106,
+            "end": 2026122
+          },
+          {
+            "start": 4726502,
+            "end": 4726521
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          },
+          {
+            "start": 1,
+            "end": 1,
+            "startTitle": "第1章 初生",
+            "endTitle": "第1章 初生"
+          },
+          {
+            "start": 90,
+            "end": 90,
+            "startTitle": "第3卷 黑幽灵，搞事情，玩家要降临",
+            "endTitle": "第3卷 黑幽灵，搞事情，玩家要降临"
+          },
+          {
+            "start": 660,
+            "end": 660,
+            "startTitle": "第9卷 2.0-3.0版本更新",
+            "endTitle": "第9卷 2.0-3.0版本更新"
+          },
+          {
+            "start": 1282,
+            "end": 1282,
+            "startTitle": "第14卷 5.0全面战争·命运拐点！",
+            "endTitle": "第14卷 5.0全面战争·命运拐点！"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 321578,
+            "readWords": 624,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              },
+              {
+                "start": 1,
+                "end": 1,
+                "startTitle": "第1章 初生",
+                "endTitle": "第1章 初生"
+              },
+              {
+                "start": 90,
+                "end": 90,
+                "startTitle": "第3卷 黑幽灵，搞事情，玩家要降临",
+                "endTitle": "第3卷 黑幽灵，搞事情，玩家要降临"
+              },
+              {
+                "start": 660,
+                "end": 660,
+                "startTitle": "第9卷 2.0-3.0版本更新",
+                "endTitle": "第9卷 2.0-3.0版本更新"
+              },
+              {
+                "start": 1282,
+                "end": 1282,
+                "startTitle": "第14卷 5.0全面战争·命运拐点！",
+                "endTitle": "第14卷 5.0全面战争·命运拐点！"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783000706484
+      },
+      "小说/书库/十方武圣.txt": {
+        "title": "十方武圣",
+        "totalReadingMs": 365161,
+        "totalReadWords": 852,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 740
+          },
+          {
+            "start": 7883,
+            "end": 8110
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 乱世"
+          },
+          {
+            "start": 2,
+            "end": 2,
+            "startTitle": "第3章 安定 上",
+            "endTitle": "第3章 安定 上"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 365161,
+            "readWords": 852,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 乱世"
+              },
+              {
+                "start": 2,
+                "end": 2,
+                "startTitle": "第3章 安定 上",
+                "endTitle": "第3章 安定 上"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1782999450258
+      },
+      "小说/书库/夜无疆.txt": {
+        "title": "夜无疆",
+        "totalReadingMs": 114343,
+        "totalReadWords": 151,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 185
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 永夜",
+            "endTitle": "第1章 永夜"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 114343,
+            "readWords": 151,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 永夜",
+                "endTitle": "第1章 永夜"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783003651109
+      },
+      "小说/书库/天生仙种.txt": {
+        "title": "天生仙种",
+        "totalReadingMs": 211324,
+        "totalReadWords": 475,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 515
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 白家童子",
+            "endTitle": "第1章 白家童子"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 211324,
+            "readWords": 475,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 白家童子",
+                "endTitle": "第1章 白家童子"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004058906
+      },
+      "小说/书库/万古神帝.txt": {
+        "title": "万古神帝",
+        "totalReadingMs": 29420,
+        "totalReadWords": 240,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 249
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 八百年后",
+            "endTitle": "第1章 八百年后"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 21596,
+            "readWords": 240,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 八百年后",
+                "endTitle": "第1章 八百年后"
+              }
+            ]
+          },
+          "2026-07-04": {
+            "readingMs": 7824,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783170704956
+      },
+      "小说/书库/仙道尽头.txt": {
+        "title": "仙道尽头",
+        "totalReadingMs": 15251,
+        "totalReadWords": 385,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 227
+          },
+          {
+            "start": 1894226,
+            "end": 1894447
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 成亲了？",
+            "endTitle": "第1章 成亲了？"
+          },
+          {
+            "start": 438,
+            "end": 438,
+            "startTitle": "第434章 问责姬梦",
+            "endTitle": "第434章 问责姬梦"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 15251,
+            "readWords": 385,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 成亲了？",
+                "endTitle": "第1章 成亲了？"
+              },
+              {
+                "start": 438,
+                "end": 438,
+                "startTitle": "第434章 问责姬梦",
+                "endTitle": "第434章 问责姬梦"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004138179
+      },
+      "小说/书库/天之下.txt": {
+        "title": "天之下",
+        "totalReadingMs": 13653,
+        "totalReadWords": 226,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 239
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 13653,
+            "readWords": 226,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004158865
+      },
+      "小说/书库/我在永夜打造庇护所.txt": {
+        "title": "我在永夜打造庇护所",
+        "totalReadingMs": 7377,
+        "totalReadWords": 245,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 265
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 ：“少爷，我叫瘸猴。”",
+            "endTitle": "第1章 ：“少爷，我叫瘸猴。”"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 7377,
+            "readWords": 245,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 ：“少爷，我叫瘸猴。”",
+                "endTitle": "第1章 ：“少爷，我叫瘸猴。”"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004213709
+      },
+      "小说/书库/轮回乐园.txt": {
+        "title": "轮回乐园",
+        "totalReadingMs": 32660,
+        "totalReadWords": 328,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 373
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 猎杀者的试炼",
+            "endTitle": "第1章 复仇者"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 32660,
+            "readWords": 328,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 猎杀者的试炼",
+                "endTitle": "第1章 复仇者"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004286095
+      },
+      "小说/书库/从姑获鸟开始.txt": {
+        "title": "从姑获鸟开始",
+        "totalReadingMs": 127268,
+        "totalReadWords": 224,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 256
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 大枪落幕",
+            "endTitle": "第1章 大枪落幕"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 7928,
+            "readWords": 162,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 大枪落幕",
+                "endTitle": "第1章 大枪落幕"
+              }
+            ]
+          },
+          "2026-07-07": {
+            "readingMs": 119340,
+            "readWords": 62,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 大枪落幕",
+                "endTitle": "第1章 大枪落幕"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783417799889
+      },
+      "小说/书库/道爷要飞升.txt": {
+        "title": "道爷要飞升",
+        "totalReadingMs": 5888,
+        "totalReadWords": 169,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 201
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 黎渊",
+            "endTitle": "第1章 黎渊"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 5888,
+            "readWords": 169,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 黎渊",
+                "endTitle": "第1章 黎渊"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004457654
+      },
+      "小说/书库/山河稷.txt": {
+        "title": "山河稷",
+        "totalReadingMs": 14732,
+        "totalReadWords": 242,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 265
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 凶案",
+            "endTitle": "第1章 凶案"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 14732,
+            "readWords": 242,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 凶案",
+                "endTitle": "第1章 凶案"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004486238
+      },
+      "小说/书库/我在修行世界当古神.txt": {
+        "title": "我在修行世界当古神",
+        "totalReadingMs": 7228,
+        "totalReadWords": 154,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 178
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 坑爹的体位",
+            "endTitle": "第1章 坑爹的体位"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 7228,
+            "readWords": 154,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 坑爹的体位",
+                "endTitle": "第1章 坑爹的体位"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004511930
+      },
+      "小说/书库/望长天.txt": {
+        "title": "望长天",
+        "totalReadingMs": 11900,
+        "totalReadWords": 140,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 177
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 深山古庙",
+            "endTitle": "第1章 深山古庙"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 11900,
+            "readWords": 140,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 深山古庙",
+                "endTitle": "第1章 深山古庙"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004537060
+      },
+      "小说/书库/没钱修什么仙？.txt": {
+        "title": "没钱修什么仙？",
+        "totalReadingMs": 28535,
+        "totalReadWords": 386,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 442
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 面试"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 28535,
+            "readWords": 386,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 面试"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004571964
+      },
+      "小说/书库/玄鉴仙族.txt": {
+        "title": "玄鉴仙族",
+        "totalReadingMs": 53377,
+        "totalReadWords": 179,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 204
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 溪里青玄",
+            "endTitle": "第1章 初入"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 53377,
+            "readWords": 179,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 溪里青玄",
+                "endTitle": "第1章 初入"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004633789
+      },
+      "小说/书库/苟在武道世界成圣.txt": {
+        "title": "苟在武道世界成圣",
+        "totalReadingMs": 13531,
+        "totalReadWords": 185,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 208
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 乱世",
+            "endTitle": "第1章 乱世"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 13531,
+            "readWords": 185,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 乱世",
+                "endTitle": "第1章 乱世"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004652288
+      },
+      "小说/书库/长夜君主.txt": {
+        "title": "长夜君主",
+        "totalReadingMs": 16366,
+        "totalReadWords": 172,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 201
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 16366,
+            "readWords": 172,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004673346
+      },
+      "小说/书库/青山.txt": {
+        "title": "青山",
+        "totalReadingMs": 6905,
+        "totalReadWords": 133,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 159
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "楔子",
+            "endTitle": "第1章 归零"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 6905,
+            "readWords": 133,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "楔子",
+                "endTitle": "第1章 归零"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783004682689
+      },
+      "小说/书库/龙族.txt": {
+        "title": "龙族",
+        "totalReadingMs": 2647286,
+        "totalReadWords": 11360,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 179
+          },
+          {
+            "start": 1507,
+            "end": 1796
+          },
+          {
+            "start": 86268,
+            "end": 86537
+          },
+          {
+            "start": 237866,
+            "end": 238113
+          },
+          {
+            "start": 268095,
+            "end": 268436
+          },
+          {
+            "start": 289749,
+            "end": 290026
+          },
+          {
+            "start": 297328,
+            "end": 297648
+          },
+          {
+            "start": 325165,
+            "end": 325421
+          },
+          {
+            "start": 689238,
+            "end": 689519
+          },
+          {
+            "start": 745239,
+            "end": 745251
+          },
+          {
+            "start": 810717,
+            "end": 811007
+          },
+          {
+            "start": 821807,
+            "end": 822086
+          },
+          {
+            "start": 890254,
+            "end": 890502
+          },
+          {
+            "start": 908806,
+            "end": 909048
+          },
+          {
+            "start": 953891,
+            "end": 954190
+          },
+          {
+            "start": 1012146,
+            "end": 1012401
+          },
+          {
+            "start": 1280187,
+            "end": 1280469
+          },
+          {
+            "start": 1281163,
+            "end": 1281486
+          },
+          {
+            "start": 1341170,
+            "end": 1341427
+          },
+          {
+            "start": 1364550,
+            "end": 1364852
+          },
+          {
+            "start": 1365175,
+            "end": 1365777
+          },
+          {
+            "start": 1366275,
+            "end": 1366632
+          },
+          {
+            "start": 1366762,
+            "end": 1367531
+          },
+          {
+            "start": 1524296,
+            "end": 1524830
+          },
+          {
+            "start": 1533214,
+            "end": 1533633
+          },
+          {
+            "start": 1557351,
+            "end": 1558054
+          },
+          {
+            "start": 1576614,
+            "end": 1576851
+          },
+          {
+            "start": 1843544,
+            "end": 1844218
+          },
+          {
+            "start": 1844932,
+            "end": 1845274
+          },
+          {
+            "start": 1897413,
+            "end": 1897686
+          },
+          {
+            "start": 2175813,
+            "end": 2177055
+          },
+          {
+            "start": 2177336,
+            "end": 2177619
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "序章 白帝城",
+            "endTitle": "序章 白帝城"
+          },
+          {
+            "start": 2,
+            "end": 2,
+            "startTitle": "一",
+            "endTitle": "一"
+          },
+          {
+            "start": 4,
+            "end": 4,
+            "startTitle": "四",
+            "endTitle": "四"
+          },
+          {
+            "start": 9,
+            "end": 10,
+            "startTitle": "十",
+            "endTitle": "一"
+          },
+          {
+            "start": 13,
+            "end": 16,
+            "startTitle": "第2部 前传·哀悼之翼",
+            "endTitle": "第5章 逃亡"
+          },
+          {
+            "start": 30,
+            "end": 30,
+            "startTitle": "楔子",
+            "endTitle": "楔子"
+          },
+          {
+            "start": 35,
+            "end": 35,
+            "startTitle": "第3部 黑月之潮（上）",
+            "endTitle": "第3部 黑月之潮（上）"
+          },
+          {
+            "start": 53,
+            "end": 54,
+            "startTitle": "第7幕 新约",
+            "endTitle": "第1章"
+          },
+          {
+            "start": 59,
+            "end": 60,
+            "startTitle": "第6章",
+            "endTitle": "第7章"
+          },
+          {
+            "start": 63,
+            "end": 64,
+            "startTitle": "第1章",
+            "endTitle": "第10幕 每只象龟心中都有一处温暖的水坑"
+          },
+          {
+            "start": 73,
+            "end": 77,
+            "startTitle": "第11章",
+            "endTitle": "第15章"
+          },
+          {
+            "start": 79,
+            "end": 80,
+            "startTitle": "第9幕 神国画卷",
+            "endTitle": "第11章"
+          },
+          {
+            "start": 85,
+            "end": 86,
+            "startTitle": "第23章",
+            "endTitle": "楔子"
+          },
+          {
+            "start": 101,
+            "end": 102,
+            "startTitle": "第15章",
+            "endTitle": "第1章"
+          },
+          {
+            "start": 108,
+            "end": 108,
+            "startTitle": "楔子 通往世界尽头的航路",
+            "endTitle": "楔子 通往世界尽头的航路"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 38604,
+            "readWords": 340,
+            "readChapterRanges": [
+              {
+                "start": 86,
+                "end": 86,
+                "startTitle": "楔子",
+                "endTitle": "楔子"
+              }
+            ]
+          },
+          "2026-07-08": {
+            "readingMs": 2608682,
+            "readWords": 11020,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "序章 白帝城",
+                "endTitle": "序章 白帝城"
+              },
+              {
+                "start": 2,
+                "end": 2,
+                "startTitle": "一",
+                "endTitle": "一"
+              },
+              {
+                "start": 4,
+                "end": 4,
+                "startTitle": "四",
+                "endTitle": "四"
+              },
+              {
+                "start": 9,
+                "end": 10,
+                "startTitle": "十",
+                "endTitle": "一"
+              },
+              {
+                "start": 13,
+                "end": 16,
+                "startTitle": "第2部 前传·哀悼之翼",
+                "endTitle": "第5章 逃亡"
+              },
+              {
+                "start": 30,
+                "end": 30,
+                "startTitle": "楔子",
+                "endTitle": "楔子"
+              },
+              {
+                "start": 35,
+                "end": 35,
+                "startTitle": "第3部 黑月之潮（上）",
+                "endTitle": "第3部 黑月之潮（上）"
+              },
+              {
+                "start": 53,
+                "end": 54,
+                "startTitle": "第7幕 新约",
+                "endTitle": "第1章"
+              },
+              {
+                "start": 59,
+                "end": 60,
+                "startTitle": "第6章",
+                "endTitle": "第7章"
+              },
+              {
+                "start": 63,
+                "end": 64,
+                "startTitle": "第1章",
+                "endTitle": "第10幕 每只象龟心中都有一处温暖的水坑"
+              },
+              {
+                "start": 73,
+                "end": 77,
+                "startTitle": "第11章",
+                "endTitle": "第15章"
+              },
+              {
+                "start": 79,
+                "end": 80,
+                "startTitle": "第9幕 神国画卷",
+                "endTitle": "第11章"
+              },
+              {
+                "start": 85,
+                "end": 86,
+                "startTitle": "第23章",
+                "endTitle": "楔子"
+              },
+              {
+                "start": 101,
+                "end": 102,
+                "startTitle": "第15章",
+                "endTitle": "第1章"
+              },
+              {
+                "start": 108,
+                "end": 108,
+                "startTitle": "楔子 通往世界尽头的航路",
+                "endTitle": "楔子 通往世界尽头的航路"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783482873319
+      },
+      "小说/书库/问道红尘.txt": {
+        "title": "问道红尘",
+        "totalReadingMs": 46979,
+        "totalReadWords": 396,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 405
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-02": {
+            "readingMs": 22491,
+            "readWords": 396,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          },
+          "2026-07-03": {
+            "readingMs": 24488,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783057581384
+      },
+      "小说/书库/百万英镑.txt": {
+        "title": "百万英镑",
+        "totalReadingMs": 39377,
+        "totalReadWords": 278,
+        "countedRanges": [
+          {
+            "start": 28684,
+            "end": 28966
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 1,
+            "end": 1,
+            "startTitle": "第2章 案中案",
+            "endTitle": "第2章 案中案"
+          }
+        ],
+        "daily": {
+          "2026-07-03": {
+            "readingMs": 25254,
+            "readWords": 278,
+            "readChapterRanges": [
+              {
+                "start": 1,
+                "end": 1,
+                "startTitle": "第2章 案中案",
+                "endTitle": "第2章 案中案"
+              }
+            ]
+          },
+          "2026-07-04": {
+            "readingMs": 14123,
+            "readWords": 0,
+            "readChapterRanges": []
+          }
+        },
+        "lastReadAt": 1783170686883
+      },
+      "小说/书库/问镜.txt": {
+        "title": "问镜",
+        "totalReadingMs": 19610,
+        "totalReadWords": 266,
+        "countedRanges": [
+          {
+            "start": 901,
+            "end": 1179
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 1,
+            "end": 1,
+            "startTitle": "第1章 上仙",
+            "endTitle": "第1章 上仙"
+          }
+        ],
+        "daily": {
+          "2026-07-03": {
+            "readingMs": 19610,
+            "readWords": 266,
+            "readChapterRanges": [
+              {
+                "start": 1,
+                "end": 1,
+                "startTitle": "第1章 上仙",
+                "endTitle": "第1章 上仙"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783014334161
+      },
+      "小说/书库/云海玉弓缘.txt": {
+        "title": "云海玉弓缘",
+        "totalReadingMs": 244464,
+        "totalReadWords": 303,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 313
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-03": {
+            "readingMs": 244464,
+            "readWords": 303,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783017803758
+      },
+      "小说/书库/回到明朝当王爷.txt": {
+        "title": "回到明朝当王爷",
+        "totalReadingMs": 118887,
+        "totalReadWords": 266,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 277
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-03": {
+            "readingMs": 118887,
+            "readWords": 266,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783016561566
+      },
+      "小说/书库/我的模拟长生路.txt": {
+        "title": "我的模拟长生路",
+        "totalReadingMs": 21073,
+        "totalReadWords": 1841,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 197
+          },
+          {
+            "start": 327,
+            "end": 567
+          },
+          {
+            "start": 5418887,
+            "end": 5419102
+          },
+          {
+            "start": 5419952,
+            "end": 5420213
+          },
+          {
+            "start": 5420944,
+            "end": 5421158
+          },
+          {
+            "start": 5421858,
+            "end": 5422081
+          },
+          {
+            "start": 5422542,
+            "end": 5422763
+          },
+          {
+            "start": 5423375,
+            "end": 5423596
+          },
+          {
+            "start": 5424256,
+            "end": 5424505
+          },
+          {
+            "start": 5424949,
+            "end": 5425036
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 仙从何处来"
+          },
+          {
+            "start": 1772,
+            "end": 1772,
+            "startTitle": "第1776章 终",
+            "endTitle": "第1776章 终"
+          }
+        ],
+        "daily": {
+          "2026-07-04": {
+            "readingMs": 21073,
+            "readWords": 1841,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 仙从何处来"
+              },
+              {
+                "start": 1772,
+                "end": 1772,
+                "startTitle": "第1776章 终",
+                "endTitle": "第1776章 终"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783135082028
+      },
+      "小说/书库/网游之邪龙逆天.txt": {
+        "title": "网游之邪龙逆天",
+        "totalReadingMs": 12254,
+        "totalReadWords": 366,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 384
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 永恒命运之刻",
+            "endTitle": "序章 风华绝代"
+          }
+        ],
+        "daily": {
+          "2026-07-04": {
+            "readingMs": 12254,
+            "readWords": 366,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 永恒命运之刻",
+                "endTitle": "序章 风华绝代"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783143033952
+      },
+      "小说/书库/赡养人类.txt": {
+        "title": "赡养人类",
+        "totalReadingMs": 2315639,
+        "totalReadWords": 26930,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 27314
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 2,
+            "startTitle": "第1章",
+            "endTitle": "第3章"
+          }
+        ],
+        "daily": {
+          "2026-07-05": {
+            "readingMs": 2315639,
+            "readWords": 26930,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 2,
+                "startTitle": "第1章",
+                "endTitle": "第3章"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783253858111
+      },
+      "小说/书库/欢乐颂.txt": {
+        "title": "欢乐颂",
+        "totalReadingMs": 1064676,
+        "totalReadWords": 16017,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 17338
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          },
+          {
+            "start": 1,
+            "end": 5,
+            "startTitle": "第2章 镜子",
+            "endTitle": "第6章 欢乐颂"
+          }
+        ],
+        "daily": {
+          "2026-07-05": {
+            "readingMs": 1064676,
+            "readWords": 16017,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              },
+              {
+                "start": 1,
+                "end": 5,
+                "startTitle": "第2章 镜子",
+                "endTitle": "第6章 欢乐颂"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783257067282
+      },
+      "小说/书库/三体.txt": {
+        "title": "三体",
+        "totalReadingMs": 20950,
+        "totalReadWords": 876,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 283
+          },
+          {
+            "start": 467857,
+            "end": 468178
+          },
+          {
+            "start": 479684,
+            "end": 479996
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "序章"
+          }
+        ],
+        "daily": {
+          "2026-07-05": {
+            "readingMs": 20950,
+            "readWords": 876,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "序章"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783257065744
+      },
+      "小说/书库/烂柯棋缘.txt": {
+        "title": "烂柯棋缘",
+        "totalReadingMs": 19686,
+        "totalReadWords": 359,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 394
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 棋局",
+            "endTitle": "第1章 棋局"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 19686,
+            "readWords": 359,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 棋局",
+                "endTitle": "第1章 棋局"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783267630349
+      },
+      "小说/书库/我家老婆来自一千年前.txt": {
+        "title": "我家老婆来自一千年前",
+        "totalReadingMs": 38989,
+        "totalReadWords": 139,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 169
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 38989,
+            "readWords": 139,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783269336198
+      },
+      "小说/书库/故事策略.txt": {
+        "title": "故事策略",
+        "totalReadingMs": 6131,
+        "totalReadWords": 375,
+        "countedRanges": [
+          {
+            "start": 9,
+            "end": 205
+          },
+          {
+            "start": 135348,
+            "end": 135556
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 编剧的目标",
+            "endTitle": "第1章 编剧的目标"
+          },
+          {
+            "start": 11,
+            "end": 11,
+            "startTitle": "第12章 第二幕后半段",
+            "endTitle": "第12章 第二幕后半段"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 6131,
+            "readWords": 375,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 编剧的目标",
+                "endTitle": "第1章 编剧的目标"
+              },
+              {
+                "start": 11,
+                "end": 11,
+                "startTitle": "第12章 第二幕后半段",
+                "endTitle": "第12章 第二幕后半段"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783269335246
+      },
+      "小说/书库/倾城之恋.txt": {
+        "title": "倾城之恋",
+        "totalReadingMs": 23055,
+        "totalReadWords": 294,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 315
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 23055,
+            "readWords": 294,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783275737065
+      },
+      "小说/书库/小明修仙记.txt": {
+        "title": "小明修仙记",
+        "totalReadingMs": 10674,
+        "totalReadWords": 172,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 212
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 2,
+            "startTitle": "第1卷",
+            "endTitle": "第1章 :万年吊车尾"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 10674,
+            "readWords": 172,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 2,
+                "startTitle": "第1卷",
+                "endTitle": "第1章 :万年吊车尾"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783275104720
+      },
+      "小说/书库/剑来.txt": {
+        "title": "剑来",
+        "totalReadingMs": 83281,
+        "totalReadWords": 386,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 387
+          },
+          {
+            "start": 9822969,
+            "end": 9822978
+          },
+          {
+            "start": 10879496,
+            "end": 10879505
+          },
+          {
+            "start": 13276063,
+            "end": 13276072
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 笼中雀",
+            "endTitle": "第1章 惊蛰"
+          },
+          {
+            "start": 959,
+            "end": 959,
+            "startTitle": "第13卷 破天荒",
+            "endTitle": "第13卷 破天荒"
+          },
+          {
+            "start": 1040,
+            "end": 1040,
+            "startTitle": "第14卷 定风波",
+            "endTitle": "第14卷 定风波"
+          },
+          {
+            "start": 1222,
+            "end": 1222,
+            "startTitle": "第15卷 温柔乡",
+            "endTitle": "第15卷 温柔乡"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 83281,
+            "readWords": 386,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 笼中雀",
+                "endTitle": "第1章 惊蛰"
+              },
+              {
+                "start": 959,
+                "end": 959,
+                "startTitle": "第13卷 破天荒",
+                "endTitle": "第13卷 破天荒"
+              },
+              {
+                "start": 1040,
+                "end": 1040,
+                "startTitle": "第14卷 定风波",
+                "endTitle": "第14卷 定风波"
+              },
+              {
+                "start": 1222,
+                "end": 1222,
+                "startTitle": "第15卷 温柔乡",
+                "endTitle": "第15卷 温柔乡"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783312672502
+      },
+      "小说/书库/天辰.txt": {
+        "title": "天辰",
+        "totalReadingMs": 39131,
+        "totalReadWords": 2638,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 2836
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 叶无辰"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 39131,
+            "readWords": 2638,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 叶无辰"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783323917070
+      },
+      "小说/书库/我是仙凡.txt": {
+        "title": "我是仙凡",
+        "totalReadingMs": 182334,
+        "totalReadWords": 7493,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 563
+          },
+          {
+            "start": 252705,
+            "end": 254260
+          },
+          {
+            "start": 254532,
+            "end": 255400
+          },
+          {
+            "start": 255660,
+            "end": 256339
+          },
+          {
+            "start": 256602,
+            "end": 261035
+          },
+          {
+            "start": 1163239,
+            "end": 1163248
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 1,
+            "startTitle": "未识别章节",
+            "endTitle": "第1章 一夜寒筏"
+          },
+          {
+            "start": 75,
+            "end": 77,
+            "startTitle": "第75章 赴宴",
+            "endTitle": "第77章 《醉渔晚唱》"
+          },
+          {
+            "start": 340,
+            "end": 340,
+            "startTitle": "第4卷 金丹玉露",
+            "endTitle": "第4卷 金丹玉露"
+          }
+        ],
+        "daily": {
+          "2026-07-06": {
+            "readingMs": 182334,
+            "readWords": 7493,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 1,
+                "startTitle": "未识别章节",
+                "endTitle": "第1章 一夜寒筏"
+              },
+              {
+                "start": 75,
+                "end": 77,
+                "startTitle": "第75章 赴宴",
+                "endTitle": "第77章 《醉渔晚唱》"
+              },
+              {
+                "start": 340,
+                "end": 340,
+                "startTitle": "第4卷 金丹玉露",
+                "endTitle": "第4卷 金丹玉露"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783340972980
+      },
+      "小说/书库/大道争锋.txt": {
+        "title": "大道争锋",
+        "totalReadingMs": 141449,
+        "totalReadWords": 7022,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 329
+          },
+          {
+            "start": 340,
+            "end": 352
+          },
+          {
+            "start": 7945673,
+            "end": 7946546
+          },
+          {
+            "start": 7946870,
+            "end": 7947171
+          },
+          {
+            "start": 7948020,
+            "end": 7948298
+          },
+          {
+            "start": 7949100,
+            "end": 7949386
+          },
+          {
+            "start": 7950259,
+            "end": 7950518
+          },
+          {
+            "start": 7951366,
+            "end": 7951674
+          },
+          {
+            "start": 7952533,
+            "end": 7952843
+          },
+          {
+            "start": 7954036,
+            "end": 7954315
+          },
+          {
+            "start": 7955210,
+            "end": 7955467
+          },
+          {
+            "start": 7956271,
+            "end": 7956577
+          },
+          {
+            "start": 7957477,
+            "end": 7957746
+          },
+          {
+            "start": 7958665,
+            "end": 7958950
+          },
+          {
+            "start": 7960123,
+            "end": 7960394
+          },
+          {
+            "start": 7961522,
+            "end": 7961802
+          },
+          {
+            "start": 7962677,
+            "end": 7962997
+          },
+          {
+            "start": 7964439,
+            "end": 7964741
+          },
+          {
+            "start": 7965926,
+            "end": 7966204
+          },
+          {
+            "start": 7967406,
+            "end": 7967701
+          },
+          {
+            "start": 7968875,
+            "end": 7969157
+          },
+          {
+            "start": 7970382,
+            "end": 7970675
+          },
+          {
+            "start": 7972166,
+            "end": 7972454
+          },
+          {
+            "start": 7973299,
+            "end": 7973810
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 0,
+            "startTitle": "未识别章节",
+            "endTitle": "第1卷 斩落金锁听玄音"
+          },
+          {
+            "start": 2358,
+            "end": 2358,
+            "startTitle": "第326章 惟愿众生皆长生，穹霄万古执道主",
+            "endTitle": "第326章 惟愿众生皆长生，穹霄万古执道主"
+          }
+        ],
+        "daily": {
+          "2026-07-07": {
+            "readingMs": 141449,
+            "readWords": 7022,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 0,
+                "startTitle": "未识别章节",
+                "endTitle": "第1卷 斩落金锁听玄音"
+              },
+              {
+                "start": 2358,
+                "end": 2358,
+                "startTitle": "第326章 惟愿众生皆长生，穹霄万古执道主",
+                "endTitle": "第326章 惟愿众生皆长生，穹霄万古执道主"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783416662868
+      },
+      "小说/书库/赤心巡天.txt": {
+        "title": "赤心巡天",
+        "totalReadingMs": 43431,
+        "totalReadWords": 7496,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 2371
+          },
+          {
+            "start": 5373,
+            "end": 5617
+          },
+          {
+            "start": 11908568,
+            "end": 11908739
+          },
+          {
+            "start": 11909188,
+            "end": 11909384
+          },
+          {
+            "start": 11910085,
+            "end": 11910322
+          },
+          {
+            "start": 11911036,
+            "end": 11911269
+          },
+          {
+            "start": 11912243,
+            "end": 11912475
+          },
+          {
+            "start": 11912904,
+            "end": 11913149
+          },
+          {
+            "start": 11913837,
+            "end": 11914318
+          },
+          {
+            "start": 11914578,
+            "end": 11914990
+          },
+          {
+            "start": 11915717,
+            "end": 11915944
+          },
+          {
+            "start": 11916395,
+            "end": 11916890
+          },
+          {
+            "start": 11917601,
+            "end": 11917844
+          },
+          {
+            "start": 11918545,
+            "end": 11918773
+          },
+          {
+            "start": 11919441,
+            "end": 11919659
+          },
+          {
+            "start": 11920703,
+            "end": 11920943
+          },
+          {
+            "start": 11921722,
+            "end": 11921932
+          },
+          {
+            "start": 11922588,
+            "end": 11922838
+          },
+          {
+            "start": 11923562,
+            "end": 11923801
+          },
+          {
+            "start": 11924575,
+            "end": 11924746
+          },
+          {
+            "start": 11925546,
+            "end": 11925827
+          },
+          {
+            "start": 11926604,
+            "end": 11926876
+          },
+          {
+            "start": 11927707,
+            "end": 11927927
+          },
+          {
+            "start": 11928446,
+            "end": 11928765
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": -1,
+            "startTitle": "未识别章节",
+            "endTitle": "未识别章节"
+          },
+          {
+            "start": 1,
+            "end": 1,
+            "startTitle": "第1章 他惊人的毅力并无观众",
+            "endTitle": "第1章 他惊人的毅力并无观众"
+          },
+          {
+            "start": 2707,
+            "end": 2707,
+            "startTitle": "第110章 君心如故时",
+            "endTitle": "第110章 君心如故时"
+          }
+        ],
+        "daily": {
+          "2026-07-07": {
+            "readingMs": 43431,
+            "readWords": 7496,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": -1,
+                "startTitle": "未识别章节",
+                "endTitle": "未识别章节"
+              },
+              {
+                "start": 1,
+                "end": 1,
+                "startTitle": "第1章 他惊人的毅力并无观众",
+                "endTitle": "第1章 他惊人的毅力并无观众"
+              },
+              {
+                "start": 2707,
+                "end": 2707,
+                "startTitle": "第110章 君心如故时",
+                "endTitle": "第110章 君心如故时"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783417799284
+      },
+      "小说/书库/万相之王.txt": {
+        "title": "万相之王",
+        "totalReadingMs": 14870,
+        "totalReadWords": 192,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 220
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 我有三个相宫",
+            "endTitle": "第1章 我有三个相宫"
+          }
+        ],
+        "daily": {
+          "2026-07-07": {
+            "readingMs": 14870,
+            "readWords": 192,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 我有三个相宫",
+                "endTitle": "第1章 我有三个相宫"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783418039151
+      },
+      "小说/书库/刚准备高考，离婚逆袭系统来了.txt": {
+        "title": "刚准备高考，离婚逆袭系统来了",
+        "totalReadingMs": 23227,
+        "totalReadWords": 231,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 253
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "第1章 系统来早了",
+            "endTitle": "第1章 系统来早了"
+          }
+        ],
+        "daily": {
+          "2026-07-07": {
+            "readingMs": 23227,
+            "readWords": 231,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "第1章 系统来早了",
+                "endTitle": "第1章 系统来早了"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783428142372
+      },
+      "小说/书库/重燃青葱时代.txt": {
+        "title": "重燃青葱时代",
+        "totalReadingMs": 15912855,
+        "totalReadWords": 294563,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 322846
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": -1,
+            "end": 106,
+            "startTitle": "未识别章节",
+            "endTitle": "第107章 徐有渔的盟主"
+          }
+        ],
+        "daily": {
+          "2026-07-07": {
+            "readingMs": 9934319,
+            "readWords": 174890,
+            "readChapterRanges": [
+              {
+                "start": -1,
+                "end": 60,
+                "startTitle": "未识别章节",
+                "endTitle": "第61章 绝对音感"
+              }
+            ]
+          },
+          "2026-07-08": {
+            "readingMs": 5978536,
+            "readWords": 119673,
+            "readChapterRanges": [
+              {
+                "start": 60,
+                "end": 106,
+                "startTitle": "第61章 绝对音感",
+                "endTitle": "第107章 徐有渔的盟主"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783483107466
+      },
+      "小说/书库/黎明之剑.txt": {
+        "title": "黎明之剑",
+        "totalReadingMs": 266977,
+        "totalReadWords": 277,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 286
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 1,
+            "startTitle": "第1卷 王者归来",
+            "endTitle": "第1章 穿越成一个视角是什么鬼"
+          }
+        ],
+        "daily": {
+          "2026-07-08": {
+            "readingMs": 266977,
+            "readWords": 277,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 1,
+                "startTitle": "第1卷 王者归来",
+                "endTitle": "第1章 穿越成一个视角是什么鬼"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783491720431
+      },
+      "小说/书库/明朝那些事儿.txt": {
+        "title": "明朝那些事儿",
+        "totalReadingMs": 7064,
+        "totalReadWords": 268,
+        "countedRanges": [
+          {
+            "start": 0,
+            "end": 273
+          }
+        ],
+        "readChapterRanges": [
+          {
+            "start": 0,
+            "end": 0,
+            "startTitle": "引子",
+            "endTitle": "引子"
+          }
+        ],
+        "daily": {
+          "2026-07-09": {
+            "readingMs": 7064,
+            "readWords": 268,
+            "readChapterRanges": [
+              {
+                "start": 0,
+                "end": 0,
+                "startTitle": "引子",
+                "endTitle": "引子"
+              }
+            ]
+          }
+        },
+        "lastReadAt": 1783534880383
+      }
+    },
+    "daily": {
+      "2026-06-26": {
+        "readingMs": 1901965,
+        "readWords": 33241,
+        "bookPaths": [
+          "小说/书库/斗破苍穹.txt"
+        ]
+      },
+      "2026-06-27": {
+        "readingMs": 2621793,
+        "readWords": 90126,
+        "bookPaths": [
+          "小说/书库/斗破苍穹.txt"
+        ]
+      },
+      "2026-06-28": {
+        "readingMs": 447186,
+        "readWords": 10810,
+        "bookPaths": [
+          "小说/书库/斗破苍穹.txt",
+          "小说/书库/苟在两界修仙.txt",
+          "小说/书库/逆天邪神.txt"
+        ]
+      },
+      "2026-06-29": {
+        "readingMs": 163253,
+        "readWords": 7186,
+        "bookPaths": [
+          "小说/书库/斗破苍穹.txt",
+          "小说/书库/逆天邪神.txt"
+        ]
+      },
+      "2026-06-30": {
+        "readingMs": 9230012,
+        "readWords": 143251,
+        "bookPaths": [
+          "小说/书库/吞噬星空.txt",
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/亵渎.txt"
+        ]
+      },
+      "2026-07-01": {
+        "readingMs": 15246966,
+        "readWords": 408420,
+        "bookPaths": [
+          "小说/书库/吞噬星空.txt"
+        ]
+      },
+      "2026-07-02": {
+        "readingMs": 5782532,
+        "readWords": 100193,
+        "bookPaths": [
+          "小说/书库/吞噬星空.txt",
+          "小说/书库/斗破苍穹-概括版.txt",
+          "小说/书库/苟在两界修仙.txt",
+          "小说/书库/苟在两界修仙-概括版.txt",
+          "小说/书库/大奉打更人.txt",
+          "小说/书库/仙逆.txt",
+          "小说/书库/求魔.txt",
+          "小说/书库/超神机械师.txt",
+          "小说/书库/十方武圣.txt",
+          "小说/书库/夜无疆.txt",
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/斗破苍穹.txt",
+          "小说/书库/亵渎.txt",
+          "小说/书库/天生仙种.txt",
+          "小说/书库/万古神帝.txt",
+          "小说/书库/仙道尽头.txt",
+          "小说/书库/天之下.txt",
+          "小说/书库/我在永夜打造庇护所.txt",
+          "小说/书库/轮回乐园.txt",
+          "小说/书库/从姑获鸟开始.txt",
+          "小说/书库/道爷要飞升.txt",
+          "小说/书库/山河稷.txt",
+          "小说/书库/我在修行世界当古神.txt",
+          "小说/书库/望长天.txt",
+          "小说/书库/没钱修什么仙？.txt",
+          "小说/书库/玄鉴仙族.txt",
+          "小说/书库/苟在武道世界成圣.txt",
+          "小说/书库/长夜君主.txt",
+          "小说/书库/青山.txt",
+          "小说/书库/龙族.txt",
+          "小说/书库/问道红尘.txt"
+        ]
+      },
+      "2026-07-03": {
+        "readingMs": 846587,
+        "readWords": 1113,
+        "bookPaths": [
+          "小说/书库/苟在两界修仙-概括版.txt",
+          "小说/书库/苟在两界修仙.txt",
+          "小说/书库/百万英镑.txt",
+          "小说/书库/问镜.txt",
+          "小说/书库/云海玉弓缘.txt",
+          "小说/书库/回到明朝当王爷.txt",
+          "小说/书库/问道红尘.txt",
+          "小说/书库/逆天邪神.txt"
+        ]
+      },
+      "2026-07-04": {
+        "readingMs": 179076,
+        "readWords": 9528,
+        "bookPaths": [
+          "小说/书库/我的模拟长生路.txt",
+          "小说/书库/网游之邪龙逆天.txt",
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/百万英镑.txt",
+          "小说/书库/万古神帝.txt"
+        ]
+      },
+      "2026-07-05": {
+        "readingMs": 3657834,
+        "readWords": 43871,
+        "bookPaths": [
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/赡养人类.txt",
+          "小说/书库/欢乐颂.txt",
+          "小说/书库/三体.txt"
+        ]
+      },
+      "2026-07-06": {
+        "readingMs": 618333,
+        "readWords": 20406,
+        "bookPaths": [
+          "小说/书库/烂柯棋缘.txt",
+          "小说/书库/我家老婆来自一千年前.txt",
+          "小说/书库/故事策略.txt",
+          "小说/书库/倾城之恋.txt",
+          "小说/书库/小明修仙记.txt",
+          "小说/书库/剑来.txt",
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/天辰.txt",
+          "小说/书库/我是仙凡.txt"
+        ]
+      },
+      "2026-07-07": {
+        "readingMs": 10557329,
+        "readWords": 208127,
+        "bookPaths": [
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/大道争锋.txt",
+          "小说/书库/苟在两界修仙.txt",
+          "小说/书库/从姑获鸟开始.txt",
+          "小说/书库/赤心巡天.txt",
+          "小说/书库/万相之王.txt",
+          "小说/书库/刚准备高考，离婚逆袭系统来了.txt",
+          "小说/书库/重燃青葱时代.txt"
+        ]
+      },
+      "2026-07-08": {
+        "readingMs": 9216112,
+        "readWords": 137224,
+        "bookPaths": [
+          "小说/书库/重燃青葱时代.txt",
+          "小说/书库/逆天邪神.txt",
+          "小说/书库/龙族.txt",
+          "小说/书库/黎明之剑.txt"
+        ]
+      },
+      "2026-07-09": {
+        "readingMs": 7064,
+        "readWords": 268,
+        "bookPaths": [
+          "小说/书库/明朝那些事儿.txt"
+        ]
+      }
+    }
+  },
+  "lastDataBackupAt": 1783503972341,
+  "knownBooks": [
+    "一世之尊.txt",
+    "一剑独尊.txt",
+    "七剑下天山.txt",
+    "七夜雪.txt",
+    "万古神帝.txt",
+    "万族之劫.txt",
+    "万生痴魔.txt",
+    "万相之王.txt",
+    "三体.txt",
+    "不周记.txt",
+    "不科学御兽.txt",
+    "世子很凶.txt",
+    "临圣.txt",
+    "乌龙山修行笔记.txt",
+    "九州牧云录.txt",
+    "乱世书.txt",
+    "云海仙踪.txt",
+    "云海玉弓缘.txt",
+    "亵渎.txt",
+    "人欲.txt",
+    "今天也在努力做魔头.txt",
+    "今天他飞升了吗.txt",
+    "从十二形拳开始肉身成圣.txt",
+    "从姑获鸟开始.txt",
+    "从效法万妖开始成就真仙.txt",
+    "从斩妖除魔开始长生不死.txt",
+    "从水猴子开始成神.txt",
+    "从红月开始.txt",
+    "从黄包车夫到覆海大圣.txt",
+    "仙业.txt",
+    "仙人消失之后.txt",
+    "仙剑奇侠传.txt",
+    "仙工开物.txt",
+    "仙府之缘.txt",
+    "仙朝鹰犬.txt",
+    "仙楚.txt",
+    "仙玉尘缘.txt",
+    "仙葫.txt",
+    "仙路烟尘.txt",
+    "仙逆.txt",
+    "仙道尽头.txt",
+    "以一龙之力打倒整个世界.txt",
+    "修真聊天群.txt",
+    "修真门派掌门路.txt",
+    "借剑.txt",
+    "倾城之恋.txt",
+    "傲世九重天.txt",
+    "元始法则.txt",
+    "光阴之外.txt",
+    "全球高武.txt",
+    "全职法师.txt",
+    "冬日重现.txt",
+    "凡人修仙之仙界篇.txt",
+    "凡人修仙传.txt",
+    "刚准备高考，离婚逆袭系统来了.txt",
+    "剑出大唐.txt",
+    "剑来.txt",
+    "剑烛大荒.txt",
+    "十方武圣.txt",
+    "升邪.txt",
+    "叩问仙道.txt",
+    "吞噬星空.txt",
+    "唐诗三百首.txt",
+    "回到明朝当王爷.txt",
+    "围城.txt",
+    "国民法医.txt",
+    "圣墟.txt",
+    "地师.txt",
+    "地煞七十二通鉴.txt",
+    "基地.txt",
+    "塞外奇侠传.txt",
+    "夜无疆.txt",
+    "夜的命名术.txt",
+    "大主宰.txt",
+    "大乘期才有逆袭系统.txt",
+    "大乾武圣.txt",
+    "大唐乘风录.txt",
+    "大奉打更人.txt",
+    "大明春色.txt",
+    "大王饶命.txt",
+    "大赤仙门.txt",
+    "大道争锋.txt",
+    "大道朝天.txt",
+    "天之下.txt",
+    "天人图谱.txt",
+    "天倾之后.txt",
+    "天启预报.txt",
+    "天命皆烬.txt",
+    "天才俱乐部.txt",
+    "天枢.txt",
+    "天生仙种.txt",
+    "天辰.txt",
+    "天道图书馆.txt",
+    "天龙八部.txt",
+    "太一道主.txt",
+    "太上章.txt",
+    "太平令.txt",
+    "太虚至尊.txt",
+    "奥术神座.txt",
+    "她是剑修.txt",
+    "娱乐春秋.txt",
+    "宇宙职业选手.txt",
+    "完美世界.txt",
+    "宰执天下.txt",
+    "将夜.txt",
+    "小明修仙记.txt",
+    "尘缘.txt",
+    "山河稷.txt",
+    "山海提灯.txt",
+    "峨眉剑仙.txt",
+    "帝尊.txt",
+    "帝龙.txt",
+    "幽冥仙途.txt",
+    "庆余年.txt",
+    "廓晋.txt",
+    "异常生物见闻录.txt",
+    "惊悚乐园.txt",
+    "惊门.txt",
+    "我以道种铸长生.txt",
+    "我在修行世界当古神.txt",
+    "我在永夜打造庇护所.txt",
+    "我家老婆来自一千年前.txt",
+    "我师兄实在太稳健了.txt",
+    "我是仙凡.txt",
+    "我有一剑.txt",
+    "我本无意成仙.txt",
+    "我的26岁女房客.txt",
+    "我的化身正在成为最终BOSS.txt",
+    "我的女友来自未来.txt",
+    "我的学习群里全是真大佬.txt",
+    "我的极品女友们.txt",
+    "我的模拟长生路.txt",
+    "我真没想重生啊.txt",
+    "执魔.txt",
+    "择天记.txt",
+    "择日走红.txt",
+    "搜神记.txt",
+    "搬山.txt",
+    "故事-对白-人物.txt",
+    "故事策略.txt",
+    "斗破苍穹-概括版.txt",
+    "斗破苍穹.txt",
+    "方寸道主.txt",
+    "无疆.txt",
+    "无限恐怖.txt",
+    "明朝那些事儿.txt",
+    "星河之主.txt",
+    "星门.txt",
+    "普罗之主.txt",
+    "最后的问题.txt",
+    "望长天.txt",
+    "杀神.txt",
+    "极品家丁.txt",
+    "极道天魔.txt",
+    "欢乐颂.txt",
+    "步步生莲.txt",
+    "武夫.txt",
+    "武炼巅峰.txt",
+    "武神.txt",
+    "永恒的终结.txt",
+    "求魔.txt",
+    "江山如此多娇.txt",
+    "没钱修什么仙？.txt",
+    "浊世武尊.txt",
+    "深海余烬.txt",
+    "深空彼岸.txt",
+    "清光宝鉴.txt",
+    "渊天尊.txt",
+    "湿卵胎化.txt",
+    "灭运图录.txt",
+    "灵境行者.txt",
+    "灵山.txt",
+    "烂柯棋缘.txt",
+    "牧神记.txt",
+    "献给阿尔吉侬的花束.txt",
+    "玄浑道章.txt",
+    "玄鉴仙族.txt",
+    "白发魔女传.txt",
+    "白衣卿相.txt",
+    "百万英镑.txt",
+    "盗墓笔记.txt",
+    "盘龙.txt",
+    "真灵九变.txt",
+    "知北游.txt",
+    "神们自己.txt",
+    "神国之上.txt",
+    "神墓.txt",
+    "神明今夜想你.txt",
+    "神游.txt",
+    "神秘复苏.txt",
+    "第一序列.txt",
+    "紫府仙缘.txt",
+    "绍宋.txt",
+    "网游之修罗传说.txt",
+    "网游之天谴修罗.txt",
+    "网游之邪龙逆天.txt",
+    "腐朽世界.txt",
+    "花千骨.txt",
+    "苟在两界修仙-概括版.txt",
+    "苟在两界修仙.txt",
+    "苟在初圣魔门当人材.txt",
+    "苟在女魔头身边偷偷修炼.txt",
+    "苟在武道世界成圣.txt",
+    "萍踪侠影录.txt",
+    "蛊真人.txt",
+    "蛮荒记.txt",
+    "被迫进入了恋爱状态.txt",
+    "覆汉.txt",
+    "观山.txt",
+    "觅仙.txt",
+    "觅仙路.txt",
+    "让仙门再次伟大.txt",
+    "诗云.txt",
+    "诛仙.txt",
+    "诡秘之主.txt",
+    "谁让他修仙的.txt",
+    "赘婿.txt",
+    "赡养上帝.txt",
+    "赡养人类.txt",
+    "赤心巡天.txt",
+    "超神机械师.txt",
+    "轮回乐园.txt",
+    "这个地下城长蘑菇了.txt",
+    "逆天邪神.txt",
+    "道君.txt",
+    "道爷要飞升.txt",
+    "道诡异仙.txt",
+    "遮天.txt",
+    "都重生了谁谈恋爱啊.txt",
+    "醉枕江山.txt",
+    "重燃青葱时代.txt",
+    "重生08，我被确诊为医学泰斗.txt",
+    "重生高考前99天.txt",
+    "铁血残明.txt",
+    "锦衣夜行.txt",
+    "镇妖博物馆.txt",
+    "长夜君主.txt",
+    "长生修仙，从画符开始.txt",
+    "长生武尊.txt",
+    "长生界.txt",
+    "长风渡.txt",
+    "问道红尘.txt",
+    "问镜.txt",
+    "间客.txt",
+    "阳神.txt",
+    "阵问长生.txt",
+    "雪中悍刀行.txt",
+    "青山.txt",
+    "高天之上.txt",
+    "鬼股.txt",
+    "魔修.txt",
+    "魔王大人深不可测.txt",
+    "鸣龙.txt",
+    "黎明之剑.txt",
+    "黜龙.txt",
+    "龙族.txt",
+    "龙藏.txt"
+  ]
+}
