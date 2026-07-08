@@ -139,6 +139,13 @@ export class SettingsTab extends PluginSettingTab {
     );
 
     this.addTextSetting(
+      '单书配置快捷键',
+      '默认 Ctrl+;。阅读书籍时用于打开/收起单书设置浮层。',
+      'bookSettingsHotkey',
+      DEFAULT_SETTINGS.bookSettingsHotkey,
+    );
+
+    this.addTextSetting(
       '拆分文本快捷键',
       '默认 Ctrl+Shift+C。选择起止章节后，将对应原文拆分并保存为 TXT 文件。',
       'copySourceHotkey',
@@ -349,7 +356,7 @@ export class SettingsTab extends PluginSettingTab {
   private addTextSetting(
     name: string,
     desc: string,
-    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'prologueTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'copySourceHotkey' | 'bookshelfTitleSearchHotkey' | 'bookshelfAuthorSearchHotkey' | 'breakdownTextDir' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
+    key: 'fontColor' | 'backgroundColor' | 'chapterMetaColor' | 'progressMetaColor' | 'tocRegex' | 'chapterTitleRegex' | 'prologueTitleRegex' | 'searchHotkey' | 'tocPanelHotkey' | 'bookSettingsHotkey' | 'copySourceHotkey' | 'bookshelfTitleSearchHotkey' | 'bookshelfAuthorSearchHotkey' | 'breakdownTextDir' | 'previousPageHotkey' | 'nextPageHotkey' | 'annotationHighlightColor' | 'annotationExportDir' | 'dataBackupPath',
     placeholder: string,
   ): void {
     new Setting(this.containerEl)
@@ -363,6 +370,7 @@ export class SettingsTab extends PluginSettingTab {
             const fallback =
               key === 'searchHotkey' ? DEFAULT_SETTINGS.searchHotkey :
               key === 'tocPanelHotkey' ? DEFAULT_SETTINGS.tocPanelHotkey :
+              key === 'bookSettingsHotkey' ? DEFAULT_SETTINGS.bookSettingsHotkey :
               key === 'copySourceHotkey' ? DEFAULT_SETTINGS.copySourceHotkey :
               key === 'bookshelfTitleSearchHotkey' ? DEFAULT_SETTINGS.bookshelfTitleSearchHotkey :
               key === 'bookshelfAuthorSearchHotkey' ? DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey :

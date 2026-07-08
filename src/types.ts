@@ -64,6 +64,8 @@ export interface ReaderSettings {
   searchHotkey: string;
   /** 目录侧边栏切换快捷键 */
   tocPanelHotkey: string;
+  /** 单书配置浮层切换快捷键 */
+  bookSettingsHotkey: string;
   /** 拆分文本快捷键 */
   copySourceHotkey: string;
   /** 书架书名搜索快捷键 */
@@ -318,6 +320,7 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   defaultEncoding: 'utf-8',
   searchHotkey: 'Ctrl+F',
   tocPanelHotkey: 'Ctrl+B',
+  bookSettingsHotkey: 'Ctrl+;',
   copySourceHotkey: 'Ctrl+Shift+C',
   bookshelfTitleSearchHotkey: 'Ctrl+F',
   bookshelfAuthorSearchHotkey: 'Ctrl+Alt+F',

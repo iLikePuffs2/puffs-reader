@@ -51,6 +51,11 @@ interface ReadingStatsPageRange {
   endOffset: number;
 }
 
+interface ChapterTitleFixResult {
+  text: string;
+  changed: number;
+}
+
 type ReaderSidebarMode = 'toc' | 'search' | 'notes' | 'tags';
 type EditableTagArrayGroup = 'authors' | 'genre' | 'feature';
 
@@ -549,6 +554,90 @@ export class ReaderView extends ItemView {
       previousWasChapter = trimmed !== '' && regexes.some((regex) => regex.test(trimmed));
     }
     return cleaned;
+  }
+
+  private fixSplitChapterTitleText(
+    text: string,
+    markerRegex: RegExp,
+    nextHeadingRegex: RegExp,
+    skipBlankLines: boolean,
+  ): ChapterTitleFixResult {
+    const newline = text.includes('\r\n') ? '\r\n' : '\n';
+    const lines = text.split(/\r?\n/);
+    const fixed: string[] = [];
+    let changed = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = line.match(markerRegex);
+      if (match) {
+        const marker = (match[1] ?? line.trim()).trim();
+        let titleIndex = i + 1;
+        if (skipBlankLines) {
+          while (titleIndex < lines.length && lines[titleIndex].trim() === '') titleIndex++;
+        }
+
+        if (titleIndex < lines.length) {
+          const title = lines[titleIndex].trim();
+          if (title && !nextHeadingRegex.test(title)) {
+            fixed.push(`${marker} ${title}`);
+            i = titleIndex;
+            changed++;
+            continue;
+          }
+        }
+      }
+
+      fixed.push(line);
+    }
+
+    return { text: fixed.join(newline), changed };
+  }
+
+  private async fixChapterTitlesAndOverwrite(markerChars: string[]): Promise<void> {
+    if (!this.currentFile || !this.fileBuffer) {
+      new Notice('修复失败：当前书籍文件无效');
+      return;
+    }
+
+    const normalizedChars = Array.from(new Set(markerChars.map((item) => item.trim()).filter(Boolean)));
+    if (normalizedChars.length === 0) {
+      new Notice('修复失败：请至少填写一个目录字');
+      return;
+    }
+
+    const markerGroup = normalizedChars.map((item) => this.escapeRegExp(item)).join('');
+    const numberGroup = '零〇一二三四五六七八九十百千万亿两\\d';
+    const markerRegex = new RegExp(`^\\s*((?:第[${numberGroup}]+[${markerGroup}]))\\s*$`);
+    const nextHeadingRegex = new RegExp(`^\\s*第[${numberGroup}]+[${markerGroup}](?:\\s|$)`);
+    const { text } = this.decodeBuffer(this.fileBuffer, this.currentEncoding);
+    const fixed = this.fixSplitChapterTitleText(text, markerRegex, nextHeadingRegex, true);
+    if (fixed.changed === 0) {
+      new Notice('未发现需要合并的跨行目录');
+      return;
+    }
+
+    try {
+      this.settleReadingStatsTime();
+      this.clearReadingStatsPageTimer();
+      await this.app.vault.modify(this.currentFile, fixed.text);
+      this.fileBuffer = new TextEncoder().encode(fixed.text).buffer;
+      this.currentEncoding = 'utf-8';
+      await this.plugin.saveBookSettings(this.currentFile.path, {
+        ...this.getBookSettings(),
+        encoding: 'utf-8',
+      });
+      this.reprocessCurrentText(true);
+      this.refreshTypographyPanel();
+      new Notice(`已修复 ${fixed.changed} 处跨行目录`);
+    } catch (error) {
+      console.error('[Puffs Reader] Failed to fix chapter titles:', error);
+      new Notice('修复失败：无法覆盖当前 TXT 文件');
+    }
+  }
+
+  private escapeRegExp(value: string): string {
+    return value.replace(/[\\^$.*+?()[\]{}|\-]/g, '\\$&');
   }
 
   private renderCurrentPage(): void {
@@ -1670,6 +1759,7 @@ export class ReaderView extends ItemView {
     });
     this.encodingBtn.addEventListener('click', (e) => this.showEncodingMenu(e));
 
+    this.addDirectoryRepairRow(p);
     this.addNumberRow(
       p,
       '首行缩进',
@@ -1762,6 +1852,19 @@ export class ReaderView extends ItemView {
     }) as HTMLInputElement;
     toggle.checked = value;
     toggle.addEventListener('change', () => onChange(toggle.checked));
+  }
+
+  private addDirectoryRepairRow(parent: HTMLElement): void {
+    const row = parent.createDiv({ cls: 'puffs-typo-row' });
+    row.createSpan({ cls: 'puffs-typo-label', text: '目录修复' });
+    const button = row.createEl('button', {
+      cls: 'puffs-icon-btn puffs-typo-action-btn',
+      text: '修复',
+      attr: { type: 'button' },
+    });
+    button.addEventListener('click', () => {
+      new DirectoryRepairModal(this.app, (markerChars) => this.fixChapterTitlesAndOverwrite(markerChars)).open();
+    });
   }
 
   private addTocIndentRows(parent: HTMLElement, bookSettings: BookSettings): void {
@@ -2282,6 +2385,13 @@ export class ReaderView extends ItemView {
         this.toggleToc();
         return;
       }
+      if (this.matchesBookSettingsHotkey(e)) {
+        if (!this.shouldHandleReaderActionHotkey(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleTypography();
+        return;
+      }
       if (this.matchesCopySourceHotkey(e)) {
         if (!this.shouldHandleCopySourceHotkey(e)) return;
         e.preventDefault();
@@ -2353,6 +2463,10 @@ export class ReaderView extends ItemView {
     return this.matchesHotkey(e, this.plugin.settings.tocPanelHotkey || 'Ctrl+B');
   }
 
+  private matchesBookSettingsHotkey(e: KeyboardEvent): boolean {
+    return this.matchesHotkey(e, this.plugin.settings.bookSettingsHotkey || 'Ctrl+;');
+  }
+
   private matchesCopySourceHotkey(e: KeyboardEvent): boolean {
     return this.matchesHotkey(e, this.plugin.settings.copySourceHotkey || 'Ctrl+Shift+C');
   }
@@ -2385,6 +2499,13 @@ export class ReaderView extends ItemView {
     if (this.matchesTocPanelHotkey(e)) {
       e.preventDefault();
       this.toggleToc();
+      return;
+    }
+    if (this.matchesBookSettingsHotkey(e)) {
+      if (!this.shouldHandleReaderActionHotkey(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggleTypography();
       return;
     }
     if (e.key === ' ' || e.code === 'Space') {
@@ -2444,8 +2565,12 @@ export class ReaderView extends ItemView {
     return this.app.workspace.activeLeaf === this.leaf && !!active && this.contentEl.contains(active);
   }
 
-  private shouldHandleCopySourceHotkey(e: KeyboardEvent): boolean {
+  private shouldHandleReaderActionHotkey(e: KeyboardEvent): boolean {
     return this.app.workspace.activeLeaf === this.leaf && !this.isEditableTarget(e.target);
+  }
+
+  private shouldHandleCopySourceHotkey(e: KeyboardEvent): boolean {
+    return this.shouldHandleReaderActionHotkey(e);
   }
 
   private openChapterCopyModal(): void {
@@ -3040,6 +3165,76 @@ interface ChapterSearchCandidate {
   choice: ChapterChoice;
   textTargets: string[];
   numberTargets: string[];
+}
+
+class DirectoryRepairModal extends Modal {
+  private onSubmit: (markerChars: string[]) => Promise<void>;
+  private level1Input!: HTMLInputElement;
+  private level2Input!: HTMLInputElement;
+
+  constructor(app: App, onSubmit: (markerChars: string[]) => Promise<void>) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
+
+  onOpen(): void {
+    const { contentEl, modalEl } = this;
+    contentEl.empty();
+    modalEl.addClass('puffs-directory-repair-modal');
+
+    contentEl.createEl('h3', { cls: 'puffs-directory-repair-title', text: '目录修复' });
+    this.level1Input = this.createDirectoryInput(contentEl, '一级目录', '卷');
+    this.level2Input = this.createDirectoryInput(contentEl, '二级目录', '章');
+
+    const actions = contentEl.createDiv({ cls: 'puffs-directory-repair-actions' });
+    const confirm = actions.createEl('button', {
+      cls: 'puffs-icon-btn puffs-directory-repair-confirm',
+      text: '确定',
+      attr: { type: 'button' },
+    });
+    confirm.addEventListener('click', () => this.submit());
+    window.requestAnimationFrame(() => this.level1Input.focus());
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+
+  private createDirectoryInput(parent: HTMLElement, label: string, value: string): HTMLInputElement {
+    const row = parent.createDiv({ cls: 'puffs-directory-repair-row' });
+    row.createSpan({ cls: 'puffs-directory-repair-label', text: label });
+    const input = row.createEl('input', {
+      cls: 'puffs-directory-repair-input',
+      attr: { type: 'text', maxlength: '1' },
+    }) as HTMLInputElement;
+    input.value = value;
+    input.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      this.submit();
+    });
+    return input;
+  }
+
+  private getInputChar(input: HTMLInputElement): string {
+    return Array.from(input.value.trim())[0] ?? '';
+  }
+
+  private submit(): void {
+    const level1 = this.getInputChar(this.level1Input);
+    const level2 = this.getInputChar(this.level2Input);
+    const markerChars = [level1, level2].filter(Boolean);
+    if (markerChars.length === 0) {
+      new Notice('请至少填写一个目录字');
+      return;
+    }
+
+    this.close();
+    this.onSubmit(markerChars).catch((error) => {
+      console.error('[Puffs Reader] Failed to repair directory:', error);
+      new Notice('目录修复失败');
+    });
+  }
 }
 
 function normalizeChapterSearchText(value: string): string {

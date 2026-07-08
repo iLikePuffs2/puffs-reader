@@ -127,6 +127,7 @@ var DEFAULT_SETTINGS = {
   defaultEncoding: "utf-8",
   searchHotkey: "Ctrl+F",
   tocPanelHotkey: "Ctrl+B",
+  bookSettingsHotkey: "Ctrl+;",
   copySourceHotkey: "Ctrl+Shift+C",
   bookshelfTitleSearchHotkey: "Ctrl+F",
   bookshelfAuthorSearchHotkey: "Ctrl+Alt+F",
@@ -539,6 +540,76 @@ var ReaderView = class extends import_obsidian2.ItemView {
       previousWasChapter = trimmed !== "" && regexes.some((regex) => regex.test(trimmed));
     }
     return cleaned;
+  }
+  fixSplitChapterTitleText(text, markerRegex, nextHeadingRegex, skipBlankLines) {
+    var _a;
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    const lines = text.split(/\r?\n/);
+    const fixed = [];
+    let changed = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = line.match(markerRegex);
+      if (match) {
+        const marker = ((_a = match[1]) != null ? _a : line.trim()).trim();
+        let titleIndex = i + 1;
+        if (skipBlankLines) {
+          while (titleIndex < lines.length && lines[titleIndex].trim() === "") titleIndex++;
+        }
+        if (titleIndex < lines.length) {
+          const title = lines[titleIndex].trim();
+          if (title && !nextHeadingRegex.test(title)) {
+            fixed.push(`${marker} ${title}`);
+            i = titleIndex;
+            changed++;
+            continue;
+          }
+        }
+      }
+      fixed.push(line);
+    }
+    return { text: fixed.join(newline), changed };
+  }
+  async fixChapterTitlesAndOverwrite(markerChars) {
+    if (!this.currentFile || !this.fileBuffer) {
+      new import_obsidian2.Notice("\u4FEE\u590D\u5931\u8D25\uFF1A\u5F53\u524D\u4E66\u7C4D\u6587\u4EF6\u65E0\u6548");
+      return;
+    }
+    const normalizedChars = Array.from(new Set(markerChars.map((item) => item.trim()).filter(Boolean)));
+    if (normalizedChars.length === 0) {
+      new import_obsidian2.Notice("\u4FEE\u590D\u5931\u8D25\uFF1A\u8BF7\u81F3\u5C11\u586B\u5199\u4E00\u4E2A\u76EE\u5F55\u5B57");
+      return;
+    }
+    const markerGroup = normalizedChars.map((item) => this.escapeRegExp(item)).join("");
+    const numberGroup = "\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d";
+    const markerRegex = new RegExp(`^\\s*((?:\u7B2C[${numberGroup}]+[${markerGroup}]))\\s*$`);
+    const nextHeadingRegex = new RegExp(`^\\s*\u7B2C[${numberGroup}]+[${markerGroup}](?:\\s|$)`);
+    const { text } = this.decodeBuffer(this.fileBuffer, this.currentEncoding);
+    const fixed = this.fixSplitChapterTitleText(text, markerRegex, nextHeadingRegex, true);
+    if (fixed.changed === 0) {
+      new import_obsidian2.Notice("\u672A\u53D1\u73B0\u9700\u8981\u5408\u5E76\u7684\u8DE8\u884C\u76EE\u5F55");
+      return;
+    }
+    try {
+      this.settleReadingStatsTime();
+      this.clearReadingStatsPageTimer();
+      await this.app.vault.modify(this.currentFile, fixed.text);
+      this.fileBuffer = new TextEncoder().encode(fixed.text).buffer;
+      this.currentEncoding = "utf-8";
+      await this.plugin.saveBookSettings(this.currentFile.path, {
+        ...this.getBookSettings(),
+        encoding: "utf-8"
+      });
+      this.reprocessCurrentText(true);
+      this.refreshTypographyPanel();
+      new import_obsidian2.Notice(`\u5DF2\u4FEE\u590D ${fixed.changed} \u5904\u8DE8\u884C\u76EE\u5F55`);
+    } catch (error) {
+      console.error("[Puffs Reader] Failed to fix chapter titles:", error);
+      new import_obsidian2.Notice("\u4FEE\u590D\u5931\u8D25\uFF1A\u65E0\u6CD5\u8986\u76D6\u5F53\u524D TXT \u6587\u4EF6");
+    }
+  }
+  escapeRegExp(value) {
+    return value.replace(/[\\^$.*+?()[\]{}|\-]/g, "\\$&");
   }
   renderCurrentPage() {
     if (this.paragraphs.length === 0) {
@@ -1512,6 +1583,7 @@ var ReaderView = class extends import_obsidian2.ItemView {
       attr: { "aria-label": "\u5207\u6362\u7F16\u7801" }
     });
     this.encodingBtn.addEventListener("click", (e) => this.showEncodingMenu(e));
+    this.addDirectoryRepairRow(p);
     this.addNumberRow(
       p,
       "\u9996\u884C\u7F29\u8FDB",
@@ -1590,6 +1662,18 @@ var ReaderView = class extends import_obsidian2.ItemView {
     });
     toggle.checked = value;
     toggle.addEventListener("change", () => onChange(toggle.checked));
+  }
+  addDirectoryRepairRow(parent) {
+    const row = parent.createDiv({ cls: "puffs-typo-row" });
+    row.createSpan({ cls: "puffs-typo-label", text: "\u76EE\u5F55\u4FEE\u590D" });
+    const button = row.createEl("button", {
+      cls: "puffs-icon-btn puffs-typo-action-btn",
+      text: "\u4FEE\u590D",
+      attr: { type: "button" }
+    });
+    button.addEventListener("click", () => {
+      new DirectoryRepairModal(this.app, (markerChars) => this.fixChapterTitlesAndOverwrite(markerChars)).open();
+    });
   }
   addTocIndentRows(parent, bookSettings) {
     var _a, _b, _c;
@@ -2047,6 +2131,13 @@ var ReaderView = class extends import_obsidian2.ItemView {
         this.toggleToc();
         return;
       }
+      if (this.matchesBookSettingsHotkey(e)) {
+        if (!this.shouldHandleReaderActionHotkey(e)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggleTypography();
+        return;
+      }
       if (this.matchesCopySourceHotkey(e)) {
         if (!this.shouldHandleCopySourceHotkey(e)) return;
         e.preventDefault();
@@ -2100,6 +2191,9 @@ var ReaderView = class extends import_obsidian2.ItemView {
   matchesTocPanelHotkey(e) {
     return this.matchesHotkey(e, this.plugin.settings.tocPanelHotkey || "Ctrl+B");
   }
+  matchesBookSettingsHotkey(e) {
+    return this.matchesHotkey(e, this.plugin.settings.bookSettingsHotkey || "Ctrl+;");
+  }
   matchesCopySourceHotkey(e) {
     return this.matchesHotkey(e, this.plugin.settings.copySourceHotkey || "Ctrl+Shift+C");
   }
@@ -2128,6 +2222,13 @@ var ReaderView = class extends import_obsidian2.ItemView {
     if (this.matchesTocPanelHotkey(e)) {
       e.preventDefault();
       this.toggleToc();
+      return;
+    }
+    if (this.matchesBookSettingsHotkey(e)) {
+      if (!this.shouldHandleReaderActionHotkey(e)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.toggleTypography();
       return;
     }
     if (e.key === " " || e.code === "Space") {
@@ -2183,8 +2284,11 @@ var ReaderView = class extends import_obsidian2.ItemView {
     const active = document.activeElement;
     return this.app.workspace.activeLeaf === this.leaf && !!active && this.contentEl.contains(active);
   }
-  shouldHandleCopySourceHotkey(e) {
+  shouldHandleReaderActionHotkey(e) {
     return this.app.workspace.activeLeaf === this.leaf && !this.isEditableTarget(e.target);
+  }
+  shouldHandleCopySourceHotkey(e) {
+    return this.shouldHandleReaderActionHotkey(e);
   }
   openChapterCopyModal() {
     if (this.chapterCopyModal) return;
@@ -2679,6 +2783,64 @@ var ReaderView = class extends import_obsidian2.ItemView {
     return `${prefix}${baseName}-${Date.now()}.md`;
   }
 };
+var DirectoryRepairModal = class extends import_obsidian2.Modal {
+  constructor(app, onSubmit) {
+    super(app);
+    this.onSubmit = onSubmit;
+  }
+  onOpen() {
+    const { contentEl, modalEl } = this;
+    contentEl.empty();
+    modalEl.addClass("puffs-directory-repair-modal");
+    contentEl.createEl("h3", { cls: "puffs-directory-repair-title", text: "\u76EE\u5F55\u4FEE\u590D" });
+    this.level1Input = this.createDirectoryInput(contentEl, "\u4E00\u7EA7\u76EE\u5F55", "\u5377");
+    this.level2Input = this.createDirectoryInput(contentEl, "\u4E8C\u7EA7\u76EE\u5F55", "\u7AE0");
+    const actions = contentEl.createDiv({ cls: "puffs-directory-repair-actions" });
+    const confirm = actions.createEl("button", {
+      cls: "puffs-icon-btn puffs-directory-repair-confirm",
+      text: "\u786E\u5B9A",
+      attr: { type: "button" }
+    });
+    confirm.addEventListener("click", () => this.submit());
+    window.requestAnimationFrame(() => this.level1Input.focus());
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+  createDirectoryInput(parent, label, value) {
+    const row = parent.createDiv({ cls: "puffs-directory-repair-row" });
+    row.createSpan({ cls: "puffs-directory-repair-label", text: label });
+    const input = row.createEl("input", {
+      cls: "puffs-directory-repair-input",
+      attr: { type: "text", maxlength: "1" }
+    });
+    input.value = value;
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      this.submit();
+    });
+    return input;
+  }
+  getInputChar(input) {
+    var _a;
+    return (_a = Array.from(input.value.trim())[0]) != null ? _a : "";
+  }
+  submit() {
+    const level1 = this.getInputChar(this.level1Input);
+    const level2 = this.getInputChar(this.level2Input);
+    const markerChars = [level1, level2].filter(Boolean);
+    if (markerChars.length === 0) {
+      new import_obsidian2.Notice("\u8BF7\u81F3\u5C11\u586B\u5199\u4E00\u4E2A\u76EE\u5F55\u5B57");
+      return;
+    }
+    this.close();
+    this.onSubmit(markerChars).catch((error) => {
+      console.error("[Puffs Reader] Failed to repair directory:", error);
+      new import_obsidian2.Notice("\u76EE\u5F55\u4FEE\u590D\u5931\u8D25");
+    });
+  }
+};
 function normalizeChapterSearchText(value) {
   return value.trim().toLowerCase();
 }
@@ -3082,6 +3244,12 @@ var SettingsTab = class extends import_obsidian3.PluginSettingTab {
       DEFAULT_SETTINGS.tocPanelHotkey
     );
     this.addTextSetting(
+      "\u5355\u4E66\u914D\u7F6E\u5FEB\u6377\u952E",
+      "\u9ED8\u8BA4 Ctrl+;\u3002\u9605\u8BFB\u4E66\u7C4D\u65F6\u7528\u4E8E\u6253\u5F00/\u6536\u8D77\u5355\u4E66\u8BBE\u7F6E\u6D6E\u5C42\u3002",
+      "bookSettingsHotkey",
+      DEFAULT_SETTINGS.bookSettingsHotkey
+    );
+    this.addTextSetting(
       "\u62C6\u5206\u6587\u672C\u5FEB\u6377\u952E",
       "\u9ED8\u8BA4 Ctrl+Shift+C\u3002\u9009\u62E9\u8D77\u6B62\u7AE0\u8282\u540E\uFF0C\u5C06\u5BF9\u5E94\u539F\u6587\u62C6\u5206\u5E76\u4FDD\u5B58\u4E3A TXT \u6587\u4EF6\u3002",
       "copySourceHotkey",
@@ -3229,7 +3397,7 @@ var SettingsTab = class extends import_obsidian3.PluginSettingTab {
   addTextSetting(name, desc, key, placeholder) {
     new import_obsidian3.Setting(this.containerEl).setName(name).setDesc(desc).addText(
       (text) => text.setPlaceholder(placeholder).setValue(this.plugin.settings[key]).onChange(async (v) => {
-        const fallback = key === "searchHotkey" ? DEFAULT_SETTINGS.searchHotkey : key === "tocPanelHotkey" ? DEFAULT_SETTINGS.tocPanelHotkey : key === "copySourceHotkey" ? DEFAULT_SETTINGS.copySourceHotkey : key === "bookshelfTitleSearchHotkey" ? DEFAULT_SETTINGS.bookshelfTitleSearchHotkey : key === "bookshelfAuthorSearchHotkey" ? DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey : key === "breakdownTextDir" ? DEFAULT_SETTINGS.breakdownTextDir : key === "previousPageHotkey" ? DEFAULT_SETTINGS.previousPageHotkey : key === "nextPageHotkey" ? DEFAULT_SETTINGS.nextPageHotkey : key === "chapterTitleRegex" ? DEFAULT_SETTINGS.chapterTitleRegex : key === "prologueTitleRegex" ? DEFAULT_SETTINGS.prologueTitleRegex : "";
+        const fallback = key === "searchHotkey" ? DEFAULT_SETTINGS.searchHotkey : key === "tocPanelHotkey" ? DEFAULT_SETTINGS.tocPanelHotkey : key === "bookSettingsHotkey" ? DEFAULT_SETTINGS.bookSettingsHotkey : key === "copySourceHotkey" ? DEFAULT_SETTINGS.copySourceHotkey : key === "bookshelfTitleSearchHotkey" ? DEFAULT_SETTINGS.bookshelfTitleSearchHotkey : key === "bookshelfAuthorSearchHotkey" ? DEFAULT_SETTINGS.bookshelfAuthorSearchHotkey : key === "breakdownTextDir" ? DEFAULT_SETTINGS.breakdownTextDir : key === "previousPageHotkey" ? DEFAULT_SETTINGS.previousPageHotkey : key === "nextPageHotkey" ? DEFAULT_SETTINGS.nextPageHotkey : key === "chapterTitleRegex" ? DEFAULT_SETTINGS.chapterTitleRegex : key === "prologueTitleRegex" ? DEFAULT_SETTINGS.prologueTitleRegex : "";
         this.plugin.settings[key] = v.trim() || fallback;
         await this.plugin.savePluginData();
         this.refreshOpenReaders();
