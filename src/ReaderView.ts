@@ -1251,18 +1251,20 @@ export class ReaderView extends ItemView {
           title: this.extractChapterTitle(line),
           rawTitle: line,
           startParaIndex: i,
-          level: this.getTocIndentLevel(line),
+          level: this.getTocIndentLevel(line, this.chapters[this.chapters.length - 1]),
         });
       }
     }
   }
 
-  private getTocIndentLevel(line: string): number {
+  private getTocIndentLevel(line: string, previousChapter?: Chapter): number {
     const settings = this.getBookSettings();
     if (!settings.tocIndentEnabled) return 1;
 
     const marker = this.extractChapterMarker(line);
-    if (!marker) return 1;
+    if (!marker) {
+      return this.isPrologueTitle(line) && previousChapter?.level === 1 ? 2 : 1;
+    }
 
     try {
       const level1Regex = new RegExp(settings.tocIndentLevel1Regex?.trim() || '\u5377');
@@ -1276,6 +1278,14 @@ export class ReaderView extends ItemView {
     }
 
     return 1;
+  }
+
+  private isPrologueTitle(line: string): boolean {
+    try {
+      return new RegExp(this.getEffectivePrologueTitleRegex()).test(line);
+    } catch {
+      return false;
+    }
   }
 
   private extractChapterMarker(line: string): string {
@@ -1292,7 +1302,7 @@ export class ReaderView extends ItemView {
     const customRegex = this.getBookSettings().chapterTitleRegex ?? this.plugin.settings.chapterTitleRegex;
     try {
       const match = line.match(new RegExp(customRegex));
-      if (match?.[1] && match?.[2] && /^[章节回卷集部篇]$/.test(match[2])) {
+      if (match?.[1] && match?.[2]) {
         const numberText = this.normalizeChapterNumber(match[1]);
         const titleText = (match[3] ?? '').trim();
         return titleText ? `第${numberText}${match[2]} ${titleText}` : `第${numberText}${match[2]}`;

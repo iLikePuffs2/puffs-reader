@@ -1139,17 +1139,19 @@ var ReaderView = class extends import_obsidian2.ItemView {
           title: this.extractChapterTitle(line),
           rawTitle: line,
           startParaIndex: i,
-          level: this.getTocIndentLevel(line)
+          level: this.getTocIndentLevel(line, this.chapters[this.chapters.length - 1])
         });
       }
     }
   }
-  getTocIndentLevel(line) {
+  getTocIndentLevel(line, previousChapter) {
     var _a, _b, _c;
     const settings = this.getBookSettings();
     if (!settings.tocIndentEnabled) return 1;
     const marker = this.extractChapterMarker(line);
-    if (!marker) return 1;
+    if (!marker) {
+      return this.isPrologueTitle(line) && (previousChapter == null ? void 0 : previousChapter.level) === 1 ? 2 : 1;
+    }
     try {
       const level1Regex = new RegExp(((_a = settings.tocIndentLevel1Regex) == null ? void 0 : _a.trim()) || "\u5377");
       const level2Regex = new RegExp(((_b = settings.tocIndentLevel2Regex) == null ? void 0 : _b.trim()) || "\u7AE0");
@@ -1161,6 +1163,13 @@ var ReaderView = class extends import_obsidian2.ItemView {
       return 1;
     }
     return 1;
+  }
+  isPrologueTitle(line) {
+    try {
+      return new RegExp(this.getEffectivePrologueTitleRegex()).test(line);
+    } catch (e) {
+      return false;
+    }
   }
   extractChapterMarker(line) {
     var _a, _b, _c;
@@ -1177,7 +1186,7 @@ var ReaderView = class extends import_obsidian2.ItemView {
     const customRegex = (_a = this.getBookSettings().chapterTitleRegex) != null ? _a : this.plugin.settings.chapterTitleRegex;
     try {
       const match = line.match(new RegExp(customRegex));
-      if ((match == null ? void 0 : match[1]) && (match == null ? void 0 : match[2]) && /^[章节回卷集部篇]$/.test(match[2])) {
+      if ((match == null ? void 0 : match[1]) && (match == null ? void 0 : match[2])) {
         const numberText = this.normalizeChapterNumber(match[1]);
         const titleText = ((_b = match[3]) != null ? _b : "").trim();
         return titleText ? `\u7B2C${numberText}${match[2]} ${titleText}` : `\u7B2C${numberText}${match[2]}`;
