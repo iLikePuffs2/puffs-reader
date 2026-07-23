@@ -88,8 +88,6 @@ export interface ReaderSettings {
   dataBackupFrequencyHours: number;
   /** 书库 Git 同步：书库目录路径（绝对路径或相对于 vault 的路径），留空禁用 */
   bookLibraryPath: string;
-  /** 页面停留多久后计入已读字数和章节 (ms) */
-  readingStatsMinPageMs: number;
   /** 单页停留超过多久后停止继续累计阅读时长 (ms) */
   readingStatsIdleLimitMs: number;
 }
@@ -190,50 +188,25 @@ export interface BookProgress {
   encoding?: string;
 }
 
-/** 已计入阅读统计的全书字符区间，半开区间 [start, end) */
-export interface CountedRange {
-  start: number;
-  end: number;
-}
-
-/** 已阅读章节区间，索引为解析后的目录索引，end 为闭区间 */
-export interface ReadChapterRange {
-  start: number;
-  end: number;
-  startTitle: string;
-  endTitle: string;
-}
-
 /** 单本书阅读统计 */
 export interface BookReadingStats {
   title: string;
   totalReadingMs: number;
-  totalReadWords: number;
-  countedRanges: CountedRange[];
-  readChapterRanges: ReadChapterRange[];
-  daily: Record<string, BookDailyReadingStats>;
+  readingDates: string[];
   lastReadAt: number;
 }
 
-/** 单本书单日阅读统计 */
-export interface BookDailyReadingStats {
-  readingMs: number;
-  readWords: number;
-  readChapterRanges: ReadChapterRange[];
-}
-
-/** 单日阅读统计 */
-export interface DailyReadingStats {
-  readingMs: number;
-  readWords: number;
-  bookPaths: string[];
+/** 书籍全文字数缓存 */
+export interface BookWordCountCacheEntry {
+  mtime: number;
+  encodingKey: string;
+  totalWords: number;
 }
 
 /** 阅读统计持久化数据 */
 export interface ReadingStatsData {
-  schemaVersion: 2;
+  schemaVersion: 3;
   books: Record<string, BookReadingStats>;
-  daily: Record<string, DailyReadingStats>;
 }
 
 /** 解析出的章节 */
@@ -332,6 +305,5 @@ export const DEFAULT_SETTINGS: ReaderSettings = {
   dataBackupPath: '',
   dataBackupFrequencyHours: 24,
   bookLibraryPath: '',
-  readingStatsMinPageMs: 100,
   readingStatsIdleLimitMs: 120000,
 };

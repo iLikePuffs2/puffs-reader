@@ -19,14 +19,13 @@ import {
   BookSettings,
   BookTags,
   Chapter,
-  CountedRange,
   DEFAULT_READING_STATUS,
   DEFAULT_SETTINGS,
   READING_STATUS_OPTIONS,
-  ReadChapterRange,
   SearchMatch,
   SUPPORTED_ENCODINGS,
 } from './types';
+import { decodeTxtBuffer } from './textEncoding';
 
 export const READER_VIEW_TYPE = 'puffs-reader-view';
 
@@ -44,13 +43,6 @@ interface AnnotationSelection {
   text: string;
 }
 
-interface ReadingStatsPageRange {
-  start: ReaderPosition;
-  end: ReaderPosition;
-  startOffset: number;
-  endOffset: number;
-}
-
 interface ChapterTitleFixResult {
   text: string;
   changed: number;
@@ -65,7 +57,6 @@ interface CustomTagInputOptions {
   suggestions?: string[];
 }
 
-const DEFAULT_READING_STATS_PAGE_MIN_MS = 100;
 const DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1000;
 
 /**
@@ -126,8 +117,6 @@ export class ReaderView extends ItemView {
   private notesTabBtn!: HTMLElement;
 
   private progressSaveTimer = 0;
-  private readingStatsTimer = 0;
-  private readingStatsPageKey = '';
   private readingStatsLastTurnAt = 0;
   private searchTimer = 0;
   private cursorHideTimer = 0;
@@ -172,7 +161,6 @@ export class ReaderView extends ItemView {
     this.chapterCopyModal?.close();
     this.chapterCopyModal = null;
     this.settleReadingStatsTime();
-    this.clearReadingStatsPageTimer();
     this.saveProgressNow();
     window.clearTimeout(this.progressSaveTimer);
     window.clearTimeout(this.searchTimer);
@@ -198,7 +186,6 @@ export class ReaderView extends ItemView {
     const path = viewState?.file as string | undefined;
     if (path && path !== this.filePath) {
       this.settleReadingStatsTime();
-      this.clearReadingStatsPageTimer();
       this.filePath = path;
       const file = this.app.vault.getAbstractFileByPath(path);
       if (file instanceof TFile) {
@@ -266,12 +253,10 @@ export class ReaderView extends ItemView {
       this.app.workspace.on('active-leaf-change', (leaf) => {
         if (leaf === this.leaf) {
           this.readingStatsLastTurnAt = Date.now();
-          this.scheduleReadingPageStats();
           this.focusReader();
           this.resetCursorIdleState();
         } else {
           this.settleReadingStatsTime();
-          this.clearReadingStatsPageTimer();
           this.showCursor();
           this.clearCursorHideTimer();
         }
@@ -385,6 +370,8 @@ export class ReaderView extends ItemView {
     const { text, encoding } = this.decodeBuffer(this.fileBuffer, bookSettings.encoding ?? saved?.encoding);
 
     this.currentEncoding = encoding;
+    void this.plugin.cacheBookWordCountFromText(this.currentFile, text)
+      .catch((error) => console.error('[Puffs Reader] Failed to cache book word count:', error));
     this.paragraphs = this.processText(text);
     this.rebuildParagraphStartOffsets();
     this.parseChapters();
@@ -414,55 +401,20 @@ export class ReaderView extends ItemView {
   }
 
   private decodeBuffer(buffer: ArrayBuffer, forceEncoding?: string): { text: string; encoding: string } {
-    if (forceEncoding) {
-      try {
-        return {
-          text: new TextDecoder(forceEncoding, { fatal: false }).decode(buffer),
-          encoding: forceEncoding,
-        };
-      } catch {
-        // 指定编码不可用时继续走自动检测。
-      }
-    }
-
-    const bytes = new Uint8Array(buffer);
-    if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-      return { text: new TextDecoder('utf-8').decode(buffer), encoding: 'utf-8' };
-    }
-    if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-      return { text: new TextDecoder('utf-16le').decode(buffer), encoding: 'utf-16le' };
-    }
-    if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-      return { text: new TextDecoder('utf-16be').decode(buffer), encoding: 'utf-16be' };
-    }
-
-    try {
-      return {
-        text: new TextDecoder('utf-8', { fatal: true }).decode(buffer),
-        encoding: 'utf-8',
-      };
-    } catch {
-      // 非 UTF-8 时优先尝试中文 TXT 常见编码。
-    }
-
-    try {
-      return { text: new TextDecoder('gbk').decode(buffer), encoding: 'gbk' };
-    } catch {
-      const fallback = this.plugin.settings.defaultEncoding;
-      return { text: new TextDecoder(fallback, { fatal: false }).decode(buffer), encoding: fallback };
-    }
+    return decodeTxtBuffer(buffer, forceEncoding, this.plugin.settings.defaultEncoding);
   }
 
   private switchEncoding(encoding: string): void {
     if (!this.fileBuffer || !this.currentFile) return;
 
     this.settleReadingStatsTime();
-    this.clearReadingStatsPageTimer();
     const { text } = this.decodeBuffer(this.fileBuffer, encoding);
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
     this.rebuildParagraphStartOffsets();
     this.updateBookSettings({ encoding });
+    void this.plugin.cacheBookWordCountFromText(this.currentFile, text)
+      .catch((error) => console.error('[Puffs Reader] Failed to cache book word count:', error));
     this.parseChapters();
     this.buildTocList();
     this.currentPageStart = { paraIndex: 0, charOffset: 0 };
@@ -619,7 +571,6 @@ export class ReaderView extends ItemView {
 
     try {
       this.settleReadingStatsTime();
-      this.clearReadingStatsPageTimer();
       await this.app.vault.modify(this.currentFile, fixed.text);
       this.fileBuffer = new TextEncoder().encode(fixed.text).buffer;
       this.currentEncoding = 'utf-8';
@@ -642,7 +593,6 @@ export class ReaderView extends ItemView {
 
   private renderCurrentPage(): void {
     if (this.paragraphs.length === 0) {
-      this.clearReadingStatsPageTimer();
       this.contentContainer.empty();
       this.chapterTitleEl.textContent = '';
       this.progressTitleEl.textContent = '';
@@ -665,7 +615,7 @@ export class ReaderView extends ItemView {
     this.fillPaintedPageToFit();
     this.updatePageMeta();
     this.scheduleProgressSave();
-    this.scheduleReadingPageStats();
+    this.startReadingStatsSession();
     this.isRenderingPage = false;
   }
 
@@ -1010,7 +960,6 @@ export class ReaderView extends ItemView {
     if (this.comparePositions(this.currentPageEnd, this.currentPageStart) <= 0) return false;
     if (this.currentPageEnd.paraIndex >= this.paragraphs.length) return false;
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.pageBackStack.push({ ...this.currentPageStart });
     this.currentPageStart = this.skipBlankPageStart(this.clampPosition(this.currentPageEnd));
     this.recordPageTurnAfterSearchJump();
@@ -1022,7 +971,6 @@ export class ReaderView extends ItemView {
   private pageUp(): boolean {
     if (this.currentPageStart.paraIndex === 0 && this.currentPageStart.charOffset === 0) return false;
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.pageBackStack.pop() ?? this.findPreviousPageStart(this.currentPageStart);
     this.recordPageTurnAfterSearchJump();
     this.renderCurrentPage();
@@ -1069,7 +1017,6 @@ export class ReaderView extends ItemView {
 
   private jumpToPosition(pos: ReaderPosition): void {
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.clampPosition(pos);
     this.pageBackStack = [];
     this.renderCurrentPage();
@@ -1151,64 +1098,9 @@ export class ReaderView extends ItemView {
     return { paraIndex: this.paragraphs.length, charOffset: 0 };
   }
 
-  private getCurrentPageStatsRange(): ReadingStatsPageRange | null {
-    if (this.paragraphs.length === 0) return null;
-    const start = this.clampPosition(this.currentPageStart);
-    const end = this.clampPosition(this.currentPageEnd);
-    const startOffset = this.positionToGlobalOffset(start);
-    const endOffset = this.positionToGlobalOffset(end);
-    if (endOffset <= startOffset) return null;
-    return { start, end, startOffset, endOffset };
-  }
-
-  private scheduleReadingPageStats(): void {
-    this.clearReadingStatsPageTimer();
-    if (!this.currentFile || this.paragraphs.length === 0) return;
-    if (!this.isReadingStatsActive()) return;
-
-    const range = this.getCurrentPageStatsRange();
-    if (!range) return;
+  private startReadingStatsSession(): void {
+    if (!this.currentFile || this.paragraphs.length === 0 || !this.isReadingStatsActive()) return;
     if (this.readingStatsLastTurnAt === 0) this.readingStatsLastTurnAt = Date.now();
-
-    const pageKey = this.getReadingStatsPageKey(range);
-    this.readingStatsPageKey = pageKey;
-    this.readingStatsTimer = window.setTimeout(() => {
-      this.commitReadingPageStats(pageKey);
-    }, this.getReadingStatsMinPageMs());
-  }
-
-  private clearReadingStatsPageTimer(): void {
-    if (this.readingStatsTimer) {
-      window.clearTimeout(this.readingStatsTimer);
-      this.readingStatsTimer = 0;
-    }
-    this.readingStatsPageKey = '';
-  }
-
-  private getReadingStatsPageKey(range: ReadingStatsPageRange): string {
-    return `${this.currentFile?.path ?? ''}:${range.startOffset}:${range.endOffset}`;
-  }
-
-  private commitReadingPageStats(pageKey: string): void {
-    if (!this.currentFile || !this.isReadingStatsActive()) return;
-    const range = this.getCurrentPageStatsRange();
-    if (!range || pageKey !== this.getReadingStatsPageKey(range)) return;
-
-    const countedRange = { start: range.startOffset, end: range.endOffset };
-    const existingRanges = this.plugin.getReadingStats().books[this.currentFile.path]?.countedRanges ?? [];
-    const uncountedRanges = this.getUncountedRanges(countedRange, existingRanges);
-    if (uncountedRanges.length === 0) return;
-
-    const readWords = this.countWordsInGlobalRanges(uncountedRanges);
-    const chapterRanges = this.getReadChapterRangesForPage(range.start, range.end);
-    this.plugin.recordReadingStat({
-      filePath: this.currentFile.path,
-      title: this.currentFile.basename,
-      readWords,
-      countedRange,
-      chapterRanges,
-      timestamp: Date.now(),
-    }).catch((error) => console.error('[Puffs Reader] Failed to record reading page stats:', error));
   }
 
   private settleReadingStatsTime(now = Date.now(), keepSession = false): void {
@@ -1233,92 +1125,9 @@ export class ReaderView extends ItemView {
     return this.app.workspace.activeLeaf === this.leaf && document.hasFocus();
   }
 
-  private getReadingStatsMinPageMs(): number {
-    const value = Number(this.plugin.settings.readingStatsMinPageMs);
-    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_PAGE_MIN_MS;
-  }
-
   private getReadingStatsIdleLimitMs(): number {
     const value = Number(this.plugin.settings.readingStatsIdleLimitMs);
     return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_IDLE_LIMIT_MS;
-  }
-
-  private getUncountedRanges(range: CountedRange, existing: CountedRange[]): CountedRange[] {
-    let pending: CountedRange[] = [{ ...range }];
-    const sorted = [...existing]
-      .filter((item) => item.end > item.start)
-      .sort((a, b) => a.start - b.start || a.end - b.end);
-
-    for (const counted of sorted) {
-      const next: CountedRange[] = [];
-      for (const item of pending) {
-        if (counted.end <= item.start || counted.start >= item.end) {
-          next.push(item);
-          continue;
-        }
-        if (counted.start > item.start) {
-          next.push({ start: item.start, end: Math.min(counted.start, item.end) });
-        }
-        if (counted.end < item.end) {
-          next.push({ start: Math.max(counted.end, item.start), end: item.end });
-        }
-      }
-      pending = next;
-      if (pending.length === 0) break;
-    }
-    return pending.filter((item) => item.end > item.start);
-  }
-
-  private countWordsInGlobalRanges(ranges: CountedRange[]): number {
-    return ranges.reduce((sum, range) => sum + this.getTextInGlobalRange(range.start, range.end).replace(/\s+/g, '').length, 0);
-  }
-
-  private getTextInGlobalRange(startOffset: number, endOffset: number): string {
-    const start = this.globalOffsetToPosition(startOffset);
-    const end = this.globalOffsetToPosition(endOffset);
-    const parts: string[] = [];
-    for (let pi = start.paraIndex; pi <= end.paraIndex && pi < this.paragraphs.length; pi++) {
-      const paragraph = this.paragraphs[pi] ?? '';
-      const begin = pi === start.paraIndex ? start.charOffset : 0;
-      const finish = pi === end.paraIndex ? end.charOffset : paragraph.length;
-      if (finish > begin) parts.push(paragraph.slice(begin, finish));
-    }
-    return parts.join('\n');
-  }
-
-  private getReadChapterRangesForPage(start: ReaderPosition, end: ReaderPosition): ReadChapterRange[] {
-    if (this.chapters.length === 0) {
-      return [{ start: -1, end: -1, startTitle: '未识别章节', endTitle: '未识别章节' }];
-    }
-
-    const startPara = Math.max(0, Math.min(start.paraIndex, Math.max(0, this.paragraphs.length - 1)));
-    const endPara = this.getVisiblePageEndParaIndex(start, end);
-    const indices: number[] = [];
-    for (let i = 0; i < this.chapters.length; i++) {
-      const chapterStart = this.chapters[i].startParaIndex;
-      const chapterEnd = this.chapters[i + 1]?.startParaIndex ?? this.paragraphs.length;
-      if (chapterStart <= endPara && chapterEnd > startPara) indices.push(i);
-    }
-
-    if (indices.length === 0) {
-      return [{ start: -1, end: -1, startTitle: '未识别章节', endTitle: '未识别章节' }];
-    }
-
-    const startIndex = indices[0];
-    const endIndex = indices[indices.length - 1];
-    return [{
-      start: startIndex,
-      end: endIndex,
-      startTitle: this.chapters[startIndex].title,
-      endTitle: this.chapters[endIndex].title,
-    }];
-  }
-
-  private getVisiblePageEndParaIndex(start: ReaderPosition, end: ReaderPosition): number {
-    if (this.paragraphs.length === 0) return 0;
-    if (end.paraIndex >= this.paragraphs.length) return this.paragraphs.length - 1;
-    if (end.charOffset === 0 && end.paraIndex > start.paraIndex) return end.paraIndex - 1;
-    return Math.max(start.paraIndex, end.paraIndex);
   }
 
   private parseChapters(): void {

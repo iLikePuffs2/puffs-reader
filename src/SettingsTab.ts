@@ -81,15 +81,6 @@ export class SettingsTab extends PluginSettingTab {
     this.addNumberSetting('每秒手动翻页速度上限', '按键盘方向键翻页时，每秒最多允许翻过的页数。', 'manualPageTurnsPerSecond', 1, 20, 1, '页/秒');
 
     containerEl.createEl('h3', { text: '阅读统计' });
-    this.addNumberSetting(
-      '计入已读停留时间',
-      '页面至少停留多久后，才计入已读字数和已读章节。',
-      'readingStatsMinPageMs',
-      100,
-      60000,
-      100,
-      'ms',
-    );
     this.addNumberSettingInMinutes(
       '阅读计时空闲截止',
       '在同一页停留超过多久后，停止继续累计阅读时长，直到下一次翻页或跳转。',

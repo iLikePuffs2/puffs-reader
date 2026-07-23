@@ -13,17 +13,16 @@ import {
   BookProgress,
   BookSettings,
   BookTags,
-  BookDailyReadingStats,
-  CountedRange,
+  BookWordCountCacheEntry,
   DEFAULT_TAG_CATALOG,
   DEFAULT_READING_STATUS,
   DEFAULT_SETTINGS,
-  ReadChapterRange,
   ReadingStatsData,
   READING_STATUS_OPTIONS,
   SERIAL_STATUS_OPTIONS,
   TagCatalog,
 } from './types';
+import { decodeTxtBuffer } from './textEncoding';
 
 const READING_STATS_VIEW_TYPE = 'puffs-reading-stats-view';
 const LEGACY_DEFAULT_TOC_REGEX = '^\\s*第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*$';
@@ -31,7 +30,6 @@ const LEGACY_DEFAULT_CHAPTER_TITLE_REGEX = '^\\s*第([零〇一二三四五六�
 const LEGACY_PROLOGUE_TOC_REGEX = '^\\s*(?:第[零〇一二三四五六七八九十百千万亿两\\d]+[章节回卷集部篇].*|(?:序章|楔子|引子)(?:\\s+.*)?)$';
 const LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = '^\\s*(?:第([零〇一二三四五六七八九十百千万亿两\\d]+)([章节回卷集部篇])\\s*(.*)|((?:序章|楔子|引子)(?:\\s+.*)?))$';
 const SUMMARY_BOOK_SUFFIX = '-概括版';
-const UNRECOGNIZED_CHAPTER_TITLE = '未识别章节';
 
 type TagCatalogGroup = keyof TagCatalog;
 type ReadingStatsTagFilterGroup = 'genre' | 'serialStatus' | 'readingStatus' | 'feature' | 'accumulation';
@@ -207,7 +205,8 @@ interface PluginData {
   bookSettings?: Record<string, BookSettings>;
   tagCatalog?: TagCatalog;
   authorTagOrder?: string[];
-  readingStats?: ReadingStatsData;
+  readingStats?: unknown;
+  bookWordCountCache?: Record<string, BookWordCountCacheEntry>;
   lastDataBackupAt?: number;
   knownBooks?: string[];
 }
@@ -216,26 +215,10 @@ interface ReadingStatRecord {
   filePath: string;
   title: string;
   readingMs?: number;
-  readWords?: number;
-  countedRange?: CountedRange;
-  chapterRanges?: ReadChapterRange[];
   timestamp?: number;
 }
 
-type ReadingStatsMetric = 'words' | 'time' | 'speed';
-type ReadingStatsSpeedUnit = 'hour' | 'minute';
-
-interface ReadingStatsChartPoint {
-  label: string;
-  value: number;
-  title: string;
-}
-
-interface AggregatedDailyReadingStats {
-  readingMs: number;
-  readWords: number;
-  readChapterRanges: ReadChapterRange[];
-}
+type UnknownRecord = Record<string, unknown>;
 
 interface AggregatedBookStats {
   groupKey: string;
@@ -246,9 +229,7 @@ interface AggregatedBookStats {
   hasOriginalTags: boolean;
   tags: BookTags;
   totalReadingMs: number;
-  totalReadWords: number;
-  readChapterRanges: ReadChapterRange[];
-  daily: Record<string, AggregatedDailyReadingStats>;
+  readingDates: string[];
   lastReadAt: number;
 }
 
@@ -826,9 +807,6 @@ class ReadingStatsView extends ItemView {
   private plugin: PuffsReaderPlugin;
   private selectedBookPath: string | null = null;
   private renderVersion = 0;
-  private globalMetric: ReadingStatsMetric | null = null;
-  private bookMetric: ReadingStatsMetric | null = null;
-  private speedUnit: ReadingStatsSpeedUnit = 'hour';
   private untaggedOnly = false;
   private bookSearchOpen = false;
   private bookSearchQuery = '';
@@ -837,6 +815,8 @@ class ReadingStatsView extends ItemView {
   private globalBookSectionTitleEl: HTMLElement | null = null;
   private globalBookListEl: HTMLElement | null = null;
   private globalSummaryBookCountEl: HTMLElement | null = null;
+  private globalSummaryReadingDaysEl: HTMLElement | null = null;
+  private globalSummaryReadingTimeEl: HTMLElement | null = null;
   private tagFilters: ReadingStatsTagFilters = {
     genre: new Set<string>(),
     serialStatus: new Set<string>(),
@@ -901,8 +881,6 @@ class ReadingStatsView extends ItemView {
 
   showGlobalDefault(): void {
     this.selectedBookPath = null;
-    this.globalMetric = null;
-    this.bookMetric = null;
     this.render();
   }
 
@@ -923,6 +901,8 @@ class ReadingStatsView extends ItemView {
     this.globalBookSectionTitleEl = null;
     this.globalBookListEl = null;
     this.globalSummaryBookCountEl = null;
+    this.globalSummaryReadingDaysEl = null;
+    this.globalSummaryReadingTimeEl = null;
     this.contentEl.addClass('puffs-reading-stats-view');
     const page = this.contentEl.createDiv({ cls: 'puffs-reading-stats-page' });
     if (this.selectedBookPath) {
@@ -934,29 +914,17 @@ class ReadingStatsView extends ItemView {
 
   private renderGlobal(parent: HTMLElement): void {
     const state = this.getGlobalBookListState();
-    const dailyEntries = this.getDailyEntriesForBooks(state.books).sort((a, b) => a[0].localeCompare(b[0]));
-    const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
-    const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
-    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    const totalReadingMs = state.books.reduce((sum, book) => sum + book.totalReadingMs, 0);
+    const readingDays = new Set(state.books.flatMap((book) => book.readingDates)).size;
 
     this.renderHeader(parent, '阅读统计', false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: 'puffs-reading-stats-summary' });
     summary.addClass('is-global');
     this.globalSummaryBookCountEl = this.createSummaryItem(summary, '书籍数量', `${state.summaryBookCount} 本`);
-    this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
-    this.createSummaryItem(summary, '累计字数', this.formatCompactNumber(totalReadWords), 'words', this.globalMetric === 'words', () => this.toggleGlobalMetric('words'));
-    this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(totalReadingMs), 'time', this.globalMetric === 'time', () => this.toggleGlobalMetric('time'));
-    this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(totalReadWords, totalReadingMs, 'hour'), 'speed', this.globalMetric === 'speed', () => this.toggleGlobalMetric('speed'));
+    this.globalSummaryReadingDaysEl = this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
+    this.globalSummaryReadingTimeEl = this.createSummaryItem(summary, '阅读时长', this.formatCompactDuration(totalReadingMs));
 
     this.renderTagFilters(parent, state.filterOptionBooks);
-
-    if (this.globalMetric) {
-      this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
-        date,
-        readWords: item.readWords,
-        readingMs: item.readingMs,
-      })));
-    }
 
     this.globalBookSectionTitleEl = this.createSectionTitle(parent, '书籍列表', (actions) => this.renderBookSearchActions(actions));
     this.globalBookListEl = parent.createDiv({ cls: 'puffs-reading-stats-list' });
@@ -988,6 +956,9 @@ class ReadingStatsView extends ItemView {
     const state = this.getGlobalBookListState();
     this.globalBookSectionTitleEl?.setText('书籍列表');
     this.globalSummaryBookCountEl?.setText(`${state.summaryBookCount} 本`);
+    const totalReadingMs = state.books.reduce((sum, book) => sum + book.totalReadingMs, 0);
+    this.globalSummaryReadingDaysEl?.setText(`${new Set(state.books.flatMap((book) => book.readingDates)).size} 天`);
+    this.globalSummaryReadingTimeEl?.setText(this.formatCompactDuration(totalReadingMs));
     if (!this.globalBookListEl) return;
     this.globalBookListEl.empty();
     this.renderGlobalBookList(this.globalBookListEl, state);
@@ -1033,10 +1004,8 @@ class ReadingStatsView extends ItemView {
       const meta = main.createDiv({ cls: 'puffs-reading-stats-book-meta' });
       meta.createSpan({
         text: [
-          `时长 ${this.formatCompactDuration(book.totalReadingMs)}`,
-          `字数 ${this.formatCompactNumber(book.totalReadWords)}`,
-          `平均阅读速度 ${this.formatSpeed(book.totalReadWords, book.totalReadingMs, 'hour')}`,
-          `最近 ${this.formatDateTime(book.lastReadAt)}`,
+          `阅读时长 ${this.formatCompactDuration(book.totalReadingMs)}`,
+          `最近阅读 ${this.formatDateTime(book.lastReadAt)}`,
         ].join('；'),
       });
       const arrow = card.createSpan({ cls: 'puffs-reading-stats-book-arrow' });
@@ -1059,53 +1028,35 @@ class ReadingStatsView extends ItemView {
       this.renderOpenBookButton(actions, book);
       this.renderRefreshButton(actions);
     });
-    const dailyEntries = Object.entries(book.daily ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
-    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    const readingDays = book.readingDates.length;
 
     const summary = parent.createDiv({ cls: 'puffs-reading-stats-summary' });
     summary.addClass('is-detail');
+    const totalWordsEl = this.createSummaryItem(summary, '书籍字数', '计算中…');
     this.createSummaryItem(summary, '阅读天数', `${readingDays} 天`);
-    this.createSummaryItem(summary, '累计字数', this.formatCompactNumber(book.totalReadWords), 'words', this.bookMetric === 'words', () => this.toggleBookMetric('words'));
-    this.createSummaryItem(summary, '累计时长', this.formatCompactDuration(book.totalReadingMs), 'time', this.bookMetric === 'time', () => this.toggleBookMetric('time'));
-    this.createSummaryItem(summary, '平均阅读速度', this.formatSpeed(book.totalReadWords, book.totalReadingMs, 'hour'), 'speed', this.bookMetric === 'speed', () => this.toggleBookMetric('speed'));
+    this.createSummaryItem(summary, '阅读时长', this.formatCompactDuration(book.totalReadingMs));
+    const wordCountPath = [book.originalFilePath, ...book.filePaths]
+      .filter((filePath): filePath is string => !!filePath)
+      .find((filePath) => this.plugin.app.vault.getAbstractFileByPath(filePath) instanceof TFile);
+    const renderVersion = this.renderVersion;
+    if (wordCountPath) {
+      this.plugin.getBookTotalWordCount(wordCountPath)
+        .then((totalWords) => {
+          if (renderVersion !== this.renderVersion || this.selectedBookPath !== book.groupKey || !totalWordsEl.isConnected) return;
+          totalWordsEl.setText(this.formatCompactNumber(totalWords));
+        })
+        .catch((error) => {
+          console.error('[Puffs Reader] Failed to load book word count:', error);
+          if (renderVersion === this.renderVersion && totalWordsEl.isConnected) totalWordsEl.setText('—');
+        });
+    } else {
+      totalWordsEl.setText('—');
+    }
 
     this.createSectionTitle(parent, '相关标签', (actions) => {
       this.renderEditBookTagsButton(actions, book);
     });
     this.renderReadonlyTagRows(parent, book.tags);
-
-    if (this.bookMetric) {
-      this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
-        date,
-        readWords: item.readWords,
-        readingMs: item.readingMs,
-      })));
-    }
-
-    this.createSectionTitle(parent, '每日明细');
-    const list = parent.createDiv({ cls: 'puffs-reading-stats-list' });
-    const visibleDailyEntries = dailyEntries.filter(([, item]) => Math.round(item.readingMs / 60000) > 0 && item.readWords > 0);
-    if (visibleDailyEntries.length === 0) {
-      list.createDiv({ cls: 'puffs-reading-stats-empty', text: '这本书暂无每日明细。' });
-      return;
-    }
-    for (const [date, item] of visibleDailyEntries) {
-      const card = list.createDiv({ cls: 'puffs-reading-stats-day' });
-      this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
-      card.createDiv({ cls: 'puffs-reading-stats-day-title', text: date });
-      const meta = card.createDiv({ cls: 'puffs-reading-stats-book-meta' });
-      meta.createSpan({
-        text: [
-          `时长 ${this.formatCompactDuration(item.readingMs)}`,
-          `字数 ${this.formatCompactNumber(item.readWords)}`,
-          `平均阅读速度 ${this.formatSpeed(item.readWords, item.readingMs, 'hour')}`,
-        ].join('；'),
-      });
-      const chapterText = this.formatChapterRanges(item.readChapterRanges, '阅读章节');
-      if (chapterText) {
-        card.createDiv({ cls: 'puffs-reading-stats-chapters puffs-reading-stats-day-chapters', text: chapterText });
-      }
-    }
   }
 
   private renderHeader(
@@ -1274,8 +1225,6 @@ class ReadingStatsView extends ItemView {
 
   private goBackToGlobal(): void {
     this.selectedBookPath = null;
-    this.globalMetric = null;
-    this.bookMetric = null;
     this.render();
   }
 
@@ -1283,29 +1232,10 @@ class ReadingStatsView extends ItemView {
     parent: HTMLElement,
     label: string,
     value: string,
-    metric?: ReadingStatsMetric,
-    active = false,
-    onClick?: () => void,
   ): HTMLElement {
     const item = parent.createDiv({ cls: 'puffs-reading-stats-summary-item' });
-    if (metric) {
-      item.addClass('is-clickable');
-      item.setAttr('tabindex', '0');
-      item.setAttr('role', 'button');
-      item.setAttr('aria-pressed', active ? 'true' : 'false');
-    }
-    if (active) item.addClass('is-active');
     item.createDiv({ cls: 'puffs-reading-stats-summary-label', text: label });
     const valueEl = item.createDiv({ cls: 'puffs-reading-stats-summary-value', text: value });
-    if (onClick) {
-      item.addEventListener('click', onClick);
-      item.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onClick();
-        }
-      });
-    }
     return valueEl;
   }
 
@@ -1336,7 +1266,6 @@ class ReadingStatsView extends ItemView {
       let isComposing = false;
       const commitSearchValue = () => {
         this.bookSearchQuery = input.value.trim();
-        this.globalMetric = null;
         this.refreshGlobalBookList();
       };
       input.addEventListener('compositionstart', () => {
@@ -1385,7 +1314,6 @@ class ReadingStatsView extends ItemView {
     setIcon(authorBtn, 'user');
     authorBtn.addEventListener('click', () => {
       this.bookSearchMode = this.bookSearchMode === 'author' ? 'title' : 'author';
-      this.globalMetric = null;
       this.render();
     });
   }
@@ -1393,7 +1321,6 @@ class ReadingStatsView extends ItemView {
   private clearBookSearch(): void {
     this.bookSearchQuery = '';
     this.bookSearchOpen = false;
-    this.globalMetric = null;
   }
 
   private toggleTitleBookSearch(): void {
@@ -1405,7 +1332,6 @@ class ReadingStatsView extends ItemView {
     this.bookSearchMode = 'title';
     this.bookSearchOpen = true;
     this.bookSearchQuery = '';
-    this.globalMetric = null;
     this.render();
   }
 
@@ -1419,7 +1345,6 @@ class ReadingStatsView extends ItemView {
     this.bookSearchMode = 'author';
     this.bookSearchOpen = true;
     this.bookSearchQuery = '';
-    this.globalMetric = null;
     this.render();
   }
 
@@ -1542,13 +1467,11 @@ class ReadingStatsView extends ItemView {
     const filters = this.tagFilters[group];
     if (filters.has(value)) filters.delete(value);
     else filters.add(value);
-    this.globalMetric = null;
   }
 
   private clearTagFilters(): void {
     for (const filters of Object.values(this.tagFilters)) filters.clear();
     this.untaggedOnly = false;
-    this.globalMetric = null;
   }
 
   private hasActiveTagFilters(): boolean {
@@ -1573,23 +1496,6 @@ class ReadingStatsView extends ItemView {
     const next = !this.untaggedOnly;
     this.clearTagFilters();
     this.untaggedOnly = next;
-  }
-
-  private getDailyEntriesForBooks(books: AggregatedBookStats[]): Array<[string, AggregatedDailyReadingStats]> {
-    const dailyByDate: Record<string, AggregatedDailyReadingStats> = {};
-    for (const book of books) {
-      for (const [date, daily] of Object.entries(book.daily ?? {})) {
-        const aggregate = dailyByDate[date] ?? { readingMs: 0, readWords: 0, readChapterRanges: [] };
-        aggregate.readingMs += daily.readingMs;
-        aggregate.readWords += daily.readWords;
-        aggregate.readChapterRanges = this.mergeDisplayableChapterRanges([
-          ...aggregate.readChapterRanges,
-          ...(daily.readChapterRanges ?? []),
-        ]);
-        dailyByDate[date] = aggregate;
-      }
-    }
-    return Object.entries(dailyByDate);
   }
 
   private renderBookTagBadges(
@@ -1667,9 +1573,7 @@ class ReadingStatsView extends ItemView {
           hasOriginalTags: false,
           tags: createEmptyBookTags(),
           totalReadingMs: 0,
-          totalReadWords: 0,
-          readChapterRanges: [],
-          daily: {},
+          readingDates: [],
           lastReadAt: 0,
         };
         groups.set(groupKey, group);
@@ -1688,38 +1592,19 @@ class ReadingStatsView extends ItemView {
       }
       group.filePaths.push(filePath);
       group.totalReadingMs += book.totalReadingMs;
-      group.totalReadWords += book.totalReadWords;
+      group.readingDates = [...new Set([...group.readingDates, ...book.readingDates])].sort();
       group.lastReadAt = Math.max(group.lastReadAt, book.lastReadAt);
-
-      if (!isSummary) {
-        group.readChapterRanges = this.mergeDisplayableChapterRanges([
-          ...group.readChapterRanges,
-          ...(book.readChapterRanges ?? []),
-        ]);
-      }
-
-      for (const [date, daily] of Object.entries(book.daily ?? {})) {
-        const groupDaily = group.daily[date] ?? { readingMs: 0, readWords: 0, readChapterRanges: [] };
-        groupDaily.readingMs += daily.readingMs;
-        groupDaily.readWords += daily.readWords;
-        if (!isSummary) {
-          groupDaily.readChapterRanges = this.mergeDisplayableChapterRanges([
-            ...groupDaily.readChapterRanges,
-            ...(daily.readChapterRanges ?? []),
-          ]);
-        }
-        group.daily[date] = groupDaily;
-      }
     }
     if (includeLibraryBooks) {
       for (const file of this.plugin.getSelectableBookFiles()) {
         const groupKey = getReadingStatsGroupKey(file.path, file.basename);
+        const isSummary = isSummaryReadingStatsBook(file.path, file.basename);
         const fileTags = this.plugin.getBookTags(file.path);
         const fileHasTags = hasAnyBookTags(fileTags);
         const group = groups.get(groupKey);
         if (group) {
-          if (!group.originalFilePath) group.originalFilePath = file.path;
-          if (!group.hasOriginalSource) {
+          if (!isSummary && !group.originalFilePath) group.originalFilePath = file.path;
+          if (!isSummary && !group.hasOriginalSource) {
             group.title = file.basename;
             group.filePaths.push(file.path);
             group.hasOriginalSource = true;
@@ -1735,14 +1620,12 @@ class ReadingStatsView extends ItemView {
           groupKey,
           title: file.basename,
           filePaths: [file.path],
-          originalFilePath: file.path,
-          hasOriginalSource: true,
+          originalFilePath: isSummary ? undefined : file.path,
+          hasOriginalSource: !isSummary,
           hasOriginalTags: fileHasTags,
           tags: fileTags,
           totalReadingMs: 0,
-          totalReadWords: 0,
-          readChapterRanges: [],
-          daily: {},
+          readingDates: [],
           lastReadAt: this.plugin.getProgress(file.path)?.lastRead ?? 0,
         });
       }
@@ -1763,8 +1646,6 @@ class ReadingStatsView extends ItemView {
               .then(() => {
                 new Notice('已删除这组书的阅读统计');
                 if (this.selectedBookPath === groupKey) this.selectedBookPath = null;
-                this.globalMetric = null;
-                this.bookMetric = null;
                 this.render();
               })
               .catch((error) => console.error('[Puffs Reader] Failed to delete book reading stats:', error));
@@ -1772,203 +1653,6 @@ class ReadingStatsView extends ItemView {
       });
       menu.showAtMouseEvent(event);
     });
-  }
-
-  private registerBookDailyStatsContextMenu(card: HTMLElement, groupKey: string, date: string): void {
-    card.addEventListener('contextmenu', (event) => {
-      event.preventDefault();
-      const menu = new Menu();
-      menu.addItem((item) => {
-        item
-          .setTitle('删除数据')
-          .setIcon('trash')
-          .onClick(() => {
-            this.plugin.deleteReadingStatsGroupDaily(groupKey, date)
-              .then(() => {
-                new Notice('已删除当天阅读统计');
-                this.bookMetric = null;
-                this.render();
-              })
-              .catch((error) => console.error('[Puffs Reader] Failed to delete book daily reading stats:', error));
-          });
-      });
-      menu.showAtMouseEvent(event);
-    });
-  }
-
-  private toggleGlobalMetric(metric: ReadingStatsMetric): void {
-    this.globalMetric = this.globalMetric === metric ? null : metric;
-    if (this.globalMetric === 'speed') this.speedUnit = 'hour';
-    this.render();
-  }
-
-  private toggleBookMetric(metric: ReadingStatsMetric): void {
-    this.bookMetric = this.bookMetric === metric ? null : metric;
-    if (this.bookMetric === 'speed') this.speedUnit = 'hour';
-    this.render();
-  }
-
-  private renderMetricChart(parent: HTMLElement, metric: ReadingStatsMetric, entries: Array<{ date: string; readWords: number; readingMs: number }>): void {
-    const totalWords = entries.reduce((sum, item) => sum + item.readWords, 0);
-    const totalMs = entries.reduce((sum, item) => sum + item.readingMs, 0);
-    if (metric === 'words') {
-      this.renderLineChart(
-        parent,
-        '累计字数',
-        entries.map((item) => ({
-          label: this.formatShortDate(item.date),
-          value: item.readWords,
-          title: `${item.date}：${this.formatCompactNumber(item.readWords)} 字`,
-        })),
-        (value) => `${this.formatCompactNumber(value)}字`,
-        `${this.formatCompactNumber(totalWords)}字`,
-      );
-      return;
-    }
-
-    if (metric === 'time') {
-      this.renderLineChart(
-        parent,
-        '累计时长',
-        entries.map((item) => ({
-          label: this.formatShortDate(item.date),
-          value: item.readingMs / 60000,
-          title: `${item.date}：${this.formatCompactDuration(item.readingMs)}`,
-        })),
-        (value) => this.formatChartMinutes(value),
-        this.formatCompactDuration(totalMs),
-      );
-      return;
-    }
-
-    this.renderLineChart(
-      parent,
-      '平均阅读速度',
-      entries.map((item) => ({
-        label: this.formatShortDate(item.date),
-        value: this.getSpeedValue(item.readWords, item.readingMs, this.speedUnit),
-        title: `${item.date}：${this.formatSpeed(item.readWords, item.readingMs, this.speedUnit)}`,
-      })),
-      (value) => `${this.formatCompactNumber(value)}${this.speedUnit === 'hour' ? '字/h' : '字/min'}`,
-      this.formatSpeed(totalWords, totalMs, this.speedUnit),
-      (header) => this.renderSpeedUnitToggle(header),
-    );
-  }
-
-  private renderSpeedUnitToggle(parent: HTMLElement): void {
-    const toggle = parent.createDiv({ cls: 'puffs-reading-stats-chart-toggle' });
-    for (const unit of ['hour', 'minute'] as ReadingStatsSpeedUnit[]) {
-      const button = toggle.createEl('button', {
-        text: unit === 'hour' ? '小时' : '分钟',
-        cls: unit === this.speedUnit ? 'is-active' : '',
-      });
-      button.addEventListener('click', () => {
-        this.speedUnit = unit;
-        this.render();
-      });
-    }
-  }
-
-  private renderLineChart(
-    parent: HTMLElement,
-    title: string,
-    points: ReadingStatsChartPoint[],
-    formatValue: (value: number) => string,
-    summaryText: string,
-    renderHeaderControl?: (parent: HTMLElement) => void,
-  ): void {
-    const card = parent.createDiv({ cls: 'puffs-reading-stats-chart-card' });
-    const header = card.createDiv({ cls: 'puffs-reading-stats-chart-header' });
-    const titleWrap = header.createDiv({ cls: 'puffs-reading-stats-chart-title-wrap' });
-    titleWrap.createDiv({ cls: 'puffs-reading-stats-chart-title', text: title });
-    if (renderHeaderControl) renderHeaderControl(titleWrap);
-    const valid = points.filter((point) => Number.isFinite(point.value));
-    if (valid.length === 0 || valid.every((point) => point.value <= 0)) {
-      card.createDiv({ cls: 'puffs-reading-stats-empty', text: '暂无图表数据' });
-      return;
-    }
-    header.createDiv({ cls: 'puffs-reading-stats-chart-total', text: summaryText });
-
-    const width = 720;
-    const height = 220;
-    const padLeft = 48;
-    const padRight = 18;
-    const padTop = 18;
-    const padBottom = 34;
-    const plotWidth = width - padLeft - padRight;
-    const plotHeight = height - padTop - padBottom;
-    const maxValue = Math.max(...valid.map((point) => point.value), 1);
-    const x = (idx: number) => valid.length === 1 ? padLeft + plotWidth / 2 : padLeft + (idx / (valid.length - 1)) * plotWidth;
-    const y = (value: number) => padTop + plotHeight - (value / maxValue) * plotHeight;
-    const path = valid.map((point, idx) => `${idx === 0 ? 'M' : 'L'} ${x(idx).toFixed(1)} ${y(point.value).toFixed(1)}`).join(' ');
-
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('class', 'puffs-reading-stats-chart');
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', title);
-    svg.innerHTML = `
-      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop + plotHeight}" x2="${width - padRight}" y2="${padTop + plotHeight}" />
-      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotHeight}" />
-      <text class="puffs-chart-label" x="${padLeft}" y="${padTop + 10}">${this.escapeSvg(formatValue(maxValue))}</text>
-      <text class="puffs-chart-label" x="${padLeft}" y="${height - 8}">${this.escapeSvg(valid[0].label)}</text>
-      <text class="puffs-chart-label puffs-chart-label-end" x="${width - padRight}" y="${height - 8}">${this.escapeSvg(valid[valid.length - 1].label)}</text>
-      <path class="puffs-chart-line" d="${path}" />
-    `;
-    valid.forEach((point, idx) => {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('class', 'puffs-chart-point');
-      circle.setAttribute('cx', x(idx).toFixed(1));
-      circle.setAttribute('cy', y(point.value).toFixed(1));
-      circle.setAttribute('r', '3.5');
-      const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      titleEl.textContent = point.title;
-      circle.appendChild(titleEl);
-      svg.appendChild(circle);
-    });
-    card.appendChild(svg);
-  }
-
-  private formatChapterRanges(ranges: ReadChapterRange[], label = '已读章节'): string {
-    const displayRanges = this.mergeDisplayableChapterRanges(ranges);
-    if (displayRanges.length === 0) return '';
-    const labels = displayRanges.map((range) => {
-      if (range.start === range.end || range.startTitle === range.endTitle) return range.startTitle;
-      return `${range.startTitle} - ${range.endTitle}`;
-    });
-    return `${label}：${[...new Set(labels)].join('、')}`;
-  }
-
-  private mergeDisplayableChapterRanges(ranges: ReadChapterRange[]): ReadChapterRange[] {
-    const sorted = ranges
-      .filter((range) =>
-        Number.isFinite(range.start)
-        && Number.isFinite(range.end)
-        && range.start >= 0
-        && range.end >= range.start
-        && range.startTitle
-        && range.endTitle
-        && range.startTitle !== UNRECOGNIZED_CHAPTER_TITLE
-        && range.endTitle !== UNRECOGNIZED_CHAPTER_TITLE
-      )
-      .map((range) => ({
-        start: Math.floor(range.start),
-        end: Math.floor(range.end),
-        startTitle: range.startTitle,
-        endTitle: range.endTitle,
-      }))
-      .sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged: ReadChapterRange[] = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end + 1) {
-        merged.push({ ...range });
-      } else if (range.end > last.end) {
-        last.end = range.end;
-        last.endTitle = range.endTitle;
-      }
-    }
-    return merged;
   }
 
   private formatCompactDuration(ms: number): string {
@@ -1980,29 +1664,10 @@ class ReadingStatsView extends ItemView {
     return `${totalMinutes}min`;
   }
 
-  private formatChartMinutes(minutes: number): string {
-    const totalMinutes = Math.max(0, Math.round(minutes));
-    const hours = Math.floor(totalMinutes / 60);
-    const rest = totalMinutes % 60;
-    if (hours >= 10) return `${hours}h`;
-    if (hours > 0) return `${hours}h ${rest}min`;
-    return `${totalMinutes}min`;
-  }
-
-  private formatSpeed(words: number, ms: number, unit: ReadingStatsSpeedUnit): string {
-    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return '--';
-    const value = this.getSpeedValue(words, ms, unit);
-    return `${this.formatCompactNumber(value)} 字/${unit === 'hour' ? '小时' : '分钟'}`;
-  }
-
-  private getSpeedValue(words: number, ms: number, unit: ReadingStatsSpeedUnit): number {
-    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return 0;
-    return unit === 'hour' ? words / (ms / 3600000) : words / (ms / 60000);
-  }
-
   private formatCompactNumber(value: number): string {
     const n = Math.max(0, Math.round(value));
     if (n < 10000) return String(n);
+    if (n >= 100000) return `${Math.floor(n / 10000)}W`;
     const compact = Math.round((n / 10000) * 10) / 10;
     return `${Number.isInteger(compact) ? compact.toFixed(0) : compact.toFixed(1)}W`;
   }
@@ -2021,13 +1686,6 @@ class ReadingStatsView extends ItemView {
     });
   }
 
-  private formatShortDate(date: string): string {
-    return date.slice(5) || date;
-  }
-
-  private escapeSvg(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2040,7 +1698,8 @@ export default class PuffsReaderPlugin extends Plugin {
   bookSettings: Record<string, BookSettings> = {};
   tagCatalog: TagCatalog = normalizeTagCatalog(undefined);
   authorTagOrder: string[] = [];
-  readingStats: ReadingStatsData = { schemaVersion: 2, books: {}, daily: {} };
+  readingStats: ReadingStatsData = { schemaVersion: 3, books: {} };
+  bookWordCountCache: Record<string, BookWordCountCacheEntry> = {};
   lastDataBackupAt = 0;
   knownBooks: string[] = [];
   private dataBackupTimer: number | null = null;
@@ -2153,7 +1812,12 @@ export default class PuffsReaderPlugin extends Plugin {
 
   async loadPluginData(): Promise<void> {
     const data = (await this.loadData()) as PluginData | null;
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data?.settings);
+    const loadedSettings = Object.assign({}, DEFAULT_SETTINGS, data?.settings) as ReaderSettings & {
+      readingStatsMinPageMs?: unknown;
+    };
+    const hadLegacyReadingPageSetting = Object.prototype.hasOwnProperty.call(loadedSettings, 'readingStatsMinPageMs');
+    delete loadedSettings.readingStatsMinPageMs;
+    this.settings = loadedSettings;
     if (this.settings.tocRegex === LEGACY_DEFAULT_TOC_REGEX || this.settings.tocRegex === LEGACY_PROLOGUE_TOC_REGEX) {
       this.settings.tocRegex = DEFAULT_SETTINGS.tocRegex;
     }
@@ -2163,14 +1827,15 @@ export default class PuffsReaderPlugin extends Plugin {
     ) {
       this.settings.chapterTitleRegex = DEFAULT_SETTINGS.chapterTitleRegex;
     }
-    if (this.settings.readingStatsMinPageMs === 3000 || this.settings.readingStatsMinPageMs === 500) {
-      this.settings.readingStatsMinPageMs = DEFAULT_SETTINGS.readingStatsMinPageMs;
-    }
     this.progress = data?.progress ?? {};
     this.bookSettings = data?.bookSettings ?? {};
     this.tagCatalog = normalizeTagCatalog(data?.tagCatalog);
     this.authorTagOrder = this.normalizeAuthorTagOrder(data?.authorTagOrder);
+    const rawReadingStats = this.asRecord(data?.readingStats);
+    const needsReadingStatsMigration = Object.keys(rawReadingStats).length > 0
+      && Number(rawReadingStats.schemaVersion) !== 3;
     this.readingStats = this.normalizeReadingStats(data?.readingStats);
+    this.bookWordCountCache = this.normalizeBookWordCountCache(data?.bookWordCountCache);
     this.lastDataBackupAt = data?.lastDataBackupAt ?? 0;
     this.knownBooks = data?.knownBooks ?? [];
 
@@ -2182,6 +1847,10 @@ export default class PuffsReaderPlugin extends Plugin {
           encoding: progress.encoding,
         };
       }
+    }
+    if (needsReadingStatsMigration || hadLegacyReadingPageSetting) {
+      await this.backupDataJson();
+      await this.writePluginData();
     }
   }
 
@@ -2203,37 +1872,63 @@ export default class PuffsReaderPlugin extends Plugin {
       tagCatalog: this.tagCatalog,
       authorTagOrder: this.authorTagOrder,
       readingStats: this.readingStats,
+      bookWordCountCache: this.bookWordCountCache,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks,
     } as PluginData);
   }
 
-  private normalizeReadingStats(input: ReadingStatsData | undefined): ReadingStatsData {
-    if (!input || input.schemaVersion !== 2) {
-      return { schemaVersion: 2, books: {}, daily: {} };
-    }
+  private normalizeReadingStats(input: unknown): ReadingStatsData {
+    const raw = this.asRecord(input);
+    const schemaVersion = Number(raw.schemaVersion);
     const books: ReadingStatsData['books'] = {};
-    for (const [filePath, book] of Object.entries(input?.books ?? {})) {
+    for (const [filePath, value] of Object.entries(this.asRecord(raw.books))) {
+      const book = this.asRecord(value);
+      const readingDates = schemaVersion === 3
+        ? this.normalizeReadingDates(book.readingDates)
+        : this.normalizeReadingDates(
+          Object.entries(this.asRecord(book.daily))
+            .filter(([, item]) => {
+              const daily = this.asRecord(item);
+              return this.safeNonNegativeNumber(daily.readingMs) > 0
+                || this.safeNonNegativeNumber(daily.readWords) > 0;
+            })
+            .map(([date]) => date),
+        );
       books[filePath] = {
-        title: book.title || filePath.split('/').pop()?.replace(/\.txt$/i, '') || filePath,
+        title: typeof book.title === 'string' && book.title.trim()
+          ? book.title
+          : filePath.split('/').pop()?.replace(/\.txt$/i, '') || filePath,
         totalReadingMs: this.safeNonNegativeNumber(book.totalReadingMs),
-        totalReadWords: this.safeNonNegativeNumber(book.totalReadWords),
-        countedRanges: this.mergeCountedRanges(book.countedRanges ?? []),
-        readChapterRanges: this.mergeChapterRanges(book.readChapterRanges ?? []),
-        daily: this.normalizeBookDailyStats(book.daily),
+        readingDates,
         lastReadAt: this.safeNonNegativeNumber(book.lastReadAt),
       };
     }
+    return { schemaVersion: 3, books };
+  }
 
-    const daily: ReadingStatsData['daily'] = {};
-    for (const [date, item] of Object.entries(input?.daily ?? {})) {
-      daily[date] = {
-        readingMs: this.safeNonNegativeNumber(item.readingMs),
-        readWords: this.safeNonNegativeNumber(item.readWords),
-        bookPaths: [...new Set((item.bookPaths ?? []).filter(Boolean))],
+  private normalizeReadingDates(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter(
+      (date): date is string => typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date),
+    ))].sort();
+  }
+
+  private normalizeBookWordCountCache(input: unknown): Record<string, BookWordCountCacheEntry> {
+    const result: Record<string, BookWordCountCacheEntry> = {};
+    for (const [filePath, value] of Object.entries(this.asRecord(input))) {
+      const item = this.asRecord(value);
+      const mtime = this.safeNonNegativeNumber(item.mtime);
+      const encodingKey = typeof item.encodingKey === 'string' ? item.encodingKey.trim() : '';
+      const totalWords = Number(item.totalWords);
+      if (mtime <= 0 || !encodingKey || !Number.isFinite(totalWords) || totalWords < 0) continue;
+      result[filePath] = {
+        mtime,
+        encodingKey,
+        totalWords: Math.floor(totalWords),
       };
     }
-    return { schemaVersion: 2, books, daily };
+    return result;
   }
 
   private safeNonNegativeNumber(value: unknown): number {
@@ -2241,16 +1936,10 @@ export default class PuffsReaderPlugin extends Plugin {
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
 
-  private normalizeBookDailyStats(input: Record<string, BookDailyReadingStats> | undefined): Record<string, BookDailyReadingStats> {
-    const result: Record<string, BookDailyReadingStats> = {};
-    for (const [date, item] of Object.entries(input ?? {})) {
-      result[date] = {
-        readingMs: this.safeNonNegativeNumber(item.readingMs),
-        readWords: this.safeNonNegativeNumber(item.readWords),
-        readChapterRanges: this.mergeChapterRanges(item.readChapterRanges ?? []),
-      };
-    }
-    return result;
+  private asRecord(value: unknown): UnknownRecord {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? value as UnknownRecord
+      : {};
   }
 
   private scheduleNextDataBackup(): void {
@@ -2453,22 +2142,54 @@ export default class PuffsReaderPlugin extends Plugin {
     await this.savePluginData();
   }
 
+  async getBookTotalWordCount(filePath: string): Promise<number> {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) throw new Error(`Book file not found: ${filePath}`);
+    const encodingKey = this.getBookWordCountEncodingKey(filePath);
+    const cached = this.bookWordCountCache[filePath];
+    if (cached?.mtime === file.stat.mtime && cached.encodingKey === encodingKey) {
+      return cached.totalWords;
+    }
+
+    const buffer = await this.app.vault.readBinary(file);
+    const forcedEncoding = this.bookSettings[filePath]?.encoding ?? this.progress[filePath]?.encoding;
+    const decoded = decodeTxtBuffer(buffer, forcedEncoding, this.settings.defaultEncoding);
+    return this.cacheBookWordCountFromText(file, decoded.text);
+  }
+
+  async cacheBookWordCountFromText(file: TFile, text: string): Promise<number> {
+    const totalWords = text.replace(/\s/g, '').length;
+    const next: BookWordCountCacheEntry = {
+      mtime: file.stat.mtime,
+      encodingKey: this.getBookWordCountEncodingKey(file.path),
+      totalWords,
+    };
+    const current = this.bookWordCountCache[file.path];
+    if (
+      current?.mtime === next.mtime
+      && current.encodingKey === next.encodingKey
+      && current.totalWords === next.totalWords
+    ) {
+      return totalWords;
+    }
+    this.bookWordCountCache[file.path] = next;
+    await this.savePluginData();
+    return totalWords;
+  }
+
+  private getBookWordCountEncodingKey(filePath: string): string {
+    const forcedEncoding = this.bookSettings[filePath]?.encoding ?? this.progress[filePath]?.encoding;
+    return forcedEncoding
+      ? `forced:${forcedEncoding.trim().toLowerCase()}`
+      : `auto:${this.settings.defaultEncoding.trim().toLowerCase()}`;
+  }
+
   async deleteReadingStatsGroup(groupKey: string): Promise<void> {
     const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
     if (filePaths.length === 0) return;
     let changed = false;
     for (const filePath of filePaths) {
       changed = this.deleteBookReadingStatsInMemory(filePath) || changed;
-    }
-    if (changed) await this.savePluginData();
-  }
-
-  async deleteReadingStatsGroupDaily(groupKey: string, date: string): Promise<void> {
-    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
-    if (filePaths.length === 0) return;
-    let changed = false;
-    for (const filePath of filePaths) {
-      changed = this.deleteBookDailyReadingStatsInMemory(filePath, date) || changed;
     }
     if (changed) await this.savePluginData();
   }
@@ -2481,37 +2202,7 @@ export default class PuffsReaderPlugin extends Plugin {
   private deleteBookReadingStatsInMemory(filePath: string): boolean {
     const book = this.readingStats.books[filePath];
     if (!book) return false;
-    for (const [date, item] of Object.entries(book.daily ?? {})) {
-      this.removeBookContributionFromDaily(date, filePath, item.readingMs, item.readWords);
-    }
     delete this.readingStats.books[filePath];
-    return true;
-  }
-
-  async deleteBookDailyReadingStats(filePath: string, date: string): Promise<void> {
-    if (!this.deleteBookDailyReadingStatsInMemory(filePath, date)) return;
-    await this.savePluginData();
-  }
-
-  private deleteBookDailyReadingStatsInMemory(filePath: string, date: string): boolean {
-    const book = this.readingStats.books[filePath];
-    const daily = book?.daily?.[date];
-    if (!book || !daily) return false;
-
-    this.removeBookContributionFromDaily(date, filePath, daily.readingMs, daily.readWords);
-    delete book.daily[date];
-
-    const remainingDaily = Object.entries(book.daily ?? {});
-    if (remainingDaily.length === 0) {
-      delete this.readingStats.books[filePath];
-      return true;
-    }
-
-    book.totalReadingMs = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readingMs), 0);
-    book.totalReadWords = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readWords), 0);
-    book.readChapterRanges = this.mergeChapterRanges(remainingDaily.flatMap(([, item]) => item.readChapterRanges ?? []));
-    book.lastReadAt = Math.max(...remainingDaily.map(([day]) => this.getEndOfLocalDayTimestamp(day)), 0);
-    this.readingStats.books[filePath] = book;
     return true;
   }
 
@@ -2528,88 +2219,22 @@ export default class PuffsReaderPlugin extends Plugin {
   async recordReadingStat(record: ReadingStatRecord): Promise<void> {
     const timestamp = record.timestamp ?? Date.now();
     const readingMs = this.safeNonNegativeNumber(record.readingMs);
-    const readWords = this.safeNonNegativeNumber(record.readWords);
-    const hasRange = !!record.countedRange && record.countedRange.end > record.countedRange.start;
-    const hasChapterRanges = (record.chapterRanges?.length ?? 0) > 0;
-    if (readingMs <= 0 && readWords <= 0 && !hasRange && !hasChapterRanges) return;
+    if (readingMs <= 0) return;
 
     const existing = this.readingStats.books[record.filePath];
     const dayKey = this.getLocalDateKey(timestamp);
     const book = existing ?? {
       title: record.title,
       totalReadingMs: 0,
-      totalReadWords: 0,
-      countedRanges: [],
-      readChapterRanges: [],
-      daily: {},
+      readingDates: [],
       lastReadAt: 0,
     };
     book.title = record.title || book.title;
     book.totalReadingMs += readingMs;
-    book.totalReadWords += readWords;
-    if (record.countedRange && record.countedRange.end > record.countedRange.start) {
-      book.countedRanges = this.mergeCountedRanges([...book.countedRanges, record.countedRange]);
-    }
-    if (record.chapterRanges && record.chapterRanges.length > 0) {
-      book.readChapterRanges = this.mergeChapterRanges([...book.readChapterRanges, ...record.chapterRanges]);
-    }
-    const bookDaily = book.daily[dayKey] ?? { readingMs: 0, readWords: 0, readChapterRanges: [] };
-    bookDaily.readingMs += readingMs;
-    bookDaily.readWords += readWords;
-    if (record.chapterRanges && record.chapterRanges.length > 0) {
-      bookDaily.readChapterRanges = this.mergeChapterRanges([...bookDaily.readChapterRanges, ...record.chapterRanges]);
-    }
-    book.daily[dayKey] = bookDaily;
+    book.readingDates = this.normalizeReadingDates([...book.readingDates, dayKey]);
     book.lastReadAt = Math.max(book.lastReadAt, timestamp);
     this.readingStats.books[record.filePath] = book;
-
-    const daily = this.readingStats.daily[dayKey] ?? { readingMs: 0, readWords: 0, bookPaths: [] };
-    daily.readingMs += readingMs;
-    daily.readWords += readWords;
-    if (!daily.bookPaths.includes(record.filePath)) daily.bookPaths.push(record.filePath);
-    this.readingStats.daily[dayKey] = daily;
-
     await this.savePluginData();
-  }
-
-  private mergeCountedRanges(ranges: CountedRange[]): CountedRange[] {
-    const sorted = ranges
-      .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end > range.start)
-      .map((range) => ({ start: Math.floor(range.start), end: Math.floor(range.end) }))
-      .sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged: CountedRange[] = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end) {
-        merged.push({ ...range });
-      } else {
-        last.end = Math.max(last.end, range.end);
-      }
-    }
-    return merged;
-  }
-
-  private mergeChapterRanges(ranges: ReadChapterRange[]): ReadChapterRange[] {
-    const sorted = ranges
-      .filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end >= range.start)
-      .map((range) => ({
-        start: Math.floor(range.start),
-        end: Math.floor(range.end),
-        startTitle: range.startTitle || '未识别章节',
-        endTitle: range.endTitle || range.startTitle || '未识别章节',
-      }))
-      .sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged: ReadChapterRange[] = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end + 1) {
-        merged.push({ ...range });
-      } else if (range.end > last.end) {
-        last.end = range.end;
-        last.endTitle = range.endTitle;
-      }
-    }
-    return merged;
   }
 
   private getLocalDateKey(timestamp: number): string {
@@ -2618,25 +2243,6 @@ export default class PuffsReaderPlugin extends Plugin {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  }
-
-  private getEndOfLocalDayTimestamp(date: string): number {
-    const [year, month, day] = date.split('-').map((part) => Number(part));
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return 0;
-    return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
-  }
-
-  private removeBookContributionFromDaily(date: string, filePath: string, readingMs: number, readWords: number): void {
-    const daily = this.readingStats.daily[date];
-    if (!daily) return;
-    daily.readingMs = Math.max(0, this.safeNonNegativeNumber(daily.readingMs) - this.safeNonNegativeNumber(readingMs));
-    daily.readWords = Math.max(0, this.safeNonNegativeNumber(daily.readWords) - this.safeNonNegativeNumber(readWords));
-    daily.bookPaths = (daily.bookPaths ?? []).filter((path) => path !== filePath);
-    if (daily.readingMs <= 0 && daily.readWords <= 0 && daily.bookPaths.length === 0) {
-      delete this.readingStats.daily[date];
-    } else {
-      this.readingStats.daily[date] = daily;
-    }
   }
 
   private async markBookAsRecentlyRead(filePath: string): Promise<void> {

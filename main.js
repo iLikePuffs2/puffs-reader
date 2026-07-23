@@ -139,13 +139,49 @@ var DEFAULT_SETTINGS = {
   dataBackupPath: "",
   dataBackupFrequencyHours: 24,
   bookLibraryPath: "",
-  readingStatsMinPageMs: 100,
   readingStatsIdleLimitMs: 12e4
 };
 
+// src/textEncoding.ts
+function decodeTxtBuffer(buffer, forceEncoding, fallbackEncoding = "utf-8") {
+  if (forceEncoding) {
+    try {
+      return {
+        text: new TextDecoder(forceEncoding, { fatal: false }).decode(buffer),
+        encoding: forceEncoding
+      };
+    } catch (e) {
+    }
+  }
+  const bytes = new Uint8Array(buffer);
+  if (bytes.length >= 3 && bytes[0] === 239 && bytes[1] === 187 && bytes[2] === 191) {
+    return { text: new TextDecoder("utf-8").decode(buffer), encoding: "utf-8" };
+  }
+  if (bytes.length >= 2 && bytes[0] === 255 && bytes[1] === 254) {
+    return { text: new TextDecoder("utf-16le").decode(buffer), encoding: "utf-16le" };
+  }
+  if (bytes.length >= 2 && bytes[0] === 254 && bytes[1] === 255) {
+    return { text: new TextDecoder("utf-16be").decode(buffer), encoding: "utf-16be" };
+  }
+  try {
+    return {
+      text: new TextDecoder("utf-8", { fatal: true }).decode(buffer),
+      encoding: "utf-8"
+    };
+  } catch (e) {
+  }
+  try {
+    return { text: new TextDecoder("gbk").decode(buffer), encoding: "gbk" };
+  } catch (e) {
+    return {
+      text: new TextDecoder(fallbackEncoding, { fatal: false }).decode(buffer),
+      encoding: fallbackEncoding
+    };
+  }
+}
+
 // src/ReaderView.ts
 var READER_VIEW_TYPE = "puffs-reader-view";
-var DEFAULT_READING_STATS_PAGE_MIN_MS = 100;
 var DEFAULT_READING_STATS_IDLE_LIMIT_MS = 2 * 60 * 1e3;
 var ReaderView = class extends import_obsidian2.ItemView {
   constructor(leaf, plugin) {
@@ -170,8 +206,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     this.isTypographyOpen = false;
     this.isRenderingPage = false;
     this.progressSaveTimer = 0;
-    this.readingStatsTimer = 0;
-    this.readingStatsPageKey = "";
     this.readingStatsLastTurnAt = 0;
     this.searchTimer = 0;
     this.cursorHideTimer = 0;
@@ -209,7 +243,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     (_a = this.chapterCopyModal) == null ? void 0 : _a.close();
     this.chapterCopyModal = null;
     this.settleReadingStatsTime();
-    this.clearReadingStatsPageTimer();
     this.saveProgressNow();
     window.clearTimeout(this.progressSaveTimer);
     window.clearTimeout(this.searchTimer);
@@ -233,7 +266,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     const path = viewState == null ? void 0 : viewState.file;
     if (path && path !== this.filePath) {
       this.settleReadingStatsTime();
-      this.clearReadingStatsPageTimer();
       this.filePath = path;
       const file = this.app.vault.getAbstractFileByPath(path);
       if (file instanceof import_obsidian2.TFile) {
@@ -293,12 +325,10 @@ var ReaderView = class extends import_obsidian2.ItemView {
       this.app.workspace.on("active-leaf-change", (leaf) => {
         if (leaf === this.leaf) {
           this.readingStatsLastTurnAt = Date.now();
-          this.scheduleReadingPageStats();
           this.focusReader();
           this.resetCursorIdleState();
         } else {
           this.settleReadingStatsTime();
-          this.clearReadingStatsPageTimer();
           this.showCursor();
           this.clearCursorHideTimer();
         }
@@ -395,6 +425,7 @@ var ReaderView = class extends import_obsidian2.ItemView {
     const bookSettings = this.getBookSettings();
     const { text, encoding } = this.decodeBuffer(this.fileBuffer, (_a = bookSettings.encoding) != null ? _a : saved == null ? void 0 : saved.encoding);
     this.currentEncoding = encoding;
+    void this.plugin.cacheBookWordCountFromText(this.currentFile, text).catch((error) => console.error("[Puffs Reader] Failed to cache book word count:", error));
     this.paragraphs = this.processText(text);
     this.rebuildParagraphStartOffsets();
     this.parseChapters();
@@ -421,48 +452,17 @@ var ReaderView = class extends import_obsidian2.ItemView {
     });
   }
   decodeBuffer(buffer, forceEncoding) {
-    if (forceEncoding) {
-      try {
-        return {
-          text: new TextDecoder(forceEncoding, { fatal: false }).decode(buffer),
-          encoding: forceEncoding
-        };
-      } catch (e) {
-      }
-    }
-    const bytes = new Uint8Array(buffer);
-    if (bytes.length >= 3 && bytes[0] === 239 && bytes[1] === 187 && bytes[2] === 191) {
-      return { text: new TextDecoder("utf-8").decode(buffer), encoding: "utf-8" };
-    }
-    if (bytes.length >= 2 && bytes[0] === 255 && bytes[1] === 254) {
-      return { text: new TextDecoder("utf-16le").decode(buffer), encoding: "utf-16le" };
-    }
-    if (bytes.length >= 2 && bytes[0] === 254 && bytes[1] === 255) {
-      return { text: new TextDecoder("utf-16be").decode(buffer), encoding: "utf-16be" };
-    }
-    try {
-      return {
-        text: new TextDecoder("utf-8", { fatal: true }).decode(buffer),
-        encoding: "utf-8"
-      };
-    } catch (e) {
-    }
-    try {
-      return { text: new TextDecoder("gbk").decode(buffer), encoding: "gbk" };
-    } catch (e) {
-      const fallback = this.plugin.settings.defaultEncoding;
-      return { text: new TextDecoder(fallback, { fatal: false }).decode(buffer), encoding: fallback };
-    }
+    return decodeTxtBuffer(buffer, forceEncoding, this.plugin.settings.defaultEncoding);
   }
   switchEncoding(encoding) {
     if (!this.fileBuffer || !this.currentFile) return;
     this.settleReadingStatsTime();
-    this.clearReadingStatsPageTimer();
     const { text } = this.decodeBuffer(this.fileBuffer, encoding);
     this.currentEncoding = encoding;
     this.paragraphs = this.processText(text);
     this.rebuildParagraphStartOffsets();
     this.updateBookSettings({ encoding });
+    void this.plugin.cacheBookWordCountFromText(this.currentFile, text).catch((error) => console.error("[Puffs Reader] Failed to cache book word count:", error));
     this.parseChapters();
     this.buildTocList();
     this.currentPageStart = { paraIndex: 0, charOffset: 0 };
@@ -592,7 +592,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     }
     try {
       this.settleReadingStatsTime();
-      this.clearReadingStatsPageTimer();
       await this.app.vault.modify(this.currentFile, fixed.text);
       this.fileBuffer = new TextEncoder().encode(fixed.text).buffer;
       this.currentEncoding = "utf-8";
@@ -613,7 +612,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
   }
   renderCurrentPage() {
     if (this.paragraphs.length === 0) {
-      this.clearReadingStatsPageTimer();
       this.contentContainer.empty();
       this.chapterTitleEl.textContent = "";
       this.progressTitleEl.textContent = "";
@@ -633,7 +631,7 @@ var ReaderView = class extends import_obsidian2.ItemView {
     this.fillPaintedPageToFit();
     this.updatePageMeta();
     this.scheduleProgressSave();
-    this.scheduleReadingPageStats();
+    this.startReadingStatsSession();
     this.isRenderingPage = false;
   }
   /** 在真实容器内临时排版，找出当前页可以容纳到哪个字符位置。 */
@@ -917,7 +915,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     if (this.comparePositions(this.currentPageEnd, this.currentPageStart) <= 0) return false;
     if (this.currentPageEnd.paraIndex >= this.paragraphs.length) return false;
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.pageBackStack.push({ ...this.currentPageStart });
     this.currentPageStart = this.skipBlankPageStart(this.clampPosition(this.currentPageEnd));
     this.recordPageTurnAfterSearchJump();
@@ -929,7 +926,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
     var _a;
     if (this.currentPageStart.paraIndex === 0 && this.currentPageStart.charOffset === 0) return false;
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.currentPageStart = (_a = this.pageBackStack.pop()) != null ? _a : this.findPreviousPageStart(this.currentPageStart);
     this.recordPageTurnAfterSearchJump();
     this.renderCurrentPage();
@@ -971,7 +967,6 @@ var ReaderView = class extends import_obsidian2.ItemView {
   }
   jumpToPosition(pos) {
     this.settleReadingStatsTime(Date.now(), true);
-    this.clearReadingStatsPageTimer();
     this.currentPageStart = this.clampPosition(pos);
     this.pageBackStack = [];
     this.renderCurrentPage();
@@ -1043,58 +1038,9 @@ var ReaderView = class extends import_obsidian2.ItemView {
     }
     return { paraIndex: this.paragraphs.length, charOffset: 0 };
   }
-  getCurrentPageStatsRange() {
-    if (this.paragraphs.length === 0) return null;
-    const start = this.clampPosition(this.currentPageStart);
-    const end = this.clampPosition(this.currentPageEnd);
-    const startOffset = this.positionToGlobalOffset(start);
-    const endOffset = this.positionToGlobalOffset(end);
-    if (endOffset <= startOffset) return null;
-    return { start, end, startOffset, endOffset };
-  }
-  scheduleReadingPageStats() {
-    this.clearReadingStatsPageTimer();
-    if (!this.currentFile || this.paragraphs.length === 0) return;
-    if (!this.isReadingStatsActive()) return;
-    const range = this.getCurrentPageStatsRange();
-    if (!range) return;
+  startReadingStatsSession() {
+    if (!this.currentFile || this.paragraphs.length === 0 || !this.isReadingStatsActive()) return;
     if (this.readingStatsLastTurnAt === 0) this.readingStatsLastTurnAt = Date.now();
-    const pageKey = this.getReadingStatsPageKey(range);
-    this.readingStatsPageKey = pageKey;
-    this.readingStatsTimer = window.setTimeout(() => {
-      this.commitReadingPageStats(pageKey);
-    }, this.getReadingStatsMinPageMs());
-  }
-  clearReadingStatsPageTimer() {
-    if (this.readingStatsTimer) {
-      window.clearTimeout(this.readingStatsTimer);
-      this.readingStatsTimer = 0;
-    }
-    this.readingStatsPageKey = "";
-  }
-  getReadingStatsPageKey(range) {
-    var _a, _b;
-    return `${(_b = (_a = this.currentFile) == null ? void 0 : _a.path) != null ? _b : ""}:${range.startOffset}:${range.endOffset}`;
-  }
-  commitReadingPageStats(pageKey) {
-    var _a, _b;
-    if (!this.currentFile || !this.isReadingStatsActive()) return;
-    const range = this.getCurrentPageStatsRange();
-    if (!range || pageKey !== this.getReadingStatsPageKey(range)) return;
-    const countedRange = { start: range.startOffset, end: range.endOffset };
-    const existingRanges = (_b = (_a = this.plugin.getReadingStats().books[this.currentFile.path]) == null ? void 0 : _a.countedRanges) != null ? _b : [];
-    const uncountedRanges = this.getUncountedRanges(countedRange, existingRanges);
-    if (uncountedRanges.length === 0) return;
-    const readWords = this.countWordsInGlobalRanges(uncountedRanges);
-    const chapterRanges = this.getReadChapterRangesForPage(range.start, range.end);
-    this.plugin.recordReadingStat({
-      filePath: this.currentFile.path,
-      title: this.currentFile.basename,
-      readWords,
-      countedRange,
-      chapterRanges,
-      timestamp: Date.now()
-    }).catch((error) => console.error("[Puffs Reader] Failed to record reading page stats:", error));
   }
   settleReadingStatsTime(now = Date.now(), keepSession = false) {
     if (!this.currentFile || this.readingStatsLastTurnAt <= 0) {
@@ -1116,82 +1062,9 @@ var ReaderView = class extends import_obsidian2.ItemView {
   isReadingStatsActive() {
     return this.app.workspace.activeLeaf === this.leaf && document.hasFocus();
   }
-  getReadingStatsMinPageMs() {
-    const value = Number(this.plugin.settings.readingStatsMinPageMs);
-    return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_PAGE_MIN_MS;
-  }
   getReadingStatsIdleLimitMs() {
     const value = Number(this.plugin.settings.readingStatsIdleLimitMs);
     return Number.isFinite(value) && value > 0 ? value : DEFAULT_READING_STATS_IDLE_LIMIT_MS;
-  }
-  getUncountedRanges(range, existing) {
-    let pending = [{ ...range }];
-    const sorted = [...existing].filter((item) => item.end > item.start).sort((a, b) => a.start - b.start || a.end - b.end);
-    for (const counted of sorted) {
-      const next = [];
-      for (const item of pending) {
-        if (counted.end <= item.start || counted.start >= item.end) {
-          next.push(item);
-          continue;
-        }
-        if (counted.start > item.start) {
-          next.push({ start: item.start, end: Math.min(counted.start, item.end) });
-        }
-        if (counted.end < item.end) {
-          next.push({ start: Math.max(counted.end, item.start), end: item.end });
-        }
-      }
-      pending = next;
-      if (pending.length === 0) break;
-    }
-    return pending.filter((item) => item.end > item.start);
-  }
-  countWordsInGlobalRanges(ranges) {
-    return ranges.reduce((sum, range) => sum + this.getTextInGlobalRange(range.start, range.end).replace(/\s+/g, "").length, 0);
-  }
-  getTextInGlobalRange(startOffset, endOffset) {
-    var _a;
-    const start = this.globalOffsetToPosition(startOffset);
-    const end = this.globalOffsetToPosition(endOffset);
-    const parts = [];
-    for (let pi = start.paraIndex; pi <= end.paraIndex && pi < this.paragraphs.length; pi++) {
-      const paragraph = (_a = this.paragraphs[pi]) != null ? _a : "";
-      const begin = pi === start.paraIndex ? start.charOffset : 0;
-      const finish = pi === end.paraIndex ? end.charOffset : paragraph.length;
-      if (finish > begin) parts.push(paragraph.slice(begin, finish));
-    }
-    return parts.join("\n");
-  }
-  getReadChapterRangesForPage(start, end) {
-    var _a, _b;
-    if (this.chapters.length === 0) {
-      return [{ start: -1, end: -1, startTitle: "\u672A\u8BC6\u522B\u7AE0\u8282", endTitle: "\u672A\u8BC6\u522B\u7AE0\u8282" }];
-    }
-    const startPara = Math.max(0, Math.min(start.paraIndex, Math.max(0, this.paragraphs.length - 1)));
-    const endPara = this.getVisiblePageEndParaIndex(start, end);
-    const indices = [];
-    for (let i = 0; i < this.chapters.length; i++) {
-      const chapterStart = this.chapters[i].startParaIndex;
-      const chapterEnd = (_b = (_a = this.chapters[i + 1]) == null ? void 0 : _a.startParaIndex) != null ? _b : this.paragraphs.length;
-      if (chapterStart <= endPara && chapterEnd > startPara) indices.push(i);
-    }
-    if (indices.length === 0) {
-      return [{ start: -1, end: -1, startTitle: "\u672A\u8BC6\u522B\u7AE0\u8282", endTitle: "\u672A\u8BC6\u522B\u7AE0\u8282" }];
-    }
-    const startIndex = indices[0];
-    const endIndex = indices[indices.length - 1];
-    return [{
-      start: startIndex,
-      end: endIndex,
-      startTitle: this.chapters[startIndex].title,
-      endTitle: this.chapters[endIndex].title
-    }];
-  }
-  getVisiblePageEndParaIndex(start, end) {
-    if (this.paragraphs.length === 0) return 0;
-    if (end.paraIndex >= this.paragraphs.length) return this.paragraphs.length - 1;
-    if (end.charOffset === 0 && end.paraIndex > start.paraIndex) return end.paraIndex - 1;
-    return Math.max(start.paraIndex, end.paraIndex);
   }
   parseChapters() {
     this.chapters = [];
@@ -3197,15 +3070,6 @@ var SettingsTab = class extends import_obsidian3.PluginSettingTab {
     this.addNumberSetting("\u9F20\u6807\u9690\u85CF\u5EF6\u8FDF", "\u9605\u8BFB\u5668\u6807\u7B7E\u9875\u6FC0\u6D3B\u65F6\uFF0C\u9F20\u6807\u9759\u6B62\u591A\u4E45\u540E\u9690\u85CF\u5149\u6807\u3002\u8BBE\u4E3A 0 \u5219\u4E0D\u81EA\u52A8\u9690\u85CF\u3002", "cursorHideDelayMs", 0, 1e4, 100, "ms");
     this.addNumberSetting("\u6BCF\u79D2\u624B\u52A8\u7FFB\u9875\u901F\u5EA6\u4E0A\u9650", "\u6309\u952E\u76D8\u65B9\u5411\u952E\u7FFB\u9875\u65F6\uFF0C\u6BCF\u79D2\u6700\u591A\u5141\u8BB8\u7FFB\u8FC7\u7684\u9875\u6570\u3002", "manualPageTurnsPerSecond", 1, 20, 1, "\u9875/\u79D2");
     containerEl.createEl("h3", { text: "\u9605\u8BFB\u7EDF\u8BA1" });
-    this.addNumberSetting(
-      "\u8BA1\u5165\u5DF2\u8BFB\u505C\u7559\u65F6\u95F4",
-      "\u9875\u9762\u81F3\u5C11\u505C\u7559\u591A\u4E45\u540E\uFF0C\u624D\u8BA1\u5165\u5DF2\u8BFB\u5B57\u6570\u548C\u5DF2\u8BFB\u7AE0\u8282\u3002",
-      "readingStatsMinPageMs",
-      100,
-      6e4,
-      100,
-      "ms"
-    );
     this.addNumberSettingInMinutes(
       "\u9605\u8BFB\u8BA1\u65F6\u7A7A\u95F2\u622A\u6B62",
       "\u5728\u540C\u4E00\u9875\u505C\u7559\u8D85\u8FC7\u591A\u4E45\u540E\uFF0C\u505C\u6B62\u7EE7\u7EED\u7D2F\u8BA1\u9605\u8BFB\u65F6\u957F\uFF0C\u76F4\u5230\u4E0B\u4E00\u6B21\u7FFB\u9875\u6216\u8DF3\u8F6C\u3002",
@@ -3421,7 +3285,6 @@ var LEGACY_DEFAULT_CHAPTER_TITLE_REGEX = "^\\s*\u7B2C([\u96F6\u3007\u4E00\u4E8C\
 var LEGACY_PROLOGUE_TOC_REGEX = "^\\s*(?:\u7B2C[\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+[\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7].*|(?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?)$";
 var LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX = "^\\s*(?:\u7B2C([\u96F6\u3007\u4E00\u4E8C\u4E09\u56DB\u4E94\u516D\u4E03\u516B\u4E5D\u5341\u767E\u5343\u4E07\u4EBF\u4E24\\d]+)([\u7AE0\u8282\u56DE\u5377\u96C6\u90E8\u7BC7])\\s*(.*)|((?:\u5E8F\u7AE0|\u6954\u5B50|\u5F15\u5B50)(?:\\s+.*)?))$";
 var SUMMARY_BOOK_SUFFIX = "-\u6982\u62EC\u7248";
-var UNRECOGNIZED_CHAPTER_TITLE = "\u672A\u8BC6\u522B\u7AE0\u8282";
 function createEmptyBookTags() {
   return { authors: [], genre: [], feature: [], accumulation: [] };
 }
@@ -4032,9 +3895,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     super(leaf);
     this.selectedBookPath = null;
     this.renderVersion = 0;
-    this.globalMetric = null;
-    this.bookMetric = null;
-    this.speedUnit = "hour";
     this.untaggedOnly = false;
     this.bookSearchOpen = false;
     this.bookSearchQuery = "";
@@ -4043,6 +3903,8 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.globalBookSectionTitleEl = null;
     this.globalBookListEl = null;
     this.globalSummaryBookCountEl = null;
+    this.globalSummaryReadingDaysEl = null;
+    this.globalSummaryReadingTimeEl = null;
     this.tagFilters = {
       genre: /* @__PURE__ */ new Set(),
       serialStatus: /* @__PURE__ */ new Set(),
@@ -4099,8 +3961,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
   }
   showGlobalDefault() {
     this.selectedBookPath = null;
-    this.globalMetric = null;
-    this.bookMetric = null;
     this.render();
   }
   getState() {
@@ -4118,6 +3978,8 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.globalBookSectionTitleEl = null;
     this.globalBookListEl = null;
     this.globalSummaryBookCountEl = null;
+    this.globalSummaryReadingDaysEl = null;
+    this.globalSummaryReadingTimeEl = null;
     this.contentEl.addClass("puffs-reading-stats-view");
     const page = this.contentEl.createDiv({ cls: "puffs-reading-stats-page" });
     if (this.selectedBookPath) {
@@ -4128,26 +3990,15 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
   }
   renderGlobal(parent) {
     const state = this.getGlobalBookListState();
-    const dailyEntries = this.getDailyEntriesForBooks(state.books).sort((a, b) => a[0].localeCompare(b[0]));
-    const totalReadingMs = dailyEntries.reduce((sum, [, item]) => sum + item.readingMs, 0);
-    const totalReadWords = dailyEntries.reduce((sum, [, item]) => sum + item.readWords, 0);
-    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    const totalReadingMs = state.books.reduce((sum, book) => sum + book.totalReadingMs, 0);
+    const readingDays = new Set(state.books.flatMap((book) => book.readingDates)).size;
     this.renderHeader(parent, "\u9605\u8BFB\u7EDF\u8BA1", false, (actions) => this.renderRefreshButton(actions));
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-global");
     this.globalSummaryBookCountEl = this.createSummaryItem(summary, "\u4E66\u7C4D\u6570\u91CF", `${state.summaryBookCount} \u672C`);
-    this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
-    this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(totalReadWords), "words", this.globalMetric === "words", () => this.toggleGlobalMetric("words"));
-    this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(totalReadingMs), "time", this.globalMetric === "time", () => this.toggleGlobalMetric("time"));
-    this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(totalReadWords, totalReadingMs, "hour"), "speed", this.globalMetric === "speed", () => this.toggleGlobalMetric("speed"));
+    this.globalSummaryReadingDaysEl = this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
+    this.globalSummaryReadingTimeEl = this.createSummaryItem(summary, "\u9605\u8BFB\u65F6\u957F", this.formatCompactDuration(totalReadingMs));
     this.renderTagFilters(parent, state.filterOptionBooks);
-    if (this.globalMetric) {
-      this.renderMetricChart(parent, this.globalMetric, dailyEntries.map(([date, item]) => ({
-        date,
-        readWords: item.readWords,
-        readingMs: item.readingMs
-      })));
-    }
     this.globalBookSectionTitleEl = this.createSectionTitle(parent, "\u4E66\u7C4D\u5217\u8868", (actions) => this.renderBookSearchActions(actions));
     this.globalBookListEl = parent.createDiv({ cls: "puffs-reading-stats-list" });
     this.renderGlobalBookList(this.globalBookListEl, state);
@@ -4163,10 +4014,13 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     return { hasFilters, hasSearch, useFullLibrary, filterOptionBooks, books, summaryBookCount };
   }
   refreshGlobalBookList() {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const state = this.getGlobalBookListState();
     (_a = this.globalBookSectionTitleEl) == null ? void 0 : _a.setText("\u4E66\u7C4D\u5217\u8868");
     (_b = this.globalSummaryBookCountEl) == null ? void 0 : _b.setText(`${state.summaryBookCount} \u672C`);
+    const totalReadingMs = state.books.reduce((sum, book) => sum + book.totalReadingMs, 0);
+    (_c = this.globalSummaryReadingDaysEl) == null ? void 0 : _c.setText(`${new Set(state.books.flatMap((book) => book.readingDates)).size} \u5929`);
+    (_d = this.globalSummaryReadingTimeEl) == null ? void 0 : _d.setText(this.formatCompactDuration(totalReadingMs));
     if (!this.globalBookListEl) return;
     this.globalBookListEl.empty();
     this.renderGlobalBookList(this.globalBookListEl, state);
@@ -4201,10 +4055,8 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       const meta = main.createDiv({ cls: "puffs-reading-stats-book-meta" });
       meta.createSpan({
         text: [
-          `\u65F6\u957F ${this.formatCompactDuration(book.totalReadingMs)}`,
-          `\u5B57\u6570 ${this.formatCompactNumber(book.totalReadWords)}`,
-          `\u5E73\u5747\u9605\u8BFB\u901F\u5EA6 ${this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour")}`,
-          `\u6700\u8FD1 ${this.formatDateTime(book.lastReadAt)}`
+          `\u9605\u8BFB\u65F6\u957F ${this.formatCompactDuration(book.totalReadingMs)}`,
+          `\u6700\u8FD1\u9605\u8BFB ${this.formatDateTime(book.lastReadAt)}`
         ].join("\uFF1B")
       });
       const arrow = card.createSpan({ cls: "puffs-reading-stats-book-arrow" });
@@ -4212,7 +4064,7 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     }
   }
   renderBookDetail(parent, groupKey) {
-    var _a, _b;
+    var _a;
     const books = this.getAggregatedBooks(true);
     const book = (_a = books.find((item) => item.groupKey === groupKey)) != null ? _a : books.find((item) => item.filePaths.includes(groupKey));
     if (!book) {
@@ -4226,49 +4078,29 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       this.renderOpenBookButton(actions, book);
       this.renderRefreshButton(actions);
     });
-    const dailyEntries = Object.entries((_b = book.daily) != null ? _b : {}).sort((a, b) => b[0].localeCompare(a[0]));
-    const readingDays = dailyEntries.filter(([, item]) => item.readingMs > 0 || item.readWords > 0).length;
+    const readingDays = book.readingDates.length;
     const summary = parent.createDiv({ cls: "puffs-reading-stats-summary" });
     summary.addClass("is-detail");
+    const totalWordsEl = this.createSummaryItem(summary, "\u4E66\u7C4D\u5B57\u6570", "\u8BA1\u7B97\u4E2D\u2026");
     this.createSummaryItem(summary, "\u9605\u8BFB\u5929\u6570", `${readingDays} \u5929`);
-    this.createSummaryItem(summary, "\u7D2F\u8BA1\u5B57\u6570", this.formatCompactNumber(book.totalReadWords), "words", this.bookMetric === "words", () => this.toggleBookMetric("words"));
-    this.createSummaryItem(summary, "\u7D2F\u8BA1\u65F6\u957F", this.formatCompactDuration(book.totalReadingMs), "time", this.bookMetric === "time", () => this.toggleBookMetric("time"));
-    this.createSummaryItem(summary, "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6", this.formatSpeed(book.totalReadWords, book.totalReadingMs, "hour"), "speed", this.bookMetric === "speed", () => this.toggleBookMetric("speed"));
+    this.createSummaryItem(summary, "\u9605\u8BFB\u65F6\u957F", this.formatCompactDuration(book.totalReadingMs));
+    const wordCountPath = [book.originalFilePath, ...book.filePaths].filter((filePath) => !!filePath).find((filePath) => this.plugin.app.vault.getAbstractFileByPath(filePath) instanceof import_obsidian4.TFile);
+    const renderVersion = this.renderVersion;
+    if (wordCountPath) {
+      this.plugin.getBookTotalWordCount(wordCountPath).then((totalWords) => {
+        if (renderVersion !== this.renderVersion || this.selectedBookPath !== book.groupKey || !totalWordsEl.isConnected) return;
+        totalWordsEl.setText(this.formatCompactNumber(totalWords));
+      }).catch((error) => {
+        console.error("[Puffs Reader] Failed to load book word count:", error);
+        if (renderVersion === this.renderVersion && totalWordsEl.isConnected) totalWordsEl.setText("\u2014");
+      });
+    } else {
+      totalWordsEl.setText("\u2014");
+    }
     this.createSectionTitle(parent, "\u76F8\u5173\u6807\u7B7E", (actions) => {
       this.renderEditBookTagsButton(actions, book);
     });
     this.renderReadonlyTagRows(parent, book.tags);
-    if (this.bookMetric) {
-      this.renderMetricChart(parent, this.bookMetric, [...dailyEntries].reverse().map(([date, item]) => ({
-        date,
-        readWords: item.readWords,
-        readingMs: item.readingMs
-      })));
-    }
-    this.createSectionTitle(parent, "\u6BCF\u65E5\u660E\u7EC6");
-    const list = parent.createDiv({ cls: "puffs-reading-stats-list" });
-    const visibleDailyEntries = dailyEntries.filter(([, item]) => Math.round(item.readingMs / 6e4) > 0 && item.readWords > 0);
-    if (visibleDailyEntries.length === 0) {
-      list.createDiv({ cls: "puffs-reading-stats-empty", text: "\u8FD9\u672C\u4E66\u6682\u65E0\u6BCF\u65E5\u660E\u7EC6\u3002" });
-      return;
-    }
-    for (const [date, item] of visibleDailyEntries) {
-      const card = list.createDiv({ cls: "puffs-reading-stats-day" });
-      this.registerBookDailyStatsContextMenu(card, book.groupKey, date);
-      card.createDiv({ cls: "puffs-reading-stats-day-title", text: date });
-      const meta = card.createDiv({ cls: "puffs-reading-stats-book-meta" });
-      meta.createSpan({
-        text: [
-          `\u65F6\u957F ${this.formatCompactDuration(item.readingMs)}`,
-          `\u5B57\u6570 ${this.formatCompactNumber(item.readWords)}`,
-          `\u5E73\u5747\u9605\u8BFB\u901F\u5EA6 ${this.formatSpeed(item.readWords, item.readingMs, "hour")}`
-        ].join("\uFF1B")
-      });
-      const chapterText = this.formatChapterRanges(item.readChapterRanges, "\u9605\u8BFB\u7AE0\u8282");
-      if (chapterText) {
-        card.createDiv({ cls: "puffs-reading-stats-chapters puffs-reading-stats-day-chapters", text: chapterText });
-      }
-    }
   }
   renderHeader(parent, title, withBack = false, renderActions) {
     const header = parent.createDiv({ cls: "puffs-reading-stats-header" });
@@ -4414,30 +4246,12 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
   }
   goBackToGlobal() {
     this.selectedBookPath = null;
-    this.globalMetric = null;
-    this.bookMetric = null;
     this.render();
   }
-  createSummaryItem(parent, label, value, metric, active = false, onClick) {
+  createSummaryItem(parent, label, value) {
     const item = parent.createDiv({ cls: "puffs-reading-stats-summary-item" });
-    if (metric) {
-      item.addClass("is-clickable");
-      item.setAttr("tabindex", "0");
-      item.setAttr("role", "button");
-      item.setAttr("aria-pressed", active ? "true" : "false");
-    }
-    if (active) item.addClass("is-active");
     item.createDiv({ cls: "puffs-reading-stats-summary-label", text: label });
     const valueEl = item.createDiv({ cls: "puffs-reading-stats-summary-value", text: value });
-    if (onClick) {
-      item.addEventListener("click", onClick);
-      item.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onClick();
-        }
-      });
-    }
     return valueEl;
   }
   createSectionTitle(parent, title, renderActions) {
@@ -4466,7 +4280,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       let isComposing = false;
       const commitSearchValue = () => {
         this.bookSearchQuery = input.value.trim();
-        this.globalMetric = null;
         this.refreshGlobalBookList();
       };
       input.addEventListener("compositionstart", () => {
@@ -4512,14 +4325,12 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     (0, import_obsidian4.setIcon)(authorBtn, "user");
     authorBtn.addEventListener("click", () => {
       this.bookSearchMode = this.bookSearchMode === "author" ? "title" : "author";
-      this.globalMetric = null;
       this.render();
     });
   }
   clearBookSearch() {
     this.bookSearchQuery = "";
     this.bookSearchOpen = false;
-    this.globalMetric = null;
   }
   toggleTitleBookSearch() {
     if (this.bookSearchOpen && this.bookSearchMode === "title") {
@@ -4530,7 +4341,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.bookSearchMode = "title";
     this.bookSearchOpen = true;
     this.bookSearchQuery = "";
-    this.globalMetric = null;
     this.render();
   }
   toggleAuthorBookSearch() {
@@ -4543,7 +4353,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     this.bookSearchMode = "author";
     this.bookSearchOpen = true;
     this.bookSearchQuery = "";
-    this.globalMetric = null;
     this.render();
   }
   hasActiveBookSearch() {
@@ -4648,12 +4457,10 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     const filters = this.tagFilters[group];
     if (filters.has(value)) filters.delete(value);
     else filters.add(value);
-    this.globalMetric = null;
   }
   clearTagFilters() {
     for (const filters of Object.values(this.tagFilters)) filters.clear();
     this.untaggedOnly = false;
-    this.globalMetric = null;
   }
   hasActiveTagFilters() {
     return this.untaggedOnly || Object.values(this.tagFilters).some((filters) => filters.size > 0);
@@ -4670,23 +4477,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     const next = !this.untaggedOnly;
     this.clearTagFilters();
     this.untaggedOnly = next;
-  }
-  getDailyEntriesForBooks(books) {
-    var _a, _b, _c;
-    const dailyByDate = {};
-    for (const book of books) {
-      for (const [date, daily] of Object.entries((_a = book.daily) != null ? _a : {})) {
-        const aggregate = (_b = dailyByDate[date]) != null ? _b : { readingMs: 0, readWords: 0, readChapterRanges: [] };
-        aggregate.readingMs += daily.readingMs;
-        aggregate.readWords += daily.readWords;
-        aggregate.readChapterRanges = this.mergeDisplayableChapterRanges([
-          ...aggregate.readChapterRanges,
-          ...(_c = daily.readChapterRanges) != null ? _c : []
-        ]);
-        dailyByDate[date] = aggregate;
-      }
-    }
-    return Object.entries(dailyByDate);
   }
   renderBookTagBadges(parent, tags, groups = ["authors", "genre", "serialStatus", "readingStatus", "feature", "accumulation"], extraClass = "") {
     const tagGroups = this.getBookTagGroups(tags).filter((group) => groups.includes(group.group) && group.labels.length > 0);
@@ -4736,7 +4526,7 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     ];
   }
   getAggregatedBooks(includeLibraryBooks = false) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d;
     const stats = this.plugin.getReadingStats();
     const groups = /* @__PURE__ */ new Map();
     for (const [filePath, book] of Object.entries(stats.books)) {
@@ -4756,9 +4546,7 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
           hasOriginalTags: false,
           tags: createEmptyBookTags(),
           totalReadingMs: 0,
-          totalReadWords: 0,
-          readChapterRanges: [],
-          daily: {},
+          readingDates: [],
           lastReadAt: 0
         };
         groups.set(groupKey, group);
@@ -4776,41 +4564,24 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       }
       group.filePaths.push(filePath);
       group.totalReadingMs += book.totalReadingMs;
-      group.totalReadWords += book.totalReadWords;
+      group.readingDates = [.../* @__PURE__ */ new Set([...group.readingDates, ...book.readingDates])].sort();
       group.lastReadAt = Math.max(group.lastReadAt, book.lastReadAt);
-      if (!isSummary) {
-        group.readChapterRanges = this.mergeDisplayableChapterRanges([
-          ...group.readChapterRanges,
-          ...(_a = book.readChapterRanges) != null ? _a : []
-        ]);
-      }
-      for (const [date, daily] of Object.entries((_b = book.daily) != null ? _b : {})) {
-        const groupDaily = (_c = group.daily[date]) != null ? _c : { readingMs: 0, readWords: 0, readChapterRanges: [] };
-        groupDaily.readingMs += daily.readingMs;
-        groupDaily.readWords += daily.readWords;
-        if (!isSummary) {
-          groupDaily.readChapterRanges = this.mergeDisplayableChapterRanges([
-            ...groupDaily.readChapterRanges,
-            ...(_d = daily.readChapterRanges) != null ? _d : []
-          ]);
-        }
-        group.daily[date] = groupDaily;
-      }
     }
     if (includeLibraryBooks) {
       for (const file of this.plugin.getSelectableBookFiles()) {
         const groupKey = getReadingStatsGroupKey(file.path, file.basename);
+        const isSummary = isSummaryReadingStatsBook(file.path, file.basename);
         const fileTags = this.plugin.getBookTags(file.path);
         const fileHasTags = hasAnyBookTags(fileTags);
         const group = groups.get(groupKey);
         if (group) {
-          if (!group.originalFilePath) group.originalFilePath = file.path;
-          if (!group.hasOriginalSource) {
+          if (!isSummary && !group.originalFilePath) group.originalFilePath = file.path;
+          if (!isSummary && !group.hasOriginalSource) {
             group.title = file.basename;
             group.filePaths.push(file.path);
             group.hasOriginalSource = true;
           }
-          group.lastReadAt = Math.max(group.lastReadAt, (_f = (_e = this.plugin.getProgress(file.path)) == null ? void 0 : _e.lastRead) != null ? _f : 0);
+          group.lastReadAt = Math.max(group.lastReadAt, (_b = (_a = this.plugin.getProgress(file.path)) == null ? void 0 : _a.lastRead) != null ? _b : 0);
           if (fileHasTags && !group.hasOriginalTags) {
             group.tags = fileTags;
             group.hasOriginalTags = true;
@@ -4821,15 +4592,13 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
           groupKey,
           title: file.basename,
           filePaths: [file.path],
-          originalFilePath: file.path,
-          hasOriginalSource: true,
+          originalFilePath: isSummary ? void 0 : file.path,
+          hasOriginalSource: !isSummary,
           hasOriginalTags: fileHasTags,
           tags: fileTags,
           totalReadingMs: 0,
-          totalReadWords: 0,
-          readChapterRanges: [],
-          daily: {},
-          lastReadAt: (_h = (_g = this.plugin.getProgress(file.path)) == null ? void 0 : _g.lastRead) != null ? _h : 0
+          readingDates: [],
+          lastReadAt: (_d = (_c = this.plugin.getProgress(file.path)) == null ? void 0 : _c.lastRead) != null ? _d : 0
         });
       }
     }
@@ -4844,177 +4613,12 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
           this.plugin.deleteReadingStatsGroup(groupKey).then(() => {
             new import_obsidian4.Notice("\u5DF2\u5220\u9664\u8FD9\u7EC4\u4E66\u7684\u9605\u8BFB\u7EDF\u8BA1");
             if (this.selectedBookPath === groupKey) this.selectedBookPath = null;
-            this.globalMetric = null;
-            this.bookMetric = null;
             this.render();
           }).catch((error) => console.error("[Puffs Reader] Failed to delete book reading stats:", error));
         });
       });
       menu.showAtMouseEvent(event);
     });
-  }
-  registerBookDailyStatsContextMenu(card, groupKey, date) {
-    card.addEventListener("contextmenu", (event) => {
-      event.preventDefault();
-      const menu = new import_obsidian4.Menu();
-      menu.addItem((item) => {
-        item.setTitle("\u5220\u9664\u6570\u636E").setIcon("trash").onClick(() => {
-          this.plugin.deleteReadingStatsGroupDaily(groupKey, date).then(() => {
-            new import_obsidian4.Notice("\u5DF2\u5220\u9664\u5F53\u5929\u9605\u8BFB\u7EDF\u8BA1");
-            this.bookMetric = null;
-            this.render();
-          }).catch((error) => console.error("[Puffs Reader] Failed to delete book daily reading stats:", error));
-        });
-      });
-      menu.showAtMouseEvent(event);
-    });
-  }
-  toggleGlobalMetric(metric) {
-    this.globalMetric = this.globalMetric === metric ? null : metric;
-    if (this.globalMetric === "speed") this.speedUnit = "hour";
-    this.render();
-  }
-  toggleBookMetric(metric) {
-    this.bookMetric = this.bookMetric === metric ? null : metric;
-    if (this.bookMetric === "speed") this.speedUnit = "hour";
-    this.render();
-  }
-  renderMetricChart(parent, metric, entries) {
-    const totalWords = entries.reduce((sum, item) => sum + item.readWords, 0);
-    const totalMs = entries.reduce((sum, item) => sum + item.readingMs, 0);
-    if (metric === "words") {
-      this.renderLineChart(
-        parent,
-        "\u7D2F\u8BA1\u5B57\u6570",
-        entries.map((item) => ({
-          label: this.formatShortDate(item.date),
-          value: item.readWords,
-          title: `${item.date}\uFF1A${this.formatCompactNumber(item.readWords)} \u5B57`
-        })),
-        (value) => `${this.formatCompactNumber(value)}\u5B57`,
-        `${this.formatCompactNumber(totalWords)}\u5B57`
-      );
-      return;
-    }
-    if (metric === "time") {
-      this.renderLineChart(
-        parent,
-        "\u7D2F\u8BA1\u65F6\u957F",
-        entries.map((item) => ({
-          label: this.formatShortDate(item.date),
-          value: item.readingMs / 6e4,
-          title: `${item.date}\uFF1A${this.formatCompactDuration(item.readingMs)}`
-        })),
-        (value) => this.formatChartMinutes(value),
-        this.formatCompactDuration(totalMs)
-      );
-      return;
-    }
-    this.renderLineChart(
-      parent,
-      "\u5E73\u5747\u9605\u8BFB\u901F\u5EA6",
-      entries.map((item) => ({
-        label: this.formatShortDate(item.date),
-        value: this.getSpeedValue(item.readWords, item.readingMs, this.speedUnit),
-        title: `${item.date}\uFF1A${this.formatSpeed(item.readWords, item.readingMs, this.speedUnit)}`
-      })),
-      (value) => `${this.formatCompactNumber(value)}${this.speedUnit === "hour" ? "\u5B57/h" : "\u5B57/min"}`,
-      this.formatSpeed(totalWords, totalMs, this.speedUnit),
-      (header) => this.renderSpeedUnitToggle(header)
-    );
-  }
-  renderSpeedUnitToggle(parent) {
-    const toggle = parent.createDiv({ cls: "puffs-reading-stats-chart-toggle" });
-    for (const unit of ["hour", "minute"]) {
-      const button = toggle.createEl("button", {
-        text: unit === "hour" ? "\u5C0F\u65F6" : "\u5206\u949F",
-        cls: unit === this.speedUnit ? "is-active" : ""
-      });
-      button.addEventListener("click", () => {
-        this.speedUnit = unit;
-        this.render();
-      });
-    }
-  }
-  renderLineChart(parent, title, points, formatValue, summaryText, renderHeaderControl) {
-    const card = parent.createDiv({ cls: "puffs-reading-stats-chart-card" });
-    const header = card.createDiv({ cls: "puffs-reading-stats-chart-header" });
-    const titleWrap = header.createDiv({ cls: "puffs-reading-stats-chart-title-wrap" });
-    titleWrap.createDiv({ cls: "puffs-reading-stats-chart-title", text: title });
-    if (renderHeaderControl) renderHeaderControl(titleWrap);
-    const valid = points.filter((point) => Number.isFinite(point.value));
-    if (valid.length === 0 || valid.every((point) => point.value <= 0)) {
-      card.createDiv({ cls: "puffs-reading-stats-empty", text: "\u6682\u65E0\u56FE\u8868\u6570\u636E" });
-      return;
-    }
-    header.createDiv({ cls: "puffs-reading-stats-chart-total", text: summaryText });
-    const width = 720;
-    const height = 220;
-    const padLeft = 48;
-    const padRight = 18;
-    const padTop = 18;
-    const padBottom = 34;
-    const plotWidth = width - padLeft - padRight;
-    const plotHeight = height - padTop - padBottom;
-    const maxValue = Math.max(...valid.map((point) => point.value), 1);
-    const x = (idx) => valid.length === 1 ? padLeft + plotWidth / 2 : padLeft + idx / (valid.length - 1) * plotWidth;
-    const y = (value) => padTop + plotHeight - value / maxValue * plotHeight;
-    const path = valid.map((point, idx) => `${idx === 0 ? "M" : "L"} ${x(idx).toFixed(1)} ${y(point.value).toFixed(1)}`).join(" ");
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", "puffs-reading-stats-chart");
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", title);
-    svg.innerHTML = `
-      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop + plotHeight}" x2="${width - padRight}" y2="${padTop + plotHeight}" />
-      <line class="puffs-chart-axis" x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${padTop + plotHeight}" />
-      <text class="puffs-chart-label" x="${padLeft}" y="${padTop + 10}">${this.escapeSvg(formatValue(maxValue))}</text>
-      <text class="puffs-chart-label" x="${padLeft}" y="${height - 8}">${this.escapeSvg(valid[0].label)}</text>
-      <text class="puffs-chart-label puffs-chart-label-end" x="${width - padRight}" y="${height - 8}">${this.escapeSvg(valid[valid.length - 1].label)}</text>
-      <path class="puffs-chart-line" d="${path}" />
-    `;
-    valid.forEach((point, idx) => {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("class", "puffs-chart-point");
-      circle.setAttribute("cx", x(idx).toFixed(1));
-      circle.setAttribute("cy", y(point.value).toFixed(1));
-      circle.setAttribute("r", "3.5");
-      const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      titleEl.textContent = point.title;
-      circle.appendChild(titleEl);
-      svg.appendChild(circle);
-    });
-    card.appendChild(svg);
-  }
-  formatChapterRanges(ranges, label = "\u5DF2\u8BFB\u7AE0\u8282") {
-    const displayRanges = this.mergeDisplayableChapterRanges(ranges);
-    if (displayRanges.length === 0) return "";
-    const labels = displayRanges.map((range) => {
-      if (range.start === range.end || range.startTitle === range.endTitle) return range.startTitle;
-      return `${range.startTitle} - ${range.endTitle}`;
-    });
-    return `${label}\uFF1A${[...new Set(labels)].join("\u3001")}`;
-  }
-  mergeDisplayableChapterRanges(ranges) {
-    const sorted = ranges.filter(
-      (range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.start >= 0 && range.end >= range.start && range.startTitle && range.endTitle && range.startTitle !== UNRECOGNIZED_CHAPTER_TITLE && range.endTitle !== UNRECOGNIZED_CHAPTER_TITLE
-    ).map((range) => ({
-      start: Math.floor(range.start),
-      end: Math.floor(range.end),
-      startTitle: range.startTitle,
-      endTitle: range.endTitle
-    })).sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end + 1) {
-        merged.push({ ...range });
-      } else if (range.end > last.end) {
-        last.end = range.end;
-        last.endTitle = range.endTitle;
-      }
-    }
-    return merged;
   }
   formatCompactDuration(ms) {
     const totalMinutes = Math.max(0, Math.round(ms / 6e4));
@@ -5024,26 +4628,10 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
     if (hours > 0) return `${hours}h ${minutes}min`;
     return `${totalMinutes}min`;
   }
-  formatChartMinutes(minutes) {
-    const totalMinutes = Math.max(0, Math.round(minutes));
-    const hours = Math.floor(totalMinutes / 60);
-    const rest = totalMinutes % 60;
-    if (hours >= 10) return `${hours}h`;
-    if (hours > 0) return `${hours}h ${rest}min`;
-    return `${totalMinutes}min`;
-  }
-  formatSpeed(words, ms, unit) {
-    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return "--";
-    const value = this.getSpeedValue(words, ms, unit);
-    return `${this.formatCompactNumber(value)} \u5B57/${unit === "hour" ? "\u5C0F\u65F6" : "\u5206\u949F"}`;
-  }
-  getSpeedValue(words, ms, unit) {
-    if (!Number.isFinite(words) || !Number.isFinite(ms) || words <= 0 || ms <= 0) return 0;
-    return unit === "hour" ? words / (ms / 36e5) : words / (ms / 6e4);
-  }
   formatCompactNumber(value) {
     const n = Math.max(0, Math.round(value));
     if (n < 1e4) return String(n);
+    if (n >= 1e5) return `${Math.floor(n / 1e4)}W`;
     const compact = Math.round(n / 1e4 * 10) / 10;
     return `${Number.isInteger(compact) ? compact.toFixed(0) : compact.toFixed(1)}W`;
   }
@@ -5059,12 +4647,6 @@ var ReadingStatsView = class _ReadingStatsView extends import_obsidian4.ItemView
       minute: "2-digit"
     });
   }
-  formatShortDate(date) {
-    return date.slice(5) || date;
-  }
-  escapeSvg(value) {
-    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
 };
 var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
   constructor() {
@@ -5074,7 +4656,8 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     this.bookSettings = {};
     this.tagCatalog = normalizeTagCatalog(void 0);
     this.authorTagOrder = [];
-    this.readingStats = { schemaVersion: 2, books: {}, daily: {} };
+    this.readingStats = { schemaVersion: 3, books: {} };
+    this.bookWordCountCache = {};
     this.lastDataBackupAt = 0;
     this.knownBooks = [];
     this.dataBackupTimer = null;
@@ -5166,21 +4749,24 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
   async loadPluginData() {
     var _a, _b, _c, _d, _e;
     const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data == null ? void 0 : data.settings);
+    const loadedSettings = Object.assign({}, DEFAULT_SETTINGS, data == null ? void 0 : data.settings);
+    const hadLegacyReadingPageSetting = Object.prototype.hasOwnProperty.call(loadedSettings, "readingStatsMinPageMs");
+    delete loadedSettings.readingStatsMinPageMs;
+    this.settings = loadedSettings;
     if (this.settings.tocRegex === LEGACY_DEFAULT_TOC_REGEX || this.settings.tocRegex === LEGACY_PROLOGUE_TOC_REGEX) {
       this.settings.tocRegex = DEFAULT_SETTINGS.tocRegex;
     }
     if (this.settings.chapterTitleRegex === LEGACY_DEFAULT_CHAPTER_TITLE_REGEX || this.settings.chapterTitleRegex === LEGACY_PROLOGUE_CHAPTER_TITLE_REGEX) {
       this.settings.chapterTitleRegex = DEFAULT_SETTINGS.chapterTitleRegex;
     }
-    if (this.settings.readingStatsMinPageMs === 3e3 || this.settings.readingStatsMinPageMs === 500) {
-      this.settings.readingStatsMinPageMs = DEFAULT_SETTINGS.readingStatsMinPageMs;
-    }
     this.progress = (_a = data == null ? void 0 : data.progress) != null ? _a : {};
     this.bookSettings = (_b = data == null ? void 0 : data.bookSettings) != null ? _b : {};
     this.tagCatalog = normalizeTagCatalog(data == null ? void 0 : data.tagCatalog);
     this.authorTagOrder = this.normalizeAuthorTagOrder(data == null ? void 0 : data.authorTagOrder);
+    const rawReadingStats = this.asRecord(data == null ? void 0 : data.readingStats);
+    const needsReadingStatsMigration = Object.keys(rawReadingStats).length > 0 && Number(rawReadingStats.schemaVersion) !== 3;
     this.readingStats = this.normalizeReadingStats(data == null ? void 0 : data.readingStats);
+    this.bookWordCountCache = this.normalizeBookWordCountCache(data == null ? void 0 : data.bookWordCountCache);
     this.lastDataBackupAt = (_c = data == null ? void 0 : data.lastDataBackupAt) != null ? _c : 0;
     this.knownBooks = (_d = data == null ? void 0 : data.knownBooks) != null ? _d : [];
     for (const [filePath, progress] of Object.entries(this.progress)) {
@@ -5190,6 +4776,10 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
           encoding: progress.encoding
         };
       }
+    }
+    if (needsReadingStatsMigration || hadLegacyReadingPageSetting) {
+      await this.backupDataJson();
+      await this.writePluginData();
     }
   }
   async savePluginData() {
@@ -5208,52 +4798,61 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
       tagCatalog: this.tagCatalog,
       authorTagOrder: this.authorTagOrder,
       readingStats: this.readingStats,
+      bookWordCountCache: this.bookWordCountCache,
       lastDataBackupAt: this.lastDataBackupAt,
       knownBooks: this.knownBooks
     });
   }
   normalizeReadingStats(input) {
-    var _a, _b, _c, _d, _e, _f;
-    if (!input || input.schemaVersion !== 2) {
-      return { schemaVersion: 2, books: {}, daily: {} };
-    }
+    var _a;
+    const raw = this.asRecord(input);
+    const schemaVersion = Number(raw.schemaVersion);
     const books = {};
-    for (const [filePath, book] of Object.entries((_a = input == null ? void 0 : input.books) != null ? _a : {})) {
+    for (const [filePath, value] of Object.entries(this.asRecord(raw.books))) {
+      const book = this.asRecord(value);
+      const readingDates = schemaVersion === 3 ? this.normalizeReadingDates(book.readingDates) : this.normalizeReadingDates(
+        Object.entries(this.asRecord(book.daily)).filter(([, item]) => {
+          const daily = this.asRecord(item);
+          return this.safeNonNegativeNumber(daily.readingMs) > 0 || this.safeNonNegativeNumber(daily.readWords) > 0;
+        }).map(([date]) => date)
+      );
       books[filePath] = {
-        title: book.title || ((_b = filePath.split("/").pop()) == null ? void 0 : _b.replace(/\.txt$/i, "")) || filePath,
+        title: typeof book.title === "string" && book.title.trim() ? book.title : ((_a = filePath.split("/").pop()) == null ? void 0 : _a.replace(/\.txt$/i, "")) || filePath,
         totalReadingMs: this.safeNonNegativeNumber(book.totalReadingMs),
-        totalReadWords: this.safeNonNegativeNumber(book.totalReadWords),
-        countedRanges: this.mergeCountedRanges((_c = book.countedRanges) != null ? _c : []),
-        readChapterRanges: this.mergeChapterRanges((_d = book.readChapterRanges) != null ? _d : []),
-        daily: this.normalizeBookDailyStats(book.daily),
+        readingDates,
         lastReadAt: this.safeNonNegativeNumber(book.lastReadAt)
       };
     }
-    const daily = {};
-    for (const [date, item] of Object.entries((_e = input == null ? void 0 : input.daily) != null ? _e : {})) {
-      daily[date] = {
-        readingMs: this.safeNonNegativeNumber(item.readingMs),
-        readWords: this.safeNonNegativeNumber(item.readWords),
-        bookPaths: [...new Set(((_f = item.bookPaths) != null ? _f : []).filter(Boolean))]
+    return { schemaVersion: 3, books };
+  }
+  normalizeReadingDates(value) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter(
+      (date) => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
+    ))].sort();
+  }
+  normalizeBookWordCountCache(input) {
+    const result = {};
+    for (const [filePath, value] of Object.entries(this.asRecord(input))) {
+      const item = this.asRecord(value);
+      const mtime = this.safeNonNegativeNumber(item.mtime);
+      const encodingKey = typeof item.encodingKey === "string" ? item.encodingKey.trim() : "";
+      const totalWords = Number(item.totalWords);
+      if (mtime <= 0 || !encodingKey || !Number.isFinite(totalWords) || totalWords < 0) continue;
+      result[filePath] = {
+        mtime,
+        encodingKey,
+        totalWords: Math.floor(totalWords)
       };
     }
-    return { schemaVersion: 2, books, daily };
+    return result;
   }
   safeNonNegativeNumber(value) {
     const n = Number(value);
     return Number.isFinite(n) && n > 0 ? n : 0;
   }
-  normalizeBookDailyStats(input) {
-    var _a;
-    const result = {};
-    for (const [date, item] of Object.entries(input != null ? input : {})) {
-      result[date] = {
-        readingMs: this.safeNonNegativeNumber(item.readingMs),
-        readWords: this.safeNonNegativeNumber(item.readWords),
-        readChapterRanges: this.mergeChapterRanges((_a = item.readChapterRanges) != null ? _a : [])
-      };
-    }
-    return result;
+  asRecord(value) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
   scheduleNextDataBackup() {
     this.clearDataBackupTimer();
@@ -5429,6 +5028,40 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     this.readingStats = this.normalizeReadingStats(stats);
     await this.savePluginData();
   }
+  async getBookTotalWordCount(filePath) {
+    var _a, _b, _c;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof import_obsidian4.TFile)) throw new Error(`Book file not found: ${filePath}`);
+    const encodingKey = this.getBookWordCountEncodingKey(filePath);
+    const cached = this.bookWordCountCache[filePath];
+    if ((cached == null ? void 0 : cached.mtime) === file.stat.mtime && cached.encodingKey === encodingKey) {
+      return cached.totalWords;
+    }
+    const buffer = await this.app.vault.readBinary(file);
+    const forcedEncoding = (_c = (_a = this.bookSettings[filePath]) == null ? void 0 : _a.encoding) != null ? _c : (_b = this.progress[filePath]) == null ? void 0 : _b.encoding;
+    const decoded = decodeTxtBuffer(buffer, forcedEncoding, this.settings.defaultEncoding);
+    return this.cacheBookWordCountFromText(file, decoded.text);
+  }
+  async cacheBookWordCountFromText(file, text) {
+    const totalWords = text.replace(/\s/g, "").length;
+    const next = {
+      mtime: file.stat.mtime,
+      encodingKey: this.getBookWordCountEncodingKey(file.path),
+      totalWords
+    };
+    const current = this.bookWordCountCache[file.path];
+    if ((current == null ? void 0 : current.mtime) === next.mtime && current.encodingKey === next.encodingKey && current.totalWords === next.totalWords) {
+      return totalWords;
+    }
+    this.bookWordCountCache[file.path] = next;
+    await this.savePluginData();
+    return totalWords;
+  }
+  getBookWordCountEncodingKey(filePath) {
+    var _a, _b, _c;
+    const forcedEncoding = (_c = (_a = this.bookSettings[filePath]) == null ? void 0 : _a.encoding) != null ? _c : (_b = this.progress[filePath]) == null ? void 0 : _b.encoding;
+    return forcedEncoding ? `forced:${forcedEncoding.trim().toLowerCase()}` : `auto:${this.settings.defaultEncoding.trim().toLowerCase()}`;
+  }
   async deleteReadingStatsGroup(groupKey) {
     const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
     if (filePaths.length === 0) return;
@@ -5438,53 +5071,14 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     }
     if (changed) await this.savePluginData();
   }
-  async deleteReadingStatsGroupDaily(groupKey, date) {
-    const filePaths = this.getReadingStatsGroupFilePaths(groupKey);
-    if (filePaths.length === 0) return;
-    let changed = false;
-    for (const filePath of filePaths) {
-      changed = this.deleteBookDailyReadingStatsInMemory(filePath, date) || changed;
-    }
-    if (changed) await this.savePluginData();
-  }
   async deleteBookReadingStats(filePath) {
     if (!this.deleteBookReadingStatsInMemory(filePath)) return;
     await this.savePluginData();
   }
   deleteBookReadingStatsInMemory(filePath) {
-    var _a;
     const book = this.readingStats.books[filePath];
     if (!book) return false;
-    for (const [date, item] of Object.entries((_a = book.daily) != null ? _a : {})) {
-      this.removeBookContributionFromDaily(date, filePath, item.readingMs, item.readWords);
-    }
     delete this.readingStats.books[filePath];
-    return true;
-  }
-  async deleteBookDailyReadingStats(filePath, date) {
-    if (!this.deleteBookDailyReadingStatsInMemory(filePath, date)) return;
-    await this.savePluginData();
-  }
-  deleteBookDailyReadingStatsInMemory(filePath, date) {
-    var _a, _b;
-    const book = this.readingStats.books[filePath];
-    const daily = (_a = book == null ? void 0 : book.daily) == null ? void 0 : _a[date];
-    if (!book || !daily) return false;
-    this.removeBookContributionFromDaily(date, filePath, daily.readingMs, daily.readWords);
-    delete book.daily[date];
-    const remainingDaily = Object.entries((_b = book.daily) != null ? _b : {});
-    if (remainingDaily.length === 0) {
-      delete this.readingStats.books[filePath];
-      return true;
-    }
-    book.totalReadingMs = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readingMs), 0);
-    book.totalReadWords = remainingDaily.reduce((sum, [, item]) => sum + this.safeNonNegativeNumber(item.readWords), 0);
-    book.readChapterRanges = this.mergeChapterRanges(remainingDaily.flatMap(([, item]) => {
-      var _a2;
-      return (_a2 = item.readChapterRanges) != null ? _a2 : [];
-    }));
-    book.lastReadAt = Math.max(...remainingDaily.map(([day]) => this.getEndOfLocalDayTimestamp(day)), 0);
-    this.readingStats.books[filePath] = book;
     return true;
   }
   getReadingStatsGroupFilePaths(groupKey) {
@@ -5494,80 +5088,24 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     ).map(([filePath]) => filePath);
   }
   async recordReadingStat(record) {
-    var _a, _b, _c, _d, _e;
+    var _a;
     const timestamp = (_a = record.timestamp) != null ? _a : Date.now();
     const readingMs = this.safeNonNegativeNumber(record.readingMs);
-    const readWords = this.safeNonNegativeNumber(record.readWords);
-    const hasRange = !!record.countedRange && record.countedRange.end > record.countedRange.start;
-    const hasChapterRanges = ((_c = (_b = record.chapterRanges) == null ? void 0 : _b.length) != null ? _c : 0) > 0;
-    if (readingMs <= 0 && readWords <= 0 && !hasRange && !hasChapterRanges) return;
+    if (readingMs <= 0) return;
     const existing = this.readingStats.books[record.filePath];
     const dayKey = this.getLocalDateKey(timestamp);
     const book = existing != null ? existing : {
       title: record.title,
       totalReadingMs: 0,
-      totalReadWords: 0,
-      countedRanges: [],
-      readChapterRanges: [],
-      daily: {},
+      readingDates: [],
       lastReadAt: 0
     };
     book.title = record.title || book.title;
     book.totalReadingMs += readingMs;
-    book.totalReadWords += readWords;
-    if (record.countedRange && record.countedRange.end > record.countedRange.start) {
-      book.countedRanges = this.mergeCountedRanges([...book.countedRanges, record.countedRange]);
-    }
-    if (record.chapterRanges && record.chapterRanges.length > 0) {
-      book.readChapterRanges = this.mergeChapterRanges([...book.readChapterRanges, ...record.chapterRanges]);
-    }
-    const bookDaily = (_d = book.daily[dayKey]) != null ? _d : { readingMs: 0, readWords: 0, readChapterRanges: [] };
-    bookDaily.readingMs += readingMs;
-    bookDaily.readWords += readWords;
-    if (record.chapterRanges && record.chapterRanges.length > 0) {
-      bookDaily.readChapterRanges = this.mergeChapterRanges([...bookDaily.readChapterRanges, ...record.chapterRanges]);
-    }
-    book.daily[dayKey] = bookDaily;
+    book.readingDates = this.normalizeReadingDates([...book.readingDates, dayKey]);
     book.lastReadAt = Math.max(book.lastReadAt, timestamp);
     this.readingStats.books[record.filePath] = book;
-    const daily = (_e = this.readingStats.daily[dayKey]) != null ? _e : { readingMs: 0, readWords: 0, bookPaths: [] };
-    daily.readingMs += readingMs;
-    daily.readWords += readWords;
-    if (!daily.bookPaths.includes(record.filePath)) daily.bookPaths.push(record.filePath);
-    this.readingStats.daily[dayKey] = daily;
     await this.savePluginData();
-  }
-  mergeCountedRanges(ranges) {
-    const sorted = ranges.filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end > range.start).map((range) => ({ start: Math.floor(range.start), end: Math.floor(range.end) })).sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end) {
-        merged.push({ ...range });
-      } else {
-        last.end = Math.max(last.end, range.end);
-      }
-    }
-    return merged;
-  }
-  mergeChapterRanges(ranges) {
-    const sorted = ranges.filter((range) => Number.isFinite(range.start) && Number.isFinite(range.end) && range.end >= range.start).map((range) => ({
-      start: Math.floor(range.start),
-      end: Math.floor(range.end),
-      startTitle: range.startTitle || "\u672A\u8BC6\u522B\u7AE0\u8282",
-      endTitle: range.endTitle || range.startTitle || "\u672A\u8BC6\u522B\u7AE0\u8282"
-    })).sort((a, b) => a.start - b.start || a.end - b.end);
-    const merged = [];
-    for (const range of sorted) {
-      const last = merged[merged.length - 1];
-      if (!last || range.start > last.end + 1) {
-        merged.push({ ...range });
-      } else if (range.end > last.end) {
-        last.end = range.end;
-        last.endTitle = range.endTitle;
-      }
-    }
-    return merged;
   }
   getLocalDateKey(timestamp) {
     const d = new Date(timestamp);
@@ -5575,24 +5113,6 @@ var PuffsReaderPlugin = class extends import_obsidian4.Plugin {
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  }
-  getEndOfLocalDayTimestamp(date) {
-    const [year, month, day] = date.split("-").map((part) => Number(part));
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return 0;
-    return new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
-  }
-  removeBookContributionFromDaily(date, filePath, readingMs, readWords) {
-    var _a;
-    const daily = this.readingStats.daily[date];
-    if (!daily) return;
-    daily.readingMs = Math.max(0, this.safeNonNegativeNumber(daily.readingMs) - this.safeNonNegativeNumber(readingMs));
-    daily.readWords = Math.max(0, this.safeNonNegativeNumber(daily.readWords) - this.safeNonNegativeNumber(readWords));
-    daily.bookPaths = ((_a = daily.bookPaths) != null ? _a : []).filter((path) => path !== filePath);
-    if (daily.readingMs <= 0 && daily.readWords <= 0 && daily.bookPaths.length === 0) {
-      delete this.readingStats.daily[date];
-    } else {
-      this.readingStats.daily[date] = daily;
-    }
   }
   async markBookAsRecentlyRead(filePath) {
     var _a, _b;
